@@ -54,24 +54,24 @@ const Tabs: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ 
   ];
 
   return (
-    <nav className="mb-8">
-      <div className="flex justify-center">
+    <nav className="mb-12">
+      <div className="flex justify-center gap-2">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => !tab.disabled && setActiveTab(tab.id)}
             disabled={tab.disabled}
-            className={`px-6 py-3 text-sm font-semibold transition-colors duration-200 ease-in-out focus:outline-none
+            className={`px-8 py-2.5 text-sm font-bold transition-all duration-300 ease-in-out rounded-full focus:outline-none
               ${
                 activeTab === tab.id
-                  ? 'border-b-2 border-[var(--accent-color)] text-slate-800'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-[#BFFEDF] text-[#10714F] shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
               }
-              ${tab.disabled ? 'cursor-not-allowed text-slate-400' : ''}
+              ${tab.disabled ? 'cursor-not-allowed opacity-50' : ''}
             `}
           >
             {tab.label}
-            {tab.disabled && <span className="text-xs"> (Coming Soon)</span>}
+            {tab.disabled && <span className="text-[10px] ml-1 opacity-60"> (Coming Soon)</span>}
           </button>
         ))}
       </div>
@@ -189,7 +189,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-4 md:px-8 lg:px-12 max-w-[1800px]">
         <Header />
         <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
         <main>{renderContent()}</main>

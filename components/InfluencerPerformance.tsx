@@ -690,22 +690,32 @@ const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; is
     }, [data]);
     
     return (
-        <div className="card p-6 min-h-[464px] flex flex-col">
-            <div className="flex justify-end mb-4">
+        <div className="card p-6 min-h-[500px] flex flex-col">
+            <div ref={chartRef} style={{ width: '100%', height: '400px' }} className="flex-1"></div>
+            <div className="flex justify-center mt-6">
                 {!isFull && onSeeFull && (
                     <button 
                         onClick={onSeeFull}
                         disabled={loadingFull}
-                        className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-full font-bold transition-colors flex items-center gap-1"
+                        className="text-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-6 py-2.5 rounded-full font-bold transition-all flex items-center gap-2 border border-emerald-100 shadow-sm"
                     >
-                        {loadingFull ? 'Loading...' : 'See full video\'s view trendline'}
+                        {loadingFull ? (
+                            <>
+                                <Loader text="" />
+                                <span>Fetching full history...</span>
+                            </>
+                        ) : (
+                            'See full video\'s view trendline'
+                        )}
                     </button>
                 )}
                 {isFull && (
-                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold uppercase tracking-wider">Viewing Full Trendline</span>
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="text-[10px] bg-slate-100 text-slate-500 px-3 py-1 rounded-full font-bold uppercase tracking-widest border border-slate-200">Viewing Full Trendline</span>
+                        <p className="text-[10px] text-slate-400 font-medium">All data from release date to current time</p>
+                    </div>
                 )}
             </div>
-            <div ref={chartRef} style={{ width: '100%', height: '400px' }} className="flex-1"></div>
         </div>
     );
 };
@@ -917,10 +927,10 @@ const InfluencerPerformance: React.FC = () => {
     }, [allVideos]);
 
     return (
-        <div className="relative flex min-h-screen overflow-hidden bg-slate-50/50">
-            {/* Main Content */}
-            <div className={`flex-1 transition-all duration-500 ease-in-out ${isSidebarOpen ? 'mr-[500px]' : 'mr-0'}`}>
-                <div className="p-8 space-y-8 max-w-[1400px] mx-auto">
+        <div className="relative min-h-screen bg-slate-50/50">
+            {/* Main Content Wrapper - This is what slides */}
+            <div className={`transition-transform duration-500 ease-in-out ${isSidebarOpen ? '-translate-x-[640px]' : 'translate-x-0'}`}>
+                <div className="p-8 space-y-8 max-w-full mx-auto">
                     <Filters 
                         dateRange={dateRange} 
                         setDateRange={setDateRange} 
@@ -1004,24 +1014,21 @@ const InfluencerPerformance: React.FC = () => {
                 </div>
             </div>
 
-            {/* Sidebar for Trendline */}
-            <div className={`fixed top-0 right-0 h-full w-[500px] bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.05)] border-l border-slate-100 z-50 transform transition-transform duration-500 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            {/* Sidebar for Trendline - Fixed and outside the sliding wrapper */}
+            <div 
+                className={`fixed top-0 right-0 h-full w-[640px] bg-white shadow-[-20px_0_40px_rgba(0,0,0,0.1)] border-l border-slate-100 z-[100] transform transition-transform duration-500 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
+            >
                 <div className="h-full flex flex-col">
-                    <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-[var(--accent-color)] rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
-                                <ArrowUp size={20} />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-800">Video Trendline</h3>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Performance Analytics</p>
-                            </div>
+                    <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+                        <div className="flex flex-col">
+                            <h3 className="text-xl font-bold text-slate-800">Video Trendline</h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Performance Analytics</p>
                         </div>
                         <button 
                             onClick={() => setIsSidebarOpen(false)}
-                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600"
+                            className="p-2.5 hover:bg-slate-100 rounded-xl transition-all text-slate-400 hover:text-slate-800 hover:rotate-90"
                         >
-                            <X size={20} />
+                            <X size={24} />
                         </button>
                     </div>
                     
