@@ -154,6 +154,7 @@ export interface Video {
   video_url: string;
   released_date: string;
   kol_id: string;
+  status?: string;
   kols: Kol; // For joined data
 }
 

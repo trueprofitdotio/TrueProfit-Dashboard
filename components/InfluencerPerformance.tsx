@@ -42,6 +42,52 @@ const Loader: React.FC<{ text?: string }> = ({ text }) => (
 
 const formatNumber = (num: number) => new Intl.NumberFormat('en-US').format(num);
 
+const getPlatformTag = (url: string) => {
+    if (!url) return { label: 'Unknown', color: 'bg-slate-100 text-slate-600' };
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return { label: 'Youtube', color: 'bg-red-100 text-red-600' };
+    if (lowerUrl.includes('tiktok.com')) return { label: 'TikTok', color: 'bg-slate-900 text-white' };
+    if (lowerUrl.includes('x.com') || lowerUrl.includes('twitter.com')) return { label: 'X', color: 'bg-slate-200 text-slate-800' };
+    if (lowerUrl.includes('instagram.com')) return { label: 'Instagram', color: 'bg-pink-100 text-pink-600' };
+    return { label: 'Social', color: 'bg-blue-100 text-blue-600' };
+};
+
+const extractYoutubeId = (url: string) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+};
+
+const getVideoStatus = (video: VideoPerformanceData) => {
+    // 1. Ưu tiên dùng field status từ database (Healthy, Stalled, Possibly Unlisted)
+    const dbStatus = video.status;
+    if (dbStatus && dbStatus !== 'Active') {
+        switch (dbStatus) {
+            case 'Healthy': return { label: 'Healthy', color: 'bg-emerald-100 text-emerald-700' };
+            case 'Stalled': return { label: 'Stalled', color: 'bg-amber-100 text-amber-700' };
+            case 'Possibly Unlisted': return { label: 'Possibly Unlisted', color: 'bg-red-100 text-red-700' };
+            default: break; 
+        }
+    }
+
+    // 2. Fallback logic tính toán (giữ lại logic cũ phòng hờ status chưa sync)
+    if (!video.video_url || video.video_url.trim() === '') {
+        return { label: 'Possibly Unlisted', color: 'bg-red-100 text-red-700' };
+    }
+
+    if (video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be')) {
+        const id = extractYoutubeId(video.video_url);
+        if (!id) return { label: 'Possibly Unlisted', color: 'bg-red-100 text-red-700' };
+    } else if (!video.video_url.includes('tiktok.com') && !video.video_url.includes('x.com') && !video.video_url.includes('instagram.com') && !video.video_url.includes('twitter.com')) {
+        if (!video.video_url.startsWith('http')) return { label: 'Possibly Unlisted', color: 'bg-red-100 text-red-700' };
+    }
+
+    if (video.viewGrowth > 0) return { label: 'Healthy', color: 'bg-emerald-100 text-emerald-700' };
+    if (video.viewGrowth === 0) return { label: 'Stalled', color: 'bg-amber-100 text-amber-700' };
+    return { label: 'Healthy', color: 'bg-emerald-100 text-emerald-700' };
+};
+
 const utcInputStringToDate = (dateString: string): Date => new Date(`${dateString}T00:00:00.000Z`);
 
 const ChangeIndicatorText: React.FC<{ value: number; vsDateRange: DateRange }> = ({ value, vsDateRange }) => {
@@ -131,9 +177,10 @@ const VideoTable: React.FC<{
     dateRange: DateRange;
     totalLabel?: string;
     totalValue?: number;
-    onSeeTrendline: (video: Video) => void;
+    onSeeTrendline: (video: VideoPerformanceData) => void;
     initialLimit?: number;
-}> = ({ title, videos, dateRange, totalLabel, totalValue, onSeeTrendline, initialLimit }) => {
+    showStatus?: boolean;
+}> = ({ title, videos, dateRange, totalLabel, totalValue, onSeeTrendline, initialLimit, showStatus = false }) => {
     const { items: sortedVideos, requestSort, sortConfig } = useSortableData(videos);
     const [showAll, setShowAll] = useState(false);
 
@@ -159,26 +206,44 @@ const VideoTable: React.FC<{
                 <table className="w-full text-sm text-left text-slate-500 table-fixed">
                     <thead className="text-xs text-[var(--header-blue)] font-bold uppercase bg-slate-50">
                         <tr>
-                            <SortableHeader label="Video Title" sortKey="title" currentSort={sortConfig} onSort={requestSort} className="w-[30%]" />
-                            <SortableHeader label="KOL Name" sortKey="kols.name" currentSort={sortConfig} onSort={requestSort} className="w-[15%]" />
-                            <SortableHeader label="Released" sortKey="released_date" currentSort={sortConfig} onSort={requestSort} className="w-[11%]" />
-                            <SortableHeader label={`Views from ${formatDisplayDateGmt7(dateRange.from)}`} sortKey="startViews" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[11%]" />
-                            <SortableHeader label={`Views from ${formatDisplayDateGmt7(dateRange.to)}`} sortKey="endViews" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[11%]" />
-                            <SortableHeader label="View Growth" sortKey="viewGrowth" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[11%]" />
-                            <th className="px-4 py-3 text-center w-[11%]">Action</th>
+                            <SortableHeader label="Video Title" sortKey="title" currentSort={sortConfig} onSort={requestSort} className="w-[22%]" />
+                            <SortableHeader label="Channel" sortKey="video_url" currentSort={sortConfig} onSort={requestSort} className="w-[10%]" />
+                            <SortableHeader label="KOL Name" sortKey="kols.name" currentSort={sortConfig} onSort={requestSort} className="w-[12%]" />
+                            <SortableHeader label="Released" sortKey="released_date" currentSort={sortConfig} onSort={requestSort} className="w-[9%]" />
+                            <SortableHeader label={`Views from ${formatDisplayDateGmt7(dateRange.from)}`} sortKey="startViews" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[9%]" />
+                            <SortableHeader label={`Views from ${formatDisplayDateGmt7(dateRange.to)}`} sortKey="endViews" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[9%]" />
+                            <SortableHeader label="View Growth" sortKey="viewGrowth" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[9%]" />
+                            {showStatus && <th className="px-4 py-3 text-center w-[10%]">Status</th>}
+                            <th className="px-4 py-3 text-center w-[10%]">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {displayedVideos.map(v => (
                             <tr key={v.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                <td className="px-4 py-3 font-medium truncate" title={v.title}>
-                                    <a href={v.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent-color)]">{v.title}</a>
+                                <td className="px-4 py-3 font-medium truncate" title={v.title || v.video_url}>
+                                    <a href={v.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent-color)]">
+                                        {v.title && v.title.trim() !== "" ? v.title : v.video_url}
+                                    </a>
+                                </td>
+                                <td className="px-4 py-3">
+                                    {(() => {
+                                        const platform = getPlatformTag(v.video_url);
+                                        return <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${platform.color}`}>{platform.label}</span>;
+                                    })()}
                                 </td>
                                 <td className="px-4 py-3 truncate" title={v.kols.name}>{v.kols.name}</td>
                                 <td className="px-4 py-3">{formatDisplayDateGmt7(utcInputStringToDate(v.released_date))}</td>
                                 <td className="px-4 py-3 text-right">{formatNumber(v.startViews)}</td>
                                 <td className="px-4 py-3 text-right">{formatNumber(v.endViews)}</td>
                                 <td className="px-4 py-3 text-right font-semibold text-emerald-600">{formatNumber(v.viewGrowth)}</td>
+                                {showStatus && (
+                                    <td className="px-4 py-3 text-center">
+                                        {(() => {
+                                            const status = getVideoStatus(v);
+                                            return <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${status.color}`}>{status.label}</span>;
+                                        })()}
+                                    </td>
+                                )}
                                 <td className="px-4 py-3 text-center">
                                     <button onClick={() => onSeeTrendline(v)} className="text-[var(--accent-color)] font-semibold hover:underline text-xs">
                                         See trendline
@@ -190,7 +255,7 @@ const VideoTable: React.FC<{
                     {totalLabel && (
                         <tfoot>
                             <tr className="bg-slate-50 font-bold text-slate-700">
-                                <td colSpan={5} className="px-4 py-3 text-right">{totalLabel}</td>
+                                <td colSpan={showStatus ? 7 : 6} className="px-4 py-3 text-right">{totalLabel}</td>
                                 <td className="px-4 py-3 text-right text-slate-900">{formatNumber(totalValue || 0)}</td>
                                 <td></td>
                             </tr>
@@ -553,55 +618,94 @@ const DetailedPerformanceModal: React.FC<{
     );
 };
 
-const TrendlineChart: React.FC<{ data: TrendlineData }> = ({ data }) => {
+const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; isFull?: boolean; loadingFull?: boolean }> = ({ data, onSeeFull, isFull, loadingFull }) => {
     const chartRef = useRef<HTMLDivElement>(null);
+    const chartInstance = useRef<any>(null);
     
     useEffect(() => {
         if (chartRef.current && data.points.length > 0) {
-            const chart = echarts.init(chartRef.current);
+            if (!chartInstance.current) {
+                chartInstance.current = echarts.init(chartRef.current);
+            }
+            const chart = chartInstance.current;
             const option = {
-                title: { text: data.videoTitle, left: 'center', textStyle: { fontSize: 16, fontWeight: 'normal' } },
+                title: { 
+                    text: data.videoTitle, 
+                    left: 'center', 
+                    textStyle: { fontSize: 16, fontWeight: '600', color: '#1e293b' },
+                    padding: [0, 0, 20, 0]
+                },
                 tooltip: { 
                     trigger: 'axis',
-                    formatter: (params: { axisValueLabel: string; value: number }[]) => {
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    borderColor: '#e2e8f0',
+                    borderWidth: 1,
+                    textStyle: { color: '#475569' },
+                    formatter: (params: any[]) => {
                         const point = params[0];
-                        return `${point.axisValueLabel}<br />Views: <strong>${formatNumber(point.value)}</strong>`;
+                        return `<div className="p-1">
+                            <div className="text-xs text-slate-500 mb-1">${point.axisValueLabel}</div>
+                            <div className="font-bold text-slate-800">Views: ${formatNumber(point.value)}</div>
+                        </div>`;
                     }
                 },
-                xAxis: { type: 'category', data: data.points.map(p => formatDisplayDateGmt7(utcInputStringToDate(p.date))) },
-                yAxis: { type: 'value', name: 'View Count' },
+                xAxis: { 
+                    type: 'category', 
+                    data: data.points.map(p => formatDisplayDateGmt7(utcInputStringToDate(p.date))),
+                    axisLine: { lineStyle: { color: '#e2e8f0' } },
+                    axisLabel: { color: '#64748b', fontSize: 10 }
+                },
+                yAxis: { 
+                    type: 'value', 
+                    name: 'View Count',
+                    axisLabel: { color: '#64748b', fontSize: 10 },
+                    splitLine: { lineStyle: { color: '#f1f5f9' } }
+                },
                 series: [{ 
                     name: 'Views',
-                data: data.points.map(p => p.views), 
-                type: 'line', 
-                smooth: true, 
-                itemStyle: { color: 'var(--accent-color)' }, 
-                areaStyle: { 
-                    opacity: 0.5,
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: 'rgba(16, 185, 129, 0.6)' }, // Emerald-500 equivalent with opacity
-                        { offset: 1, color: 'rgba(16, 185, 129, 0.05)' }
-                    ])
-                },
-                
-                // --- BÍ QUYẾT TRỊ TẬN GỐC LÀ ĐÂY ---
-                emphasis: {
-                    disabled: true // Ép ECharts (bản >= 5.3) tắt hoàn toàn mọi hiệu ứng khi hover chuột vào series này
-                },
-                hoverAnimation: false, // Dành cho ECharts bản cũ (< 5.3), cấm nó scale hay chớp nháy cái line
-                legendHoverLink: false // Cấm luôn hiệu ứng nếu lỡ mày có xài Legend
+                    data: data.points.map(p => p.views), 
+                    type: 'line', 
+                    smooth: true, 
+                    showSymbol: false,
+                    lineStyle: { width: 3, color: '#10b981' },
+                    areaStyle: { 
+                        opacity: 0.1,
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#10b981' },
+                            { offset: 1, color: '#ffffff' }
+                        ])
+                    },
+                    emphasis: { disabled: true }
                 }],
-                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
             };
             chart.setOption(option); 
             
-            return () => chart.dispose();
+            const handleResize = () => chart.resize();
+            window.addEventListener('resize', handleResize);
+            return () => {
+                window.removeEventListener('resize', handleResize);
+            };
         }
     }, [data]);
     
     return (
-        <div className="card p-6 min-h-[464px]">
-            <div ref={chartRef} style={{ width: '100%', height: '400px' }}></div>
+        <div className="card p-6 min-h-[464px] flex flex-col">
+            <div className="flex justify-end mb-4">
+                {!isFull && onSeeFull && (
+                    <button 
+                        onClick={onSeeFull}
+                        disabled={loadingFull}
+                        className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-full font-bold transition-colors flex items-center gap-1"
+                    >
+                        {loadingFull ? 'Loading...' : 'See full video\'s view trendline'}
+                    </button>
+                )}
+                {isFull && (
+                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold uppercase tracking-wider">Viewing Full Trendline</span>
+                )}
+            </div>
+            <div ref={chartRef} style={{ width: '100%', height: '400px' }} className="flex-1"></div>
         </div>
     );
 };
@@ -616,7 +720,6 @@ const InfluencerPerformance: React.FC = () => {
     const [kolPerformance, setKolPerformance] = useState<KolPerformanceData[]>([]);
     const [trendlineData, setTrendlineData] = useState<TrendlineData | null>(null);
     const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null);
-    const trendlineSectionRef = useRef<HTMLDivElement>(null);
     const [showAllKols, setShowAllKols] = useState(false);
     const [compareEnabled, setCompareEnabled] = useState(false);
     const [compareType, setCompareType] = useState<CompareType>('previous_period');
@@ -626,7 +729,57 @@ const InfluencerPerformance: React.FC = () => {
         videos: []
     });
     const [showMoreLegacy, setShowMoreLegacy] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [selectedVideo, setSelectedVideo] = useState<VideoPerformanceData | null>(null);
+    const [isFullTrendline, setIsFullTrendline] = useState(false);
+    const [loadingFullTrendline, setLoadingFullTrendline] = useState(false);
 
+    const handleSeeTrendline = useCallback(async (video: VideoPerformanceData, showFull = false) => {
+        setIsTrendlineLoading(true); 
+        if (!showFull) {
+            setTrendlineData(null);
+            setIsFullTrendline(false);
+        } else {
+            setLoadingFullTrendline(true);
+            setIsFullTrendline(true);
+        }
+        
+        setSelectedVideo(video);
+        setIsSidebarOpen(true);
+
+        try {
+            let start = dateRange.from.toISOString();
+            let end = toGmt7EndOfDay(dateRange.to).toISOString();
+
+            if (showFull) {
+                // If full, start from released_date to current time
+                start = `${video.released_date}T00:00:00Z`;
+                end = new Date().toISOString();
+            }
+
+            const { data, error } = await supabaseClient
+                .from('video_metrics')
+                .select('recorded_at, view_count')
+                .eq('video_id', video.id)
+                .gte('recorded_at', start)
+                .lte('recorded_at', end)
+                .order('recorded_at');
+
+            if (error) throw new Error(`Failed to fetch trendline data: ${error.message}`);
+            
+            setTrendlineData({ 
+                videoId: video.id, 
+                videoTitle: video.title, 
+                points: data.map(d => ({ date: getGmt7DateString(d.recorded_at), views: d.view_count })) 
+            });
+        } catch (err) { 
+            console.error(err);
+            setError('Failed to fetch trendline data.'); 
+        } finally { 
+            setIsTrendlineLoading(false); 
+            setLoadingFullTrendline(false);
+        }
+    }, [dateRange]);
 
     const handleFetchData = useCallback(async () => {
         setLoading(true); setError(null); setTrendlineData(null); setAllVideos([]); setOverviewStats(null); setKolPerformance([]);
@@ -723,7 +876,6 @@ const InfluencerPerformance: React.FC = () => {
                 const startDateStr = getGmt7DateString(range.from);
                 const endDateStr = getGmt7DateString(range.to);
                 
-                // Mày nhìn kỹ dòng này, tao thêm hàm sort() ngay sau khi filter
                 const newVids = data
                     .filter(v => {
                         const releaseDateStr = getGmt7DateString(v.released_date);
@@ -753,14 +905,10 @@ const InfluencerPerformance: React.FC = () => {
         } catch { setError('Failed to fetch data.'); } finally { setLoading(false); }
     }, [dateRange, compareEnabled, compareType]);
     
-    const handleSeeTrendline = useCallback(async (video: Video) => {
-        trendlineSectionRef.current?.scrollIntoView({ behavior: 'smooth' }); setIsTrendlineLoading(true); setTrendlineData(null);
-        try {
-            const { data, error } = await supabaseClient.from('video_metrics').select('recorded_at, view_count').eq('video_id', video.id).gte('recorded_at', dateRange.from.toISOString()).lte('recorded_at', toGmt7EndOfDay(dateRange.to).toISOString()).order('recorded_at');
-            if (error) throw new Error(`Failed to fetch trendline data: ${error.message}`);
-            setTrendlineData({ videoId: video.id, videoTitle: video.title, points: data.map(d => ({ date: getGmt7DateString(d.recorded_at), views: d.view_count })) });
-        } catch { setError('Failed to fetch trendline data.'); } finally { setIsTrendlineLoading(false); }
-    }, [dateRange]);
+    // handleFetchData removed from here as it's modified below
+    
+    // RE-INSERT handleFetchData because I overwrote it in my thought process or need to ensure it's there
+    // Actually I'll just use one large replacement for the return block and sidebar
 
     const { recentVideos, topPerformingVideos } = React.useMemo(() => {
         const recentVids = [...allVideos].sort((a, b) => new Date(b.released_date).getTime() - new Date(a.released_date).getTime()).slice(0, 10);
@@ -769,71 +917,180 @@ const InfluencerPerformance: React.FC = () => {
     }, [allVideos]);
 
     return (
-        <div className="space-y-8">
-            <Filters 
-                dateRange={dateRange} 
-                setDateRange={setDateRange} 
-                onFetch={handleFetchData} 
-                loading={loading}
-                compareEnabled={compareEnabled}
-                setCompareEnabled={setCompareEnabled}
-                compareType={compareType}
-                setCompareType={setCompareType}
-            />
-            {loading && <Loader />}
-            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3" role="alert">{error}</div>}
-            {!loading && !error && overviewStats && (
-                <>
-                    <div className="card p-6 space-y-6">
-                        <h3 className="text-lg font-semibold text-slate-800 mb-2">Overview</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                            <div><p className="text-sm text-slate-500">Total View Growth</p><p className="text-3xl font-bold text-emerald-600">{formatNumber(overviewStats.current.totalGrowth)}</p><ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.totalGrowth, overviewStats.previous.totalGrowth)} vsDateRange={overviewStats.vsDateRange} /></div>
-                            <div><p className="text-sm text-slate-500">New Video Views</p><p className="text-3xl font-bold text-slate-800">{formatNumber(overviewStats.current.newVideoGrowth)}</p><ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.newVideoGrowth, overviewStats.previous.newVideoGrowth)} vsDateRange={overviewStats.vsDateRange} /></div>
-                            <div><p className="text-sm text-slate-500">Old Video Views</p><p className="text-3xl font-bold text-slate-800">{formatNumber(overviewStats.current.oldVideoGrowth)}</p><ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.oldVideoGrowth, overviewStats.previous.oldVideoGrowth)} vsDateRange={overviewStats.vsDateRange} /></div>
-                        </div>
-                        <div className="space-y-8">
-                            {/* New Videos Table */}
-                            <VideoTable 
-                                title="New Videos Released In Period"
-                                videos={overviewStats.current.newVideos}
-                                dateRange={dateRange}
-                                totalLabel="Line Total:"
-                                totalValue={overviewStats.current.newVideoGrowth}
-                                onSeeTrendline={handleSeeTrendline}
-                            />
+        <div className="relative flex min-h-screen overflow-hidden bg-slate-50/50">
+            {/* Main Content */}
+            <div className={`flex-1 transition-all duration-500 ease-in-out ${isSidebarOpen ? 'mr-[500px]' : 'mr-0'}`}>
+                <div className="p-8 space-y-8 max-w-[1400px] mx-auto">
+                    <Filters 
+                        dateRange={dateRange} 
+                        setDateRange={setDateRange} 
+                        onFetch={handleFetchData} 
+                        loading={loading}
+                        compareEnabled={compareEnabled}
+                        setCompareEnabled={setCompareEnabled}
+                        compareType={compareType}
+                        setCompareType={setCompareType}
+                    />
+                    {loading && <Loader />}
+                    {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl shadow-sm animate-in fade-in duration-300" role="alert">{error}</div>}
+                    {!loading && !error && overviewStats && (
+                        <>
+                            <div className="card p-8 space-y-8 shadow-sm border-slate-100">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xl font-bold text-slate-800">Performance Overview</h3>
+                                    <div className="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-bold text-slate-500 uppercase tracking-widest">Live Metrics</div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
+                                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">Total View Growth</p>
+                                        <p className="text-4xl font-black text-emerald-700 mb-1">{formatNumber(overviewStats.current.totalGrowth)}</p>
+                                        <ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.totalGrowth, overviewStats.previous.totalGrowth)} vsDateRange={overviewStats.vsDateRange} />
+                                    </div>
+                                    <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">New Video Views</p>
+                                        <p className="text-4xl font-black text-slate-800 mb-1">{formatNumber(overviewStats.current.newVideoGrowth)}</p>
+                                        <ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.newVideoGrowth, overviewStats.previous.newVideoGrowth)} vsDateRange={overviewStats.vsDateRange} />
+                                    </div>
+                                    <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Old Video Views</p>
+                                        <p className="text-4xl font-black text-slate-800 mb-1">{formatNumber(overviewStats.current.oldVideoGrowth)}</p>
+                                        <ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.oldVideoGrowth, overviewStats.previous.oldVideoGrowth)} vsDateRange={overviewStats.vsDateRange} />
+                                    </div>
+                                </div>
+                                <div className="space-y-12 pt-4">
+                                    <VideoTable 
+                                        title="New Videos Released In Period"
+                                        videos={overviewStats.current.newVideos}
+                                        dateRange={dateRange}
+                                        totalLabel="Line Total:"
+                                        totalValue={overviewStats.current.newVideoGrowth}
+                                        onSeeTrendline={handleSeeTrendline}
+                                    />
 
-                            {/* Legacy Videos Table */}
-                            <VideoTable 
-                                title="Old videos Contribution"
-                                videos={overviewStats.current.legacyVideos}
+                                    <VideoTable 
+                                        title="Old videos Contribution"
+                                        videos={overviewStats.current.legacyVideos}
+                                        dateRange={dateRange}
+                                        totalLabel="Line Total:"
+                                        totalValue={overviewStats.current.oldVideoGrowth}
+                                        onSeeTrendline={handleSeeTrendline}
+                                        initialLimit={7}
+                                        showStatus={true}
+                                    />
+                                </div>
+                            </div>
+                            <TopKolTable title="Top View by KOL" data={kolPerformance} dateRange={dateRange} showAll={showAllKols} onToggleShowAll={() => setShowAllKols(!showAllKols)} />
+                            <PerformanceTable title="Top 10 Recent Videos" data={recentVideos} dateRange={dateRange} onSeeTrendline={handleSeeTrendline} />
+                            <PerformanceTable title="Top 10 Performing Videos" data={topPerformingVideos} dateRange={dateRange} onSeeTrendline={handleSeeTrendline} />
+                            
+                            <DetailedPerformanceModal 
+                                isOpen={detailedModal.isOpen}
+                                onClose={() => setDetailedModal(prev => ({ ...prev, isOpen: false }))}
+                                title={detailedModal.title}
+                                videos={detailedModal.videos}
                                 dateRange={dateRange}
-                                totalLabel="Line Total:"
-                                totalValue={overviewStats.current.oldVideoGrowth}
-                                onSeeTrendline={handleSeeTrendline}
-                                initialLimit={7}
                             />
+                        </>
+                    )}
+                    {!loading && !error && !overviewStats && (
+                        <div className="text-center py-24 card border-dashed border-2 border-slate-200 bg-white/50">
+                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <ArrowUpDown className="text-slate-400" size={32} />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700">No Data Selected</h3>
+                            <p className="text-slate-500 mt-2 max-w-xs mx-auto">Select a date range and click "Get Performance" to view influencer data.</p>
                         </div>
-                    </div>
-                    <TopKolTable title="Top View by KOL" data={kolPerformance} dateRange={dateRange} showAll={showAllKols} onToggleShowAll={() => setShowAllKols(!showAllKols)} />
-                    <PerformanceTable title="Top 10 Recent Videos" data={recentVideos} dateRange={dateRange} onSeeTrendline={handleSeeTrendline} />
-                    <PerformanceTable title="Top 10 Performing Videos" data={topPerformingVideos} dateRange={dateRange} onSeeTrendline={handleSeeTrendline} />
-                    <div ref={trendlineSectionRef}>
-                        <h3 className="text-xl font-bold text-slate-800 mb-4">Video Trendline</h3>
-                         {isTrendlineLoading ? (<div className="card min-h-[464px] flex justify-center items-center"><Loader text="fetching data..." /></div>) 
-                         : trendlineData ? (<TrendlineChart data={trendlineData} />) 
-                         : (<div className="card text-center text-slate-500 min-h-[464px] flex justify-center items-center"><p>Your video trendline view will show up here.</p></div>)}
+                    )}
+                </div>
+            </div>
+
+            {/* Sidebar for Trendline */}
+            <div className={`fixed top-0 right-0 h-full w-[500px] bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.05)] border-l border-slate-100 z-50 transform transition-transform duration-500 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="h-full flex flex-col">
+                    <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-[var(--accent-color)] rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                                <ArrowUp size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800">Video Trendline</h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Performance Analytics</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setIsSidebarOpen(false)}
+                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600"
+                        >
+                            <X size={20} />
+                        </button>
                     </div>
                     
-                    <DetailedPerformanceModal 
-                        isOpen={detailedModal.isOpen}
-                        onClose={() => setDetailedModal(prev => ({ ...prev, isOpen: false }))}
-                        title={detailedModal.title}
-                        videos={detailedModal.videos}
-                        dateRange={dateRange}
-                    />
-                </>
-            )}
-            {!loading && !error && !overviewStats && (<div className="text-center py-16 card"><p className="text-slate-500 mt-2">Select a date range and click "Get Performance" to view influencer data.</p></div>)}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                        {isTrendlineLoading && !trendlineData ? (
+                            <div className="h-full flex flex-col items-center justify-center">
+                                <Loader text="Analyzing trends..." />
+                            </div>
+                        ) : trendlineData ? (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <TrendlineChart 
+                                    data={trendlineData} 
+                                    onSeeFull={() => selectedVideo && handleSeeTrendline(selectedVideo, true)}
+                                    isFull={isFullTrendline}
+                                    loadingFull={loadingFullTrendline}
+                                />
+                                {selectedVideo && (
+                                    <div className="mt-6 p-6 rounded-2xl bg-slate-50 border border-slate-100">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Video Details</h4>
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm text-slate-500">Platform</span>
+                                                {(() => {
+                                                    const platform = getPlatformTag(selectedVideo.video_url);
+                                                    return <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${platform.color}`}>{platform.label}</span>;
+                                                })()}
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm text-slate-500">KOL</span>
+                                                <span className="text-sm font-bold text-slate-700">{selectedVideo.kols?.name}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm text-slate-500">Released</span>
+                                                <span className="text-sm font-bold text-slate-700">{formatDisplayDateGmt7(utcInputStringToDate(selectedVideo.released_date))}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                                                <span className="text-sm text-slate-500">View Growth</span>
+                                                <span className="text-sm font-black text-emerald-600">+{formatNumber(selectedVideo.viewGrowth)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="mt-6">
+                                            <a 
+                                                href={selectedVideo.video_url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                                            >
+                                                Open Video
+                                            </a>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center text-center px-12">
+                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                                    <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-slate-100">
+                                        <ArrowUp className="text-slate-300" size={24} />
+                                    </div>
+                                </div>
+                                <h4 className="text-lg font-bold text-slate-800 mb-2">No Video Selected</h4>
+                                <p className="text-sm text-slate-500 leading-relaxed">
+                                    Click on "See trendline" in any table to visualize the view count growth over time.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
