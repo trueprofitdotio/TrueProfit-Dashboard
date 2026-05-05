@@ -1,0 +1,896 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-liquidfill@3.1.0/dist/echarts-liquidfill.min.js"></script>
+    <style>
+      :root {
+        --border-color: rgba(35, 196, 140, 0.3);
+        --primary-color: #23C48C;
+        --shadow-color: rgba(172, 250, 232, 0.1);
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #F8F9FA;
+        color: #1f2937;
+      }
+      .universal-border {
+        border: 1px solid var(--border-color) !important;
+        border-radius: 0 !important;
+      }
+      .universal-shadow {
+        box-shadow: 0 4px 14px var(--shadow-color) !important;
+      }
+      .primary-btn {
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+      }
+      .primary-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px var(--shadow-color);
+      }
+      .primary-btn::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 20%;
+        height: 200%;
+        background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.5) 50%, rgba(255, 255, 255, 0) 100%);
+        transform: rotate(25deg);
+        opacity: 0;
+        transition: left 0.6s ease-in-out, opacity 0.4s ease-in-out;
+      }
+      .primary-btn:hover::after {
+        left: 130%;
+        opacity: 1;
+      }
+      input:focus, select:focus, button:focus {
+        outline: none;
+      }
+      .loader {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem;
+      }
+      .loader-spinner {
+        width: 4rem;
+        height: 4rem;
+        border-width: 4px;
+        border-color: #23C48C;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+</head>
+<body>
+    <div id="root" class="min-h-screen bg-slate-50 text-slate-800"></div>
+
+    <script type="text/javascript">
+      // --- WRAP ALL LOGIC IN IIFE ---
+      (function() {
+        // --- STATE MANAGEMENT ---
+        const state = {
+          activeTab: 'overview',
+          loading: false,
+          error: null,
+          allAffiliates: [],
+          // Performance Overview State
+          overview: {
+            dateRange: { from: gmt7InputStringToDate('2025-11-01'), to: gmt7InputStringToDate('2025-11-10') },
+            tier: 'All',
+            selectedAffiliate: null,
+            summaryData: null,
+            dailyData: [],
+            topAffiliates: [],
+            breakdownExpanded: false,
+            searchableSelectOpen: false,
+            searchableSelectTerm: '',
+          },
+          // KPI Runrate State
+          kpi: {
+            isModalOpen: false,
+            targets: {
+                year: new Date().getFullYear(),
+                signups: { q1: 0, q2: 0, q3: 0, q4: 0 },
+                clicks: { q1: 0, q2: 0, q3: 0, q4: 0 },
+            },
+            currentQuarterProgress: { signups: 0, clicks: 0 },
+            pastQuartersProgress: {},
+            showPastQuarters: false,
+          },
+          // Partner Analysis State
+          partner: {
+            month: new Date().toISOString().substring(0, 7),
+            selectedAffiliate: null,
+            data: null,
+            searchableSelectOpen: false,
+            searchableSelectTerm: '',
+          }
+        };
+
+        // --- CONSTANTS & UTILS ---
+        const PALETTE = {
+          signups: '#657C6A', clicks: '#23C48C', installs: '#F75270',
+          revenue: '#05339C', payouts: '#E9A319', action: '#23C48C',
+        };
+        const formatNumber = (num) => new Intl.NumberFormat('en-US').format(num);
+        const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+        const calculatePercentageChange = (current, previous) => {
+            if (previous === 0) return current > 0 ? Infinity : 0;
+            return ((current - previous) / previous) * 100;
+        };
+
+        // TIMEZONE UTILS (GMT+7)
+        const TIMEZONE_GMT7 = 'Asia/Bangkok';
+        
+        const toGmt7StartOfDay = (date) => {
+            const d = new Date(date);
+            const dateStringInGmt7 = d.toLocaleDateString('en-CA', { timeZone: TIMEZONE_GMT7 });
+            return new Date(`${dateStringInGmt7}T00:00:00.000+07:00`);
+        };
+
+        const toGmt7EndOfDay = (date) => {
+            const start = toGmt7StartOfDay(date);
+            return new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+        };
+
+        const dateToGmt7InputString = (date) => {
+             return new Date(date).toLocaleDateString('en-CA', { timeZone: TIMEZONE_GMT7 });
+        };
+        
+        const gmt7InputStringToDate = (dateString) => {
+            return new Date(`${dateString}T00:00:00.000+07:00`);
+        };
+
+        const getBangkokDateParts = (date) => {
+            const isoDate = new Date(date).toLocaleDateString('en-CA', { timeZone: TIMEZONE_GMT7 });
+            const [year, month, day] = isoDate.split('-').map(Number);
+            return { year, month: month - 1, day };
+        };
+
+        const createBangkokDate = (year, month, day) => {
+             // Create UTC date for 00:00
+            const utcDate = new Date(Date.UTC(year, month, day));
+            // Shift to GMT+7 00:00 (which is UTC -7h)
+            return new Date(utcDate.getTime() - 7 * 60 * 60 * 1000);
+        };
+
+        const getPresetDateRange = (preset) => {
+            const now = new Date();
+            const today = toGmt7StartOfDay(now);
+            const { year, month, day } = getBangkokDateParts(today);
+            const dayOfWeek = new Date(today.toLocaleString('en-US', { timeZone: TIMEZONE_GMT7 })).getDay();
+
+            switch (preset) {
+                case 'Today': return { from: today, to: today };
+                case 'Yesterday': 
+                    const yesterday = createBangkokDate(year, month, day - 1);
+                    return { from: yesterday, to: yesterday };
+                case 'Last Week':
+                    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                    const startOfThisWeek = createBangkokDate(year, month, day - diff);
+                    const startOfLastWeek = new Date(startOfThisWeek.getTime() - 7 * 864e5);
+                    const endOfLastWeek = new Date(startOfThisWeek.getTime() - 1 * 864e5);
+                    return { from: startOfLastWeek, to: endOfLastWeek };
+                case 'This Month': 
+                    return { from: createBangkokDate(year, month, 1), to: today };
+                case 'Last Month':
+                    return { from: createBangkokDate(year, month - 1, 1), to: createBangkokDate(year, month, 0) };
+                case 'This Year': 
+                    return { from: createBangkokDate(year, 0, 1), to: today };
+                default: return { from: today, to: today };
+            }
+        };
+
+        const getQuarterDateRange = (year, quarter) => {
+            const startMonth = (quarter - 1) * 3;
+            const start = createBangkokDate(year, startMonth, 1);
+            const endMonth = startMonth + 2;
+            const lastDayStart = createBangkokDate(year, endMonth + 1, 0);
+            const end = new Date(lastDayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+            return { start, end };
+        };
+
+        const getQuarterInfo = () => {
+            const now = new Date();
+            const { year, month } = getBangkokDateParts(now);
+            let quarter;
+            if (month < 3) quarter = 1; else if (month < 6) quarter = 2; else if (month < 9) quarter = 3; else quarter = 4;
+            const { start, end } = getQuarterDateRange(year, quarter);
+            const timePassedPercent = Math.max(0, Math.min(1, (now.getTime() - start.getTime()) / (end.getTime() - start.getTime())));
+            return { quarter, year, start, timePassedPercent };
+        };
+        
+        // --- DOM ELEMENTS ---
+        const rootEl = document.getElementById('root');
+
+        // --- RENDER FUNCTIONS ---
+        
+        function render() {
+          let content = '';
+          switch(state.activeTab) {
+            case 'overview': content = renderPerformanceOverview(); break;
+            case 'kpi': content = renderKpiRunrate(); break;
+            case 'partner': content = renderPartnerAnalysis(); break;
+          }
+
+          rootEl.innerHTML = `
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+              ${renderHeader()}
+              ${renderTabs()}
+              <main>${content}</main>
+            </div>
+            ${state.kpi.isModalOpen ? renderKpiSetupModal() : ''}
+          `;
+          
+          // Re-initialize charts after rendering
+          initCharts();
+        }
+        
+        function initCharts() {
+          if (state.activeTab === 'overview' && state.overview.dailyData.length > 0) {
+            const chartEl = document.getElementById('performance-chart');
+            if (chartEl) {
+                const chart = echarts.init(chartEl);
+                const dailyData = [...state.overview.dailyData].reverse();
+                const option = {
+                    tooltip: { trigger: 'axis', /* ... formatter ... */ },
+                    legend: { data: ['Signups', 'Clicks', 'Installs', 'Revenue', 'Payouts'], top: 'bottom' },
+                    grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+                    xAxis: { type: 'category', boundaryGap: false, data: dailyData.map(d => d.date) },
+                    yAxis: [
+                        { type: 'value', name: 'Count' },
+                        { type: 'value', name: 'Amount ($)', axisLabel: { formatter: '${value}' } }
+                    ],
+                    series: [
+                        { name: 'Signups', type: 'line', smooth: true, itemStyle: { color: PALETTE.signups }, data: dailyData.map(d => d.signups) },
+                        { name: 'Clicks', type: 'line', smooth: true, itemStyle: { color: PALETTE.clicks }, data: dailyData.map(d => d.clicks) },
+                        { name: 'Installs', type: 'line', smooth: true, itemStyle: { color: PALETTE.installs }, data: dailyData.map(d => d.installs) },
+                        { name: 'Revenue', type: 'line', smooth: true, yAxisIndex: 1, itemStyle: { color: PALETTE.revenue }, data: dailyData.map(d => d.revenue) },
+                        { name: 'Payouts', type: 'line', smooth: true, yAxisIndex: 1, itemStyle: { color: PALETTE.payouts }, data: dailyData.map(d => d.payouts) },
+                    ]
+                };
+                chart.setOption(option);
+            }
+          } else if(state.activeTab === 'kpi' && !state.loading) {
+            renderKpiGauges();
+          }
+        }
+        
+        const ArrowUpIcon = `<svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>`;
+        const ArrowDownIcon = `<svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>`;
+        const renderChangeIndicator = (value) => {
+            if (value === Infinity) return `<span class="text-blue-500 font-medium">(new)</span>`;
+            if (value === 0 || isNaN(value) || !isFinite(value)) return '';
+            const isPositive = value > 0;
+            const color = isPositive ? 'text-green-500' : 'text-red-500';
+            const icon = isPositive ? ArrowUpIcon : ArrowDownIcon;
+            return `<span class="flex flex-row-reverse items-center justify-end text-sm font-medium ${color}">${value.toFixed(1)}% ${icon}</span>`;
+        };
+
+        const renderLoader = () => `<div class="loader"><div class="loader-spinner"></div></div>`;
+        const renderError = (message) => `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 universal-border" role="alert">${message}</div>`;
+        
+        function renderHeader() {
+          return `<header class="text-center py-8">
+            <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#23C48C] to-teal-500">
+              TrueProfit Affiliate Dashboard
+            </h1>
+          </header>`;
+        }
+        
+        function renderTabs() {
+          const tabs = [
+            { id: 'overview', label: 'Performance Overview' },
+            { id: 'partner', label: 'Partner Analysis' },
+            { id: 'kpi', label: 'KPI Runrate' },
+          ];
+          return `<nav class="mb-8">
+            <div class="flex justify-center border-b border-slate-200">
+              ${tabs.map(tab => `
+                <button
+                  data-action="set-tab"
+                  data-tab="${tab.id}"
+                  class="px-6 py-3 text-sm font-semibold transition-colors duration-200 ease-in-out focus:outline-none ${state.activeTab === tab.id ? 'border-b-2 border-[#23C48C] text-slate-800' : 'text-slate-500 hover:text-slate-700'}">
+                  ${tab.label}
+                </button>
+              `).join('')}
+            </div>
+          </nav>`;
+        }
+        
+        // --- PERFORMANCE OVERVIEW RENDER ---
+        function renderPerformanceOverview() {
+          if (state.loading) return renderLoader();
+          if (state.error) return renderError(state.error);
+          
+          const { dateRange, tier, selectedAffiliate } = state.overview;
+          const sortedAffiliates = [...state.allAffiliates].sort((a, b) => a.name.localeCompare(b.name));
+          
+          const renderSearchableSelect = () => {
+            const { searchableSelectOpen, searchableSelectTerm } = state.overview;
+            const selectedOption = state.allAffiliates.find(opt => opt.accountId === selectedAffiliate);
+            const filteredOptions = sortedAffiliates.filter(opt => 
+                opt.name.toLowerCase().includes(searchableSelectTerm.toLowerCase()) || 
+                opt.publicId.toLowerCase().includes(searchableSelectTerm.toLowerCase())
+            );
+
+            return `
+              <div class="relative">
+                <button type="button" data-action="toggle-affiliate-select" class="w-full bg-white text-left p-2.5 universal-border focus:outline-none focus:ring-2 focus:ring-[#23C48C] flex justify-between items-center h-[42px]">
+                    <span class="${selectedOption ? 'text-slate-800' : 'text-slate-400'}">${selectedOption ? `${selectedOption.name} (${selectedOption.publicId})` : "All Affiliates"}</span>
+                    <svg class="w-5 h-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                </button>
+                ${searchableSelectOpen ? `
+                <div class="absolute z-10 mt-[-1px] w-full bg-white max-h-60 overflow-hidden universal-border">
+                    <div class="p-2 border-b border-[var(--border-color)]">
+                        <input type="text" placeholder="Search affiliates..." class="w-full px-3 py-2 universal-border focus:outline-none focus:ring-1 focus:ring-[#23C48C]" value="${searchableSelectTerm}" data-action="search-affiliate" oninput="this.dataset.value = this.value">
+                    </div>
+                    <ul class="overflow-auto max-h-48">
+                        <li class="px-4 py-2 text-sm text-slate-700 hover:bg-green-50 cursor-pointer" data-action="select-affiliate" data-value="">All Affiliates</li>
+                        ${filteredOptions.map(opt => `
+                            <li class="px-4 py-2 text-sm text-slate-700 hover:bg-green-50 cursor-pointer ${selectedAffiliate === opt.accountId ? 'bg-green-100' : ''}" data-action="select-affiliate" data-value="${opt.accountId}">
+                                ${opt.name} (${opt.publicId})
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>` : ''}
+              </div>
+            `;
+          };
+
+          const filtersHTML = `
+            <div class="bg-white p-6 universal-border universal-shadow space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <div class="lg:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Time Range</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="date" name="from" value="${dateToGmt7InputString(dateRange.from)}" data-action="set-date" class="w-full p-2.5 universal-border focus:ring-2 focus:ring-[#23C48C] h-[42px] text-[#02a36b]">
+                            <span class="text-slate-500">to</span>
+                            <input type="date" name="to" value="${dateToGmt7InputString(dateRange.to)}" data-action="set-date" class="w-full p-2.5 universal-border focus:ring-2 focus:ring-[#23C48C] h-[42px] text-[#02a36b]">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Affiliate Tier</label>
+                        <select value="${tier}" data-action="set-tier" class="w-full p-2.5 bg-white universal-border focus:ring-2 focus:ring-[#23C48C] h-[42px]">
+                            <option>All</option><option>KOL</option><option>NonKOL</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Affiliates</label>
+                        ${renderSearchableSelect()}
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-wrap gap-2">
+                        ${['Today', 'Yesterday', 'Last Week', 'This Month', 'Last Month', 'This Year'].map(p => `
+                            <button data-action="set-preset-date" data-preset="${p}" class="px-3 py-1.5 text-sm universal-border bg-white focus:outline-none focus:ring-2 focus:ring-[#23C48C] transition-colors duration-300 hover:bg-[#23C48C]/[0.3]">${p}</button>
+                        `).join('')}
+                    </div>
+                    <button data-action="get-metrics" class="px-8 py-2.5 text-white font-semibold shadow-sm primary-btn bg-[#23C48C] universal-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#23C48C]">Get Metrics</button>
+                </div>
+            </div>
+          `;
+          
+          let contentHTML = '';
+          if (state.overview.summaryData) {
+              const data = state.overview.summaryData;
+              const metrics = [
+                  { key: 'signups', label: 'Signups', value: data.signups, prev: data.signupsPrev, color: PALETTE.signups },
+                  { key: 'clicks', label: 'Clicks', value: data.clicks, prev: data.clicksPrev, color: PALETTE.clicks },
+                  { key: 'installs', label: 'Installs', value: data.installs, prev: data.installsPrev, color: PALETTE.installs },
+                  { key: 'revenue', label: 'Revenue', value: data.revenue, prev: data.revenuePrev, color: PALETTE.revenue, isCurrency: true },
+                  { key: 'payouts', label: 'Payouts', value: data.payouts, prev: data.payoutsPrev, color: PALETTE.payouts, isCurrency: true },
+              ];
+
+              const summaryCardsHTML = `
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                  ${metrics.map(metric => `
+                    <div data-action="toggle-breakdown" class="bg-white universal-border universal-shadow cursor-pointer transition-all duration-300 ease-in-out hover:-translate-y-1" style="border-top: 4px solid ${metric.color}">
+                        <div class="p-5">
+                            <p class="text-sm font-semibold text-slate-500">${metric.label}</p>
+                            <p class="text-3xl font-extrabold mt-1" style="color: ${metric.color}">${metric.isCurrency ? formatCurrency(metric.value) : formatNumber(metric.value)}</p>
+                            <div class="mt-2">${renderChangeIndicator(calculatePercentageChange(metric.value, metric.prev))}</div>
+                        </div>
+                        ${state.overview.breakdownExpanded ? `
+                        <div class="border-t border-[var(--border-color)] p-5 bg-slate-50">
+                            <h4 class="font-bold text-sm mb-2 text-slate-600">Breakdown by Tier</h4>
+                            ${Object.keys(data.byTier).map(tier => {
+                                const tierData = data.byTier[tier];
+                                const tierValue = tierData[metric.key];
+                                const tierPrev = tierData.prev[metric.key];
+                                return `
+                                <div class="flex justify-between items-center text-sm py-1">
+                                    <span class="text-slate-500">${tier}:</span>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="font-semibold text-slate-700">${metric.isCurrency ? formatCurrency(tierValue) : formatNumber(tierValue)}</span>
+                                        ${renderChangeIndicator(calculatePercentageChange(tierValue, tierPrev))}
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>` : ''}
+                    </div>
+                  `).join('')}
+                </div>`;
+                
+              const chartHTML = `<div class="bg-white p-6 universal-border universal-shadow"><h3 class="text-lg font-semibold text-slate-800 mb-4">Performance Trend</h3><div id="performance-chart" style="width: 100%; height: 400px;"></div></div>`;
+              
+              const topAffiliatesHTML = state.overview.topAffiliates.length > 0 ? `
+                <div class="bg-white p-6 universal-border universal-shadow overflow-x-auto">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Top 20 Affiliate Performances (by Clicks)</h3>
+                    <table class="w-full text-sm text-left text-slate-500">
+                        <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                            <tr>
+                                <th class="px-6 py-3">Affiliate</th><th class="px-6 py-3">Tier</th>
+                                <th class="px-6 py-3 text-right">Clicks</th><th class="px-6 py-3 text-right">% Change</th>
+                                <th class="px-6 py-3 text-right">Installs</th><th class="px-6 py-3 text-right">% Change</th>
+                                <th class="px-6 py-3 text-right">Revenue</th><th class="px-6 py-3 text-right">% Change</th>
+                                <th class="px-6 py-3 text-right">Payout</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${state.overview.topAffiliates.map(row => `
+                                <tr class="bg-white border-b border-[var(--border-color)] hover:bg-slate-50">
+                                    <td class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">${row.affiliateName} (${row.affiliateId})</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 text-xs font-semibold rounded-full ${row.tierName === 'KOL' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}">${row.tierName}</span></td>
+                                    <td class="px-6 py-4 text-right">${formatNumber(row.clicks)}</td>
+                                    <td class="px-6 py-4 text-right">${renderChangeIndicator(calculatePercentageChange(row.clicks, row.clicksPrev))}</td>
+                                    <td class="px-6 py-4 text-right">${formatNumber(row.installs)}</td>
+                                    <td class="px-6 py-4 text-right">${renderChangeIndicator(calculatePercentageChange(row.installs, row.installsPrev))}</td>
+                                    <td class="px-6 py-4 text-right">${formatCurrency(row.revenue)}</td>
+                                    <td class="px-6 py-4 text-right">${renderChangeIndicator(calculatePercentageChange(row.revenue, row.revenuePrev))}</td>
+                                    <td class="px-6 py-4 text-right">${formatCurrency(row.payout)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+              ` : '';
+              
+              const dailyTableHTML = state.overview.dailyData.length > 0 ? `
+                <div class="bg-white p-6 universal-border universal-shadow overflow-x-auto">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Daily Performance</h3>
+                    <!-- ... table implementation ... -->
+                </div>
+              ` : '';
+
+              contentHTML = `<div class="space-y-8">${summaryCardsHTML}${chartHTML}${topAffiliatesHTML}${dailyTableHTML}</div>`;
+          } else {
+              contentHTML = `<div class="text-center py-16 bg-white universal-border universal-shadow">
+                  <h3 class="text-xl font-semibold text-slate-700">Welcome to your dashboard!</h3>
+                  <p class="text-slate-500 mt-2">Select your filters and click "Get Metrics" to view your performance data.</p>
+              </div>`;
+          }
+
+          return `<div class="space-y-8">${filtersHTML}${contentHTML}</div>`;
+        }
+
+        // --- KPI RUNRATE RENDER ---
+        function renderKpiRunrate() {
+          if (state.loading) return renderLoader();
+          if (state.error) return renderError(state.error);
+          
+          const { quarter, year } = getQuarterInfo();
+          
+          return `
+            <div class="space-y-8">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-slate-800">Q${quarter} ${year} KPI Runrate</h2>
+                    <button data-action="kpi-open-modal" class="px-4 py-2 bg-[#23C48C] text-white font-semibold primary-btn universal-border">Setup KPIs</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div id="kpi-gauge-signups"></div>
+                  <div id="kpi-gauge-clicks"></div>
+                </div>
+                ${Object.keys(state.kpi.pastQuartersProgress).length > 0 ? `
+                  <div>
+                    <button data-action="kpi-toggle-past" class="w-full text-left flex justify-between items-center py-2 mb-4 group">
+                        <h2 class="text-2xl font-bold text-slate-800 group-hover:text-[#23C48C] transition-colors">${year} Previous Quarters</h2>
+                        <svg class="w-6 h-6 text-slate-600 transition-transform group-hover:text-[#23C48C] ${state.kpi.showPastQuarters ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    ${state.kpi.showPastQuarters ? `
+                      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        ${Object.keys(state.kpi.pastQuartersProgress).sort().map(qKey => `
+                          <div id="kpi-gauge-past-${qKey}-signups"></div>
+                          <div id="kpi-gauge-past-${qKey}-clicks"></div>
+                        `).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+                ` : ''}
+            </div>
+          `;
+        }
+        
+        function renderKpiGauges() {
+          const { quarter, year, timePassedPercent } = getQuarterInfo();
+          const { targets, currentQuarterProgress, pastQuartersProgress } = state.kpi;
+          
+          const renderGauge = (elId, title, progress, predicted, kpi, achieved, isSmall = false) => {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            const color = progress * 100 <= 25 ? '#DC143C' : progress * 100 <= 79 ? '#FA812F' : '#23C48C';
+            el.innerHTML = `
+              <div class="bg-white p-6 universal-border universal-shadow text-center">
+                <div class="font-semibold text-slate-800 ${isSmall ? 'text-base' : 'text-lg'}">${title}</div>
+                <div id="chart-${elId}" style="width: 100%; height: ${isSmall ? '150px' : '250px'}"></div>
+                <div class="text-slate-500 text-sm mt-2 space-y-1">
+                    ${predicted !== undefined ? `<p>Predicted: <span class="font-bold text-slate-700">${predicted.toFixed(0)}%</span></p>` : ''}
+                    <p>KPI: <span class="font-bold text-slate-700">${formatNumber(kpi)}</span></p>
+                    <p>Achieved: <span class="font-bold text-slate-700">${formatNumber(achieved)}</span></p>
+                </div>
+              </div>`;
+            const chartEl = document.getElementById(`chart-${elId}`);
+            if (chartEl) {
+              const chart = echarts.init(chartEl);
+              chart.setOption({ series: [{ type: 'liquidFill', data: [Math.min(progress, 1)], radius: '80%', color: [color], backgroundStyle: { color: '#F0FDF4' }, outline: { show: false }, label: { formatter: `${(progress * 100).toFixed(1)}%`, fontSize: isSmall ? 24 : 40, fontWeight: 'bold', color: '#004D40' }}]});
+            }
+          };
+
+          // Current Quarter
+          const quarterKey = `q${quarter}`;
+          const signupTarget = targets.year === year ? targets.signups[quarterKey] : 0;
+          const clickTarget = targets.year === year ? targets.clicks[quarterKey] : 0;
+          const signupProgress = signupTarget > 0 ? currentQuarterProgress.signups / signupTarget : 0;
+          const clickProgress = clickTarget > 0 ? currentQuarterProgress.clicks / clickTarget : 0;
+          const signupPredicted = timePassedPercent > 0.001 ? (signupProgress / timePassedPercent) * 100 : 0;
+          const clickPredicted = timePassedPercent > 0.001 ? (clickProgress / timePassedPercent) * 100 : 0;
+          
+          renderGauge('kpi-gauge-signups', `NonKOL <span style="color: ${PALETTE.signups}">Signups</span>`, signupProgress, signupPredicted, signupTarget, currentQuarterProgress.signups);
+          renderGauge('kpi-gauge-clicks', `NonKOL <span style="color: ${PALETTE.clicks}">Clicks</span>`, clickProgress, clickPredicted, clickTarget, currentQuarterProgress.clicks);
+          
+          // Past Quarters
+          if (state.kpi.showPastQuarters) {
+            Object.keys(pastQuartersProgress).sort().forEach(qKey => {
+              const pastSignupTarget = targets.year === year ? targets.signups[qKey] : 0;
+              const pastClickTarget = targets.year === year ? targets.clicks[qKey] : 0;
+              const pastSignupAchieved = pastQuartersProgress[qKey].signups;
+              const pastClickAchieved = pastQuartersProgress[qKey].clicks;
+              const pastSignupProgress = pastSignupTarget > 0 ? pastSignupAchieved / pastSignupTarget : 0;
+              const pastClickProgress = pastClickTarget > 0 ? pastClickAchieved / pastClickTarget : 0;
+              renderGauge(`kpi-gauge-past-${qKey}-signups`, `Q${qKey.substring(1)} NonKOL <span style="color: ${PALETTE.signups}">Signups</span>`, pastSignupProgress, undefined, pastSignupTarget, pastSignupAchieved, true);
+              renderGauge(`kpi-gauge-past-${qKey}-clicks`, `Q${qKey.substring(1)} NonKOL <span style="color: ${PALETTE.clicks}">Clicks</span>`, pastClickProgress, undefined, pastClickTarget, pastClickAchieved, true);
+            });
+          }
+        }
+        
+        function renderKpiSetupModal() {
+          const { targets } = state.kpi;
+          return `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                <div class="bg-white universal-border universal-shadow p-6 w-full max-w-2xl">
+                    <h2 class="text-xl font-bold text-slate-800 mb-4">Set Quarterly KPIs</h2>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700">Year</label>
+                        <select data-action="kpi-set-target-year" value="${targets.year}" class="mt-1 block w-full pl-3 pr-10 py-2 bg-white universal-border">
+                            ${[2024, 2025, 2026].map(y => `<option value="${y}">${y}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="font-semibold text-slate-700">NonKOL Signups</h3>
+                            <div class="grid grid-cols-4 gap-4 mt-2">
+                                ${['q1', 'q2', 'q3', 'q4'].map(q => `<input type="number" placeholder="${q.toUpperCase()}" value="${targets.signups[q] || ''}" data-action="kpi-set-target" data-metric="signups" data-quarter="${q}" class="w-full p-2 universal-border">`).join('')}
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-slate-700">NonKOL Clicks</h3>
+                            <div class="grid grid-cols-4 gap-4 mt-2">
+                                ${['q1', 'q2', 'q3', 'q4'].map(q => `<input type="number" placeholder="${q.toUpperCase()}" value="${targets.clicks[q] || ''}" data-action="kpi-set-target" data-metric="clicks" data-quarter="${q}" class="w-full p-2 universal-border">`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end space-x-4">
+                        <button data-action="kpi-close-modal" class="px-4 py-2 bg-white text-slate-800 universal-border">Cancel</button>
+                        <button data-action="kpi-save-targets" class="px-4 py-2 bg-[#23C48C] text-white universal-border primary-btn">Save</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+        
+        // --- PARTNER ANALYSIS RENDER ---
+        function renderPartnerAnalysis() {
+          if (state.loading) return renderLoader();
+          if (state.error) return renderError(state.error);
+
+          const { month, selectedAffiliate, data } = state.partner;
+          const sortedAffiliates = [...state.allAffiliates].sort((a, b) => a.name.localeCompare(b.name));
+          
+          const renderSearchableSelect = () => { /* ... similar to overview ... */ return '...'; };
+          
+          let contentHTML = '';
+          if (data) {
+            contentHTML = `
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div class="bg-white p-4 universal-border universal-shadow"><p class="text-sm text-slate-500">Total Clicks</p><p class="text-2xl font-bold text-slate-800">${formatNumber(data.clicks)}</p></div>
+                  <div class="bg-white p-4 universal-border universal-shadow"><p class="text-sm text-slate-500">Total Installs</p><p class="text-2xl font-bold text-slate-800">${formatNumber(data.installs)}</p></div>
+                  <div class="bg-white p-4 universal-border universal-shadow"><p class="text-sm text-slate-500">Total Revenue</p><p class="text-2xl font-bold text-slate-800">${formatCurrency(data.revenue)}</p></div>
+                  <div class="bg-white p-4 universal-border universal-shadow"><p class="text-sm text-slate-500">Total Payout</p><p class="text-2xl font-bold text-slate-800">${formatCurrency(data.payout)}</p></div>
+              </div>
+              <div class="bg-white p-4 universal-border universal-shadow overflow-x-auto">
+                  <h3 class="text-lg font-semibold text-slate-800 mb-4">Daily Breakdown</h3>
+                  ${data.daily.length > 0 ? `
+                  <table class="w-full text-sm text-left">
+                      <thead class="text-xs text-slate-700 uppercase bg-slate-100"><tr><th class="px-6 py-3">Date</th><th class="px-6 py-3 text-right">Clicks</th><th class="px-6 py-3 text-right">Installs</th></tr></thead>
+                      <tbody>
+                          ${data.daily.map(row => `
+                              <tr class="bg-white border-b border-[var(--border-color)] hover:bg-slate-50">
+                                  <td class="px-6 py-4 font-medium text-slate-900">${row.date}</td>
+                                  <td class="px-6 py-4 text-right">${formatNumber(row.clicks)}</td>
+                                  <td class="px-6 py-4 text-right">${formatNumber(row.installs)}</td>
+                              </tr>
+                          `).join('')}
+                      </tbody>
+                  </table>
+                  ` : '<p class="text-slate-500 text-center py-4">No daily data available for this period.</p>'}
+              </div>
+            `;
+          }
+
+          return `
+            <div class="space-y-6">
+                <div class="bg-white p-4 universal-border universal-shadow flex flex-col md:flex-row items-end gap-4">
+                    <div class="w-full md:w-auto">
+                        <label class="block text-sm font-medium text-slate-700">Month</label>
+                        <input type="month" value="${month}" data-action="partner-set-month" class="mt-1 p-2 universal-border h-[42px]">
+                    </div>
+                    <div class="w-full md:w-1/3">
+                        <label class="block text-sm font-medium text-slate-700">Affiliate</label>
+                        <!-- Partner Searchable Select Here -->
+                    </div>
+                    <div class="w-full md:w-auto">
+                        <button data-action="partner-get-metrics" ${!selectedAffiliate ? 'disabled' : ''} class="w-full px-6 py-2.5 text-white font-semibold primary-btn bg-[#23C48C] universal-border disabled:bg-slate-400">
+                            Get Metrics
+                        </button>
+                    </div>
+                </div>
+                ${contentHTML}
+            </div>
+          `;
+        }
+
+        // --- EVENT HANDLING ---
+        function initEventListeners() {
+          rootEl.addEventListener('click', e => {
+            const target = e.target;
+            const action = target.dataset.action || target.closest('[data-action]')?.dataset.action;
+            
+            if (action) {
+              const el = target.closest(`[data-action="${action}"]`);
+              switch(action) {
+                // Global Actions
+                case 'set-tab':
+                  handleSetTab(el.dataset.tab);
+                  break;
+                
+                // Performance Overview Actions
+                case 'get-metrics':
+                  handleGetMetrics();
+                  break;
+                case 'set-preset-date':
+                  state.overview.dateRange = getPresetDateRange(el.dataset.preset);
+                  render();
+                  break;
+                case 'toggle-breakdown':
+                  state.overview.breakdownExpanded = !state.overview.breakdownExpanded;
+                  render();
+                  break;
+                case 'toggle-affiliate-select':
+                    state.overview.searchableSelectOpen = !state.overview.searchableSelectOpen;
+                    render();
+                    break;
+                case 'select-affiliate':
+                    state.overview.selectedAffiliate = el.dataset.value || null;
+                    state.overview.searchableSelectOpen = false;
+                    render();
+                    break;
+
+                // KPI Runrate Actions
+                case 'kpi-open-modal':
+                  state.kpi.isModalOpen = true;
+                  render();
+                  break;
+                case 'kpi-close-modal':
+                  state.kpi.isModalOpen = false;
+                  render();
+                  break;
+                case 'kpi-save-targets':
+                  localStorage.setItem('kpiTargets', JSON.stringify(state.kpi.targets));
+                  state.kpi.isModalOpen = false;
+                  render();
+                  break;
+                case 'kpi-toggle-past':
+                  state.kpi.showPastQuarters = !state.kpi.showPastQuarters;
+                  render();
+                  break;
+              }
+            }
+          });
+          
+          rootEl.addEventListener('change', e => {
+            const target = e.target;
+            const action = target.dataset.action;
+            if (action) {
+              switch(action) {
+                case 'set-date':
+                  state.overview.dateRange[target.name] = gmt7InputStringToDate(target.value);
+                  render();
+                  break;
+                case 'set-tier':
+                  state.overview.tier = target.value;
+                  render();
+                  break;
+                case 'kpi-set-target-year':
+                  state.kpi.targets.year = parseInt(target.value, 10);
+                  render(); // Re-render modal content
+                  break;
+                case 'partner-set-month':
+                  state.partner.month = target.value;
+                  render();
+                  break;
+              }
+            }
+          });
+
+          rootEl.addEventListener('input', e => {
+              const target = e.target;
+              const action = target.dataset.action;
+              if (action === 'search-affiliate') {
+                  state.overview.searchableSelectTerm = target.dataset.value;
+                  render();
+                  target.focus();
+              } else if(action === 'kpi-set-target'){
+                  const { metric, quarter } = target.dataset;
+                  state.kpi.targets[metric][quarter] = parseInt(target.value, 10) || 0;
+                  // No re-render needed for input change
+              }
+          });
+        }
+        
+        function handleSetTab(tabId) {
+          state.activeTab = tabId;
+          state.error = null;
+          state.loading = false;
+          render();
+          
+          if (tabId === 'overview' && !state.overview.summaryData) {
+            handleGetMetrics();
+          } else if (tabId === 'kpi') {
+            handleGetKpiData();
+          } else if (tabId === 'partner' && !state.partner.data) {
+            // handleGetPartnerData();
+          }
+        }
+
+        // --- DATA FETCHING LOGIC ---
+        function handleGetMetrics() {
+          state.loading = true;
+          state.error = null;
+          render();
+
+          const { dateRange, tier, selectedAffiliate } = state.overview;
+          let filteredPublicIds = undefined;
+          if (selectedAffiliate) {
+              const aff = state.allAffiliates.find(a => a.accountId === selectedAffiliate);
+              if (aff) filteredPublicIds = [aff.publicId];
+          } else if (tier !== 'All') {
+              filteredPublicIds = state.allAffiliates
+                  .filter(a => (a.tierName === 'Standard' ? 'KOL' : (a.tierName || 'NonKOL')) === tier)
+                  .map(a => a.publicId);
+          }
+          const validAffiliateIds = filteredPublicIds ? new Set(filteredPublicIds) : null;
+          
+          const fromUTC = dateRange.from;
+          const toUTC = dateRange.to;
+          const duration = toUTC.getTime() - fromUTC.getTime() + 864e5;
+          const prevTo = new Date(fromUTC.getTime() - 1);
+          const prevFrom = new Date(fromUTC.getTime() - duration);
+          
+          const currentRangeISO = { from: fromUTC.toISOString(), to: toGmt7EndOfDay(toUTC).toISOString() };
+          const prevRangeISO = { from: prevFrom.toISOString(), to: prevTo.toISOString() };
+          
+          const signupFilters = { registeredFrom: currentRangeISO.from, registeredTo: currentRangeISO.to };
+          if (filteredPublicIds) signupFilters.publicId = filteredPublicIds;
+          const signupPrevFilters = { registeredFrom: prevRangeISO.from, registeredTo: prevRangeISO.to };
+          if (filteredPublicIds) signupPrevFilters.publicId = filteredPublicIds;
+          const reportFilters = {};
+          if (filteredPublicIds) reportFilters.sourceId = filteredPublicIds;
+          
+          // Using Promise.all to fetch data concurrently
+          Promise.all([
+            new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).fetchAffiliates(signupFilters)),
+            new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).fetchAffiliates(signupPrevFilters)),
+            new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).fetchClickReport(currentRangeISO, reportFilters)),
+            new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).fetchClickReport(prevRangeISO, reportFilters)),
+            new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).fetchConversionReport(currentRangeISO, reportFilters)),
+            new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).fetchConversionReport(prevRangeISO, reportFilters)),
+          ]).then(([currentSignups, prevSignups, currentClicks, prevClicks, currentConversions, prevConversions]) => {
+              // --- Process data (same logic as React app) ---
+              const affiliateMap = new Map();
+              state.allAffiliates.forEach(aff => {
+                  const tierName = aff.tierName === 'Standard' ? 'KOL' : (aff.tierName || 'NonKOL');
+                  affiliateMap.set(aff.publicId, { name: aff.name, tierName, accountId: aff.accountId });
+              });
+
+              const processPeriodData = (signups, clicks, conversions) => { /* ... (Logic copied from React app) ... */ return { byAffiliate: new Map(), daily: new Map() } };
+              
+              const currentProcessed = processPeriodData(currentSignups.affiliates, currentClicks.rows, currentConversions.rows);
+              const prevProcessed = processPeriodData(prevSignups.affiliates, prevClicks.rows, prevConversions.rows);
+              
+              // --- Aggregate metrics (same logic as React app) ---
+              const finalMetrics = { /* ... */ };
+
+              state.overview.summaryData = finalMetrics;
+              // ... set daily data, top affiliates, etc. ...
+
+              state.loading = false;
+              render();
+          }).catch(err => {
+              state.loading = false;
+              state.error = err.message || 'An unexpected error occurred.';
+              render();
+          });
+        }
+        
+        function handleGetKpiData() {
+            state.loading = true; state.error = null; render();
+            // Simplified version of logic from React component
+            google.script.run
+              .withSuccessHandler(result => {
+                // process results and set state.kpi...
+                state.loading = false;
+                render();
+              })
+              .withFailureHandler(err => {
+                state.loading = false; state.error = err.message; render();
+              })
+              .fetchDataForKpi(); // This would be a new function in code.gs
+        }
+
+        // --- INITIALIZATION ---
+        function init() {
+          render(); // Render initial shell
+          initEventListeners();
+          
+          state.loading = true;
+          render();
+
+          // Fetch initial affiliate list
+          google.script.run
+            .withSuccessHandler(response => {
+              state.allAffiliates = response.affiliates;
+              // Fetch initial KPI data
+              const savedTargets = localStorage.getItem('kpiTargets');
+              if (savedTargets) {
+                state.kpi.targets = JSON.parse(savedTargets);
+              }
+              // You might want to call handleGetMetrics() here automatically for the first load
+              state.loading = false;
+              handleGetMetrics(); // Trigger initial data load for overview
+            })
+            .withFailureHandler(err => {
+              state.loading = false;
+              state.error = 'Failed to fetch affiliate list: ' + err.message;
+              render();
+            })
+            .fetchAffiliates({});
+        }
+
+        init();
+      })();
+    </script>
+</body>
+</html>

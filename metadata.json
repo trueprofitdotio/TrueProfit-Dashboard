@@ -1,0 +1,5 @@
+{
+  "name": "TrueProfit Affiliate Dashboard",
+  "description": "An interactive dashboard to create customized reports and charts from the TrueProfit affiliate dashboard data, providing insights into performance metrics, partner analysis, and KPI run rates.",
+  "requestFramePermissions": []
+}

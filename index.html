@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-ag" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TrueProfit Affiliate Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-liquidfill@3.1.0/dist/echarts-liquidfill.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+      :root {
+        --accent-color: #23C48C;
+        --header-blue: #2236ba;
+        --shadow-color: rgba(100, 116, 139, 0.1);
+        --border-color-light: #f1f5f9; /* slate-100 */
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #F8F9FA;
+      }
+      .card {
+         background-color: white;
+         box-shadow: 0 2px 8px var(--shadow-color);
+         border-radius: 0.5rem;
+      }
+      .primary-btn {
+        transition: background-color 0.2s ease-out;
+      }
+      input, select, button, .btn {
+        border-radius: 5px !important;
+      }
+      input:focus, select:focus, button:focus {
+        outline: none;
+      }
+      .marquee-container {
+        overflow: hidden;
+        white-space: nowrap;
+        max-width: 100%;
+      }
+      .marquee-content {
+        display: inline-block;
+      }
+      /* Only animate if the content is wider than the container */
+      .marquee-container:hover .marquee-content {
+        padding-right: 2rem; /* Add space at end of scroll */
+        animation: marquee 8s linear infinite;
+      }
+
+      @keyframes marquee {
+        0% { transform: translateX(0%); }
+        100% { transform: translateX(-100%); }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
