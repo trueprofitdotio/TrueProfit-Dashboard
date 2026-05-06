@@ -148,6 +148,8 @@ const App: React.FC = () => {
   }, []);
 
 
+  const [isInfluencerSidebarOpen, setIsInfluencerSidebarOpen] = useState(false);
+
   const loadKpiData = useCallback(async () => {
     setKpiLoading(true);
     setKpiError(null);
@@ -179,7 +181,10 @@ const App: React.FC = () => {
       case 'conversion':
         return <ConversionDetails />;
       case 'influencer':
-        return <InfluencerPerformance />;
+        return <InfluencerPerformance 
+                 isSidebarOpen={isInfluencerSidebarOpen} 
+                 onSidebarToggle={setIsInfluencerSidebarOpen} 
+               />;
       case 'kpi':
         return <KpiRunrate loading={kpiLoading} error={kpiError} data={kpiData} onSave={loadKpiData} />;
       default:
@@ -188,11 +193,13 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
-      <div className="mx-auto px-4 md:px-8 lg:px-12 max-w-[1800px]">
-        <Header />
-        <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
-        <main>{renderContent()}</main>
+    <div className={`min-h-screen bg-slate-50 text-slate-800 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isInfluencerSidebarOpen ? 'overflow-x-auto' : 'overflow-x-hidden'}`}>
+      <div className={`transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isInfluencerSidebarOpen ? 'w-[2504px]' : 'w-full'}`}>
+        <div className={`px-4 md:px-8 lg:px-12 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isInfluencerSidebarOpen ? 'max-w-none w-[1800px] ml-12' : 'mx-auto max-w-[1800px]'}`}>
+          <Header />
+          <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
+          <main>{renderContent()}</main>
+        </div>
       </div>
     </div>
   );

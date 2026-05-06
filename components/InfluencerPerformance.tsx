@@ -721,7 +721,15 @@ const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; is
 };
 
 // --- MAIN COMPONENT ---
-const InfluencerPerformance: React.FC = () => {
+interface InfluencerPerformanceProps {
+    isSidebarOpen?: boolean;
+    onSidebarToggle?: (open: boolean) => void;
+}
+
+const InfluencerPerformance: React.FC<InfluencerPerformanceProps> = ({ 
+    isSidebarOpen: externalIsSidebarOpen, 
+    onSidebarToggle 
+}) => {
     const [dateRange, setDateRange] = useState<DateRange>(getPresetDateRange('This Month'));
     const [loading, setLoading] = useState(false);
     const [isTrendlineLoading, setIsTrendlineLoading] = useState(false);
@@ -739,10 +747,22 @@ const InfluencerPerformance: React.FC = () => {
         videos: []
     });
     const [showMoreLegacy, setShowMoreLegacy] = useState(false);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(externalIsSidebarOpen || false);
     const [selectedVideo, setSelectedVideo] = useState<VideoPerformanceData | null>(null);
     const [isFullTrendline, setIsFullTrendline] = useState(false);
     const [loadingFullTrendline, setLoadingFullTrendline] = useState(false);
+
+    // Sync with external state
+    useEffect(() => {
+        if (externalIsSidebarOpen !== undefined) {
+            setIsSidebarOpen(externalIsSidebarOpen);
+        }
+    }, [externalIsSidebarOpen]);
+
+    const setSidebarState = (open: boolean) => {
+        setIsSidebarOpen(open);
+        if (onSidebarToggle) onSidebarToggle(open);
+    };
 
     const handleSeeTrendline = useCallback(async (video: VideoPerformanceData, showFull = false) => {
         setIsTrendlineLoading(true); 
@@ -755,7 +775,7 @@ const InfluencerPerformance: React.FC = () => {
         }
         
         setSelectedVideo(video);
-        setIsSidebarOpen(true);
+        setSidebarState(true);
 
         try {
             let start = dateRange.from.toISOString();
@@ -789,7 +809,7 @@ const InfluencerPerformance: React.FC = () => {
             setIsTrendlineLoading(false); 
             setLoadingFullTrendline(false);
         }
-    }, [dateRange]);
+    }, [dateRange, onSidebarToggle]);
 
     const handleFetchData = useCallback(async () => {
         setLoading(true); setError(null); setTrendlineData(null); setAllVideos([]); setOverviewStats(null); setKolPerformance([]);
@@ -928,8 +948,8 @@ const InfluencerPerformance: React.FC = () => {
 
     return (
         <div className="relative min-h-screen bg-slate-50/50">
-            {/* Main Content Wrapper - This is what slides */}
-            <div className={`transition-transform duration-500 ease-in-out ${isSidebarOpen ? '-translate-x-[640px]' : 'translate-x-0'}`}>
+            {/* Main Content Wrapper - Shifted by App container logic */}
+            <div className="transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
                 <div className="p-8 space-y-8 max-w-full mx-auto">
                     <Filters 
                         dateRange={dateRange} 
@@ -1016,7 +1036,7 @@ const InfluencerPerformance: React.FC = () => {
 
             {/* Sidebar for Trendline - Fixed and outside the sliding wrapper */}
             <div 
-                className={`fixed top-0 right-0 h-full w-[640px] bg-white shadow-[-20px_0_40px_rgba(0,0,0,0.1)] border-l border-slate-100 z-[100] transform transition-transform duration-500 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                className={`fixed top-0 right-0 h-full w-[640px] bg-white shadow-[-20px_0_40px_rgba(0,0,0,0.1)] border-l border-slate-100 z-[100] transform transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
             >
                 <div className="h-full flex flex-col">
                     <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
@@ -1025,7 +1045,7 @@ const InfluencerPerformance: React.FC = () => {
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Performance Analytics</p>
                         </div>
                         <button 
-                            onClick={() => setIsSidebarOpen(false)}
+                            onClick={() => setSidebarState(false)}
                             className="p-2.5 hover:bg-slate-100 rounded-xl transition-all text-slate-400 hover:text-slate-800 hover:rotate-90"
                         >
                             <X size={24} />
