@@ -193,9 +193,19 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-slate-50 text-slate-800 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isInfluencerSidebarOpen ? 'overflow-x-auto' : 'overflow-x-hidden'}`}>
-      <div className={`transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isInfluencerSidebarOpen ? 'w-[2504px]' : 'w-full'}`}>
-        <div className={`px-4 md:px-8 lg:px-12 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isInfluencerSidebarOpen ? 'max-w-none w-[1800px] ml-12' : 'mx-auto max-w-[1800px]'}`}>
+    <div className={`min-h-screen bg-slate-50 text-slate-800 ${isInfluencerSidebarOpen ? 'overflow-x-hidden' : 'overflow-x-hidden'}`}>
+      <div 
+        className="transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex"
+        style={{ width: '100%' }}
+      >
+        <div 
+          className="flex-1 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] px-4 md:px-8 lg:px-12 mx-auto"
+          style={{ 
+            maxWidth: isInfluencerSidebarOpen ? 'calc(100vw - 680px)' : '1800px',
+            marginRight: isInfluencerSidebarOpen ? '640px' : 'auto',
+            marginLeft: 'auto'
+          }}
+        >
           <Header />
           <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
           <main>{renderContent()}</main>

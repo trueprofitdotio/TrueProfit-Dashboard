@@ -948,8 +948,8 @@ const InfluencerPerformance: React.FC<InfluencerPerformanceProps> = ({
 
     return (
         <div className="relative min-h-screen bg-slate-50/50">
-            {/* Main Content Wrapper - Shifted by App container logic */}
-            <div className="transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+            {/* Main Content Wrapper - Motion is controlled by App.tsx */}
+            <div className="w-full">
                 <div className="p-8 space-y-8 max-w-full mx-auto">
                     <Filters 
                         dateRange={dateRange} 
@@ -1034,9 +1034,9 @@ const InfluencerPerformance: React.FC<InfluencerPerformanceProps> = ({
                 </div>
             </div>
 
-            {/* Sidebar for Trendline - Fixed and outside the sliding wrapper */}
+            {/* Sidebar for Trendline - High-fidelity smooth transition */}
             <div 
-                className={`fixed top-0 right-0 h-full w-[640px] bg-white shadow-[-20px_0_40px_rgba(0,0,0,0.1)] border-l border-slate-100 z-[100] transform transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                className={`fixed top-0 right-0 h-full w-[640px] bg-white/95 backdrop-blur-md shadow-[-25px_0_50px_rgba(0,0,0,0.12)] border-l border-slate-100 z-[100] transform transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
             >
                 <div className="h-full flex flex-col">
                     <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
