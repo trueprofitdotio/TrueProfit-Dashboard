@@ -76,7 +76,15 @@ const getVideoStatus = (video: VideoPerformanceData) => {
     }
 };
 
-const utcInputStringToDate = (dateString: string): Date => new Date(`${dateString}T00:00:00.000Z`);
+const utcInputStringToDate = (dateString: string | null | undefined): Date | null => {
+    if (!dateString) return null;
+    try {
+        const d = new Date(`${dateString}T00:00:00.000Z`);
+        return isNaN(d.getTime()) ? null : d;
+    } catch {
+        return null;
+    }
+};
 
 const ChangeIndicatorText: React.FC<{ value: number; vsDateRange: DateRange }> = ({ value, vsDateRange }) => {
     if (value === 0 || isNaN(value) || !isFinite(value)) return <span className="text-sm text-slate-500">— vs previous period</span>;
@@ -210,7 +218,7 @@ const VideoTable: React.FC<{
                             <tr key={v.id} className="border-b border-slate-100 hover:bg-slate-50">
                                 <td className="px-4 py-3 font-medium truncate" title={v.title || v.video_url}>
                                     <a href={v.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent-color)]">
-                                        {v.title && v.title.trim() !== "" ? v.title : v.video_url}
+                                        {v.title && typeof v.title === 'string' && v.title.trim() !== "" ? v.title : v.video_url}
                                     </a>
                                 </td>
                                 <td className="px-4 py-3">
@@ -219,7 +227,7 @@ const VideoTable: React.FC<{
                                         return <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${platform.color}`}>{platform.label}</span>;
                                     })()}
                                 </td>
-                                <td className="px-4 py-3 truncate" title={v.kols.name}>{v.kols.name}</td>
+                                <td className="px-4 py-3 truncate" title={v.kols?.name || 'Unknown'}>{v.kols?.name || 'Unknown'}</td>
                                 <td className="px-4 py-3">{formatDisplayDateGmt7(utcInputStringToDate(v.released_date))}</td>
                                 <td className="px-4 py-3 text-right">{formatNumber(v.startViews)}</td>
                                 <td className="px-4 py-3 text-right">{formatNumber(v.endViews)}</td>
@@ -440,7 +448,9 @@ const TopKolTable: React.FC<{ title: string; data: KolPerformanceData[]; dateRan
                                                 {kol.videos.map(video => (
                                                     <tr key={video.id} className="border-b border-emerald-100 last:border-b-0">
                                                         <td className="px-2 py-2 font-medium text-slate-800 max-w-xs truncate">
-                                                             <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent-color)]" title={video.title}>{video.title}</a>
+                                                             <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent-color)]" title={video.title || video.video_url}>
+                                                                {video.title && typeof video.title === 'string' && video.title.trim() !== "" ? video.title : video.video_url}
+                                                             </a>
                                                         </td>
                                                         <td className="px-2 py-2">{formatDisplayDateGmt7(utcInputStringToDate(video.released_date))}</td>
                                                         <td className="px-2 py-2 text-right">{formatNumber(video.startViews)}</td>
@@ -501,7 +511,13 @@ const PerformanceTable: React.FC<{ title: string; data: VideoPerformanceData[]; 
                     <tr key={video.id} className="border-b border-slate-100 hover:bg-slate-50/50">
                         <td className="px-4 py-3 font-medium text-slate-900 max-w-xs">
                            <div className="flex items-center gap-2">
-                               <div className="marquee-container"><div className="marquee-content"><a href={video.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent-color)]">{video.title}</a></div></div>
+                               <div className="marquee-container">
+                                   <div className="marquee-content">
+                                       <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent-color)]">
+                                           {video.title && typeof video.title === 'string' && video.title.trim() !== "" ? video.title : video.video_url}
+                                       </a>
+                                   </div>
+                               </div>
                                {isNew(video.released_date) && (
                                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded uppercase tracking-wider shrink-0">New</span>
                                )}
