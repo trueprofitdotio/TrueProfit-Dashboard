@@ -15,7 +15,16 @@ SPREADSHEET_ID = '15Q7_YzBYMjCceBB5-yi51noA0d03oqRIcd-icDvCdqI'
 # Lấy từ biến môi trường (Github) hoặc hardcode (Local)
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://wpzigasfuizrabqqzxln.supabase.co")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_secret_tPw7wEcEku1sVGVITE2X7A_MNtKlCww")
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "AIzaSyChr_rRRYlsH9_wfY8JB1UJ30fPDMBtp0c") 
+
+# YouTube API Key pool - rotate khi bị quota limit (403)
+YOUTUBE_API_KEYS = [
+    os.environ.get("YOUTUBE_API_KEY",  "AIzaSyChr_rRRYlsH9_wfY8JB1UJ30fPDMBtp0c"),  # key1
+    "AIzaSyAHFSLQGngrIVVMw2ERmyuOhCuJLhtM5jc",  # key2
+    "AIzaSyDiyxt3nc4qdSx7OtsOIkKCU7S94_uWiUc",  # key3
+    "AIzaSyDgftThC9A0310-g0ocCeDd_Pkf8v-zhZM",  # key4
+]
+_yt_key_index = 0  # con trỏ key hiện tại
+
 
 # --- MÚI GIỜ HÀ NỘI (GMT+7) ---
 def get_hanoi_time():
@@ -41,6 +50,22 @@ def get_gspread_client():
 # Init Clients
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Set lưu video_id của những video bị fail-safe (API không trả về khi track views)
+failsafe_video_ids: set = set()
+
+def get_yt_api_key() -> str:
+    """Trả về API key hiện tại."""
+    return YOUTUBE_API_KEYS[_yt_key_index % len(YOUTUBE_API_KEYS)]
+
+def rotate_yt_api_key() -> str:
+    """Rotate sang key tiếp theo khi bị quota (403)."""
+    global _yt_key_index
+    _yt_key_index += 1
+    new_key = get_yt_api_key()
+    print(f"   🔄 Rotated to YouTube API key #{_yt_key_index % len(YOUTUBE_API_KEYS) + 1}")
+    return new_key
+
+
 # --- HELPER ---
 def extract_video_id(url):
     """Trích xuất Video ID từ link Youtube"""
@@ -65,47 +90,104 @@ def fetch_non_yt_data(url):
         print(f"   [!] yt-dlp không cào được {url} (Lỗi: {repr(e)})")
         return None, None
 
-def check_youtube_unlisted_status(video_id):
+def check_youtube_video_status(video_id: str) -> str:
     """
-    Kiểm tra trạng thái video Youtube (Unlisted/Private/Removed)
-    Dựa trên logic Cross-Reference Validation: videos.list + search.list
+    Dùng YouTube Data API v3 (videos.list) để kiểm tra privacy status của video.
+    Tự động rotate API key nếu bị quota (HTTP 403).
+
+    Trả về:
+        "Healthy"           - privacyStatus = public
+        "Unlisted/Removed"  - privacyStatus != public hoặc items[] rỗng
+        "Unknown"           - Lỗi API, không thể xác định
     """
-    try:
-        # 1. Fetch Metadata: videos.list
-        v_url = f"https://www.googleapis.com/youtube/v3/videos?part=id&id={video_id}&key={YOUTUBE_API_KEY}"
-        v_res = requests.get(v_url).json()
-        if not v_res.get('items'):
-            return "Private/Removed" # Không tìm thấy trong videos.list -> Private hoặc bị xóa
+    tried_keys = 0
+    while tried_keys < len(YOUTUBE_API_KEYS):
+        api_key = get_yt_api_key()
+        try:
+            url = (
+                f"https://www.googleapis.com/youtube/v3/videos"
+                f"?part=status,snippet,statistics"
+                f"&id={video_id}"
+                f"&key={api_key}"
+            )
+            res = requests.get(url, timeout=15)
 
-        # 2. Search Validation: search.list (chỉ video Public mới hiện ở đây)
-        s_url = f"https://www.googleapis.com/youtube/v3/search?part=id&q={video_id}&type=video&key={YOUTUBE_API_KEY}"
-        s_res = requests.get(s_url).json()
-        
-        # Kiểm tra xem ID có khớp chính xác trong kết quả search không
-        items = s_res.get('items', [])
-        found_in_search = any(item.get('id', {}).get('videoId') == video_id for item in items)
-        
-        if found_in_search:
-            return "Public"
-        else:
-            return "Unlisted"
-    except Exception as e:
-        print(f"   [!] Lỗi khi check Youtube status cho {video_id}: {repr(e)}")
-        return "Unknown"
+            if res.status_code == 403:
+                err_body = res.json().get('error', {}).get('message', '')
+                print(f"   ⚠️ Quota hit (key #{_yt_key_index % len(YOUTUBE_API_KEYS) + 1}): {err_body[:80]}")
+                rotate_yt_api_key()
+                tried_keys += 1
+                continue  # Thử key mới
 
-def check_non_yt_accessibility(url):
-    """Sử dụng yt-dlp --simulate để kiểm tra video TikTok/IG còn tồn tại không"""
+            if res.status_code != 200:
+                print(f"   [!] YouTube API Error {res.status_code} cho {video_id}")
+                return "Unknown"
+
+            data = res.json()
+            items = data.get('items', [])
+
+            if not items:
+                # Không có kết quả = video bị xóa / unavailable
+                return "Unlisted/Removed"
+
+            privacy = items[0].get('status', {}).get('privacyStatus', '').lower()
+
+            if privacy == 'public':
+                return "Healthy"
+            else:
+                return "Unlisted/Removed"
+
+        except Exception as e:
+            print(f"   [!] Exception khi check YouTube status cho {video_id}: {repr(e)}")
+            return "Unknown"
+
+    print(f"   ❌ Tất cả YouTube API key đều bị quota! Không thể check {video_id}.")
+    return "Unknown"
+
+
+def check_non_yt_status(url: str) -> str:
+    """
+    Kiểm tra video TikTok/IG/Twitter bằng yt-dlp.
+    Nếu cào được viewcount hợp lệ -> "Healthy"
+    Nếu bị block/rate-limit -> "Blocked" (giữ nguyên status cũ)
+    Nếu thực sự không truy cập được -> "Unlisted/Removed"
+    """
     ydl_opts = {
         'quiet': True,
-        'simulate': True,
-        'force_generic_extractor': False,
+        'skip_download': True,
+        'extract_flat': False,
+        'no_warnings': True,
+        'socket_timeout': 15,
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.extract_info(url, download=False)
-            return True # Vẫn truy cập được
-    except Exception:
-        return False # Lỗi -> Possibly Unlisted/Deleted
+            info = ydl.extract_info(url, download=False)
+            view_count = info.get('view_count')
+            if view_count is not None and isinstance(view_count, int):
+                return "Healthy"
+            else:
+                # Mở được nhưng không có viewcount hợp lệ -> Unlisted/Removed
+                return "Unlisted/Removed"
+    except Exception as e:
+        err_str = str(e).lower()
+        # Lỗi do bị chặn / hạn chế tốc độ / yt-dlp không parse được -> không phải bị xóa
+        BLOCKED_KEYWORDS = [
+            "block",
+            "429",
+            "rate limit",
+            "login required",
+            "impersonation",
+            "no video could be found",
+            "csrf token",
+            "requested content is not available",
+            "cookies",
+        ]
+        if any(kw in err_str for kw in BLOCKED_KEYWORDS):
+            print(f"   [~] Blocked/Rate-limited (không đánh giá được): {url}")
+            return "Blocked"
+        print(f"   [!] Inaccessible: {url} ({err_str[:100]})")
+        return "Unlisted/Removed"
+
 
 # --- TASK 1: SYNC TỪ SHEET PROGRESS -> SUPABASE ---
 def sync_progress_to_db():
@@ -211,8 +293,10 @@ def track_youtube_views():
     print("\n>>> TASK 2: Tracking Views...")
     
     try:
-        # Lấy tất cả video để track view, ngoại trừ những cái đã bị xóa/private hẳn
-        videos = supabase.table('videos').select('*').neq('status', 'Private/Removed').execute().data
+        # Track tất cả video trừ những cái đã xác nhận bị xóa/private hẳn
+        videos = supabase.table('videos').select('*')\
+            .neq('status', 'Unlisted/Removed')\
+            .execute().data
     except Exception as e:
         print(f"❌ Lỗi đọc Supabase: {repr(e)}")
         return
@@ -333,6 +417,9 @@ def track_youtube_views():
                     'view_count': last_known_view,
                     'recorded_at': today_str 
                 })
+                # Đánh dấu video này là fail-safe để TASK 2.5 bỏ qua check unlisted
+                # (API không trả về không có nghĩa là bị xóa - có thể do quota/network)
+                failsafe_video_ids.add(original_vid['id'])
 
         if metrics_insert:
             try:
@@ -343,71 +430,59 @@ def track_youtube_views():
 
     print(f"✅ DONE: {updated_count} records cập nhật (Gồm Live Cào và Fail-safe).")
 
-# --- TASK 2.5: UPDATE VIDEO STATUSES (Stalled, Possibly Unlisted) ---
+# --- TASK 2.5: UPDATE VIDEO STATUSES ---
 def update_video_statuses():
-    print("\n>>> TASK 2.5: Detecting Stalled/Unlisted Videos...")
+    """
+    Kiểm tra từng video và cập nhật trạng thái:
+    - YouTube: public -> Healthy, còn lại -> Unlisted/Removed
+    - Non-YouTube: có viewcount -> Healthy, không có -> Unlisted/Removed
+    """
+    print("\n>>> TASK 2.5: Updating Video Statuses (Privacy Check)...")
     try:
-        # Lấy tất cả videos
-        videos = supabase.table('videos').select('*').execute().data
-        
-        # Lấy view 7 ngày trước để tính growth
-        date_7_ago = (get_hanoi_time() - timedelta(days=7)).strftime('%Y-%m-%d')
-        metrics_res = supabase.table('video_metrics').select('video_id, view_count').eq('recorded_at', date_7_ago).execute()
-        history_map = {item['video_id']: item['view_count'] for item in metrics_res.data}
-        
-        print(f"   - Đã load view cũ cho {len(history_map)} videos.")
+        videos = supabase.table('videos').select('id, video_url, status').execute().data
+        print(f"   - Kiểm tra {len(videos)} videos...")
     except Exception as e:
-        print(f"❌ Lỗi truy vấn data status: {repr(e)}")
+        print(f"❌ Lỗi truy vấn data: {repr(e)}")
         return
 
     updates_count = 0
+    skipped_failsafe = 0
+
     for v in videos:
-        vid_id = v['id']
-        url = v['video_url']
-        current_views = v.get('current_views', 0) or 0
-        old_views = history_map.get(vid_id, 0)
-        
-        # Tính % growth (7 ngày)
-        if old_views > 0:
-            growth_pct = ((current_views - old_views) / old_views) * 100
+        vid_id  = v['id']
+        url     = v['video_url']
+        current = v.get('status', 'Active')
+
+        yt_id = extract_video_id(url)
+
+        if yt_id:
+            # --- YouTube ---
+            if vid_id in failsafe_video_ids:
+                print(f"   ⏭️ Skipping failsafe YT video: {yt_id}")
+                skipped_failsafe += 1
+                continue
+
+            new_status = check_youtube_video_status(yt_id)
+            if new_status == "Unknown":
+                continue
         else:
-            growth_pct = 100 if current_views > 0 else 0
-            
-        new_status = "Healthy"
-        
-        # Logic detect status:
-        if growth_pct > 1:
-            new_status = "Healthy"
-        else:
-            # Nếu growth <= 1% -> "Stalled" hoặc "Possibly Unlisted"
-            print(f"   🔎 Checking stalled video {vid_id} (% growth: {growth_pct:.2f}%)...")
-            
-            yt_id = extract_video_id(url)
-            if yt_id:
-                # Logic Youtube
-                yt_status = check_youtube_unlisted_status(yt_id)
-                if yt_status == "Public":
-                    new_status = "Stalled"
-                elif yt_status in ["Unlisted", "Private/Removed"]:
-                    new_status = "Possibly Unlisted"
-                else:
-                    new_status = "Stalled" # Fallback
-            else:
-                # TikTok / Instagram
-                if check_non_yt_accessibility(url):
-                    new_status = "Stalled"
-                else:
-                    new_status = "Possibly Unlisted"
-        
-        # Update if changed
-        if new_status != v.get('status'):
+            # --- Non-YouTube (TikTok / IG / Twitter) ---
+            new_status = check_non_yt_status(url)
+            if new_status == "Blocked":
+                skipped_failsafe += 1
+                continue
+
+        # Update status (ghi đè giá trị cũ)
+        if new_status != current:
             try:
                 supabase.table('videos').update({'status': new_status}).eq('id', vid_id).execute()
                 updates_count += 1
+                print(f"   ✏️ {url[:60]}: {current} -> {new_status}")
             except Exception as e:
-                print(f"⚠️ Lỗi cập nhật status {vid_id}: {repr(e)}")
+                print(f"   ⚠️ Lỗi cập nhật status {vid_id}: {repr(e)}")
 
-    print(f"✅ Đã cập nhật trạng thái cho {updates_count} videos.")
+    print(f"✅ Kiểm tra xong. Cập nhật: {updates_count} | Bỏ qua (failsafe/blocked): {skipped_failsafe}")
+
 
 # --- TASK 3: BUILD DASHBOARD ---
 def build_dashboard():

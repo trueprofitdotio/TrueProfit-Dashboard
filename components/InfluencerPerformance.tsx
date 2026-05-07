@@ -60,33 +60,20 @@ const extractYoutubeId = (url: string) => {
 };
 
 const getVideoStatus = (video: VideoPerformanceData) => {
-    // 1. Ưu tiên dùng field status từ database (Healthy, Stalled, Possibly Unlisted)
     const dbStatus = video.status;
-    
-    if (dbStatus) {
-        switch (dbStatus) {
-            case 'Healthy': return { label: 'Healthy', color: 'bg-emerald-100 text-emerald-700' };
-            case 'Stalled': return { label: 'Stalled', color: 'bg-amber-100 text-amber-700' };
-            case 'Possibly Unlisted': return { label: 'Possibly Unlisted', color: 'bg-red-100 text-red-700' };
-            case 'Private/Removed': return { label: 'Removed', color: 'bg-slate-100 text-slate-700' };
-            case 'Active': 
-                // Nếu video mới released trong vòng 3 ngày thì coi là New, còn không thì Active (đang track)
-                const releaseDate = new Date(video.released_date);
-                const threeDaysAgo = new Date();
-                threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-                if (releaseDate > threeDaysAgo) return { label: 'New', color: 'bg-blue-100 text-blue-700' };
-                return { label: 'Tracking', color: 'bg-blue-50 text-blue-600' };
-            default: break; 
-        }
-    }
 
-    // 2. Fallback cực kỳ cơ bản (nếu null status)
-    if (!video.video_url || video.video_url.trim() === '') {
-        return { label: 'No Link', color: 'bg-slate-100 text-slate-400' };
+    switch (dbStatus) {
+        case 'Healthy':
+            return { label: 'Healthy', color: 'bg-emerald-100 text-emerald-700' };
+        case 'Unlisted/Removed':
+            return { label: 'Unlisted/Removed', color: 'bg-red-100 text-red-700' };
+        case 'Active':
+            return { label: 'Active', color: 'bg-blue-50 text-blue-600' };
+        default:
+            // Nếu chưa có status hoặc status lạ, hiện theo text trong DB
+            if (dbStatus) return { label: dbStatus, color: 'bg-slate-100 text-slate-600' };
+            return { label: 'Pending', color: 'bg-slate-50 text-slate-400' };
     }
-
-    if (video.viewGrowth > 0) return { label: 'Healthy', color: 'bg-emerald-100 text-emerald-700' };
-    return { label: 'Tracking', color: 'bg-blue-50 text-blue-600' };
 };
 
 const utcInputStringToDate = (dateString: string): Date => new Date(`${dateString}T00:00:00.000Z`);
