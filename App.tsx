@@ -199,11 +199,11 @@ const App: React.FC = () => {
         style={{ width: '100%' }}
       >
         <div 
-          className="flex-1 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] px-4 md:px-8 lg:px-12 mx-auto"
+          className="flex-1 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] px-4 md:px-8 lg:px-12"
           style={{ 
-            maxWidth: isInfluencerSidebarOpen ? 'calc(100vw - 680px)' : '1800px',
+            maxWidth: isInfluencerSidebarOpen ? 'calc(100% - 640px)' : '1800px',
             marginRight: isInfluencerSidebarOpen ? '640px' : 'auto',
-            marginLeft: 'auto'
+            marginLeft: isInfluencerSidebarOpen ? '0' : 'auto'
           }}
         >
           <Header />
