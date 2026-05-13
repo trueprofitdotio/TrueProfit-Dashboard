@@ -62,18 +62,16 @@ const extractYoutubeId = (url: string) => {
 const getVideoStatus = (video: VideoPerformanceData) => {
     const dbStatus = video.status;
 
-    switch (dbStatus) {
-        case 'Healthy':
-            return { label: 'Healthy', color: 'bg-emerald-100 text-emerald-700' };
-        case 'Unlisted/Removed':
-            return { label: 'Unlisted/Removed', color: 'bg-red-100 text-red-700' };
-        case 'Active':
-            return { label: 'Active', color: 'bg-blue-50 text-blue-600' };
-        default:
-            // Nếu chưa có status hoặc status lạ, hiện theo text trong DB
-            if (dbStatus) return { label: dbStatus, color: 'bg-slate-100 text-slate-600' };
-            return { label: 'Pending', color: 'bg-slate-50 text-slate-400' };
+    // Standardize mapping to 2 tags as requested
+    const isHealthy = ['Healthy', 'HEALTHY', 'Active', 'ACTIVE'].includes(dbStatus);
+    const isUnlisted = ['Unlisted/Removed', 'UNLISTED/REMOVED', 'POSSIBLY UNLISTED'].includes(dbStatus);
+
+    if (isUnlisted) {
+        return { label: 'UNLISTED/REMOVED', color: 'bg-red-100 text-red-700' };
     }
+
+    // Default to HEALTHY for all other cases (Active, Healthy, etc.)
+    return { label: 'HEALTHY', color: 'bg-emerald-100 text-emerald-700' };
 };
 
 const utcInputStringToDate = (dateString: string | null | undefined): Date | null => {
