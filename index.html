@@ -34,8 +34,10 @@
       input, select, button, .btn {
         border-radius: 5px !important;
       }
-      input:focus, select:focus, button:focus {
-        outline: none;
+      /* Eliminate browser-default focus outlines globally (e.g. for canvas, focused divs, etc. to prevent black border flash) */
+      *:focus, input:focus, select:focus, button:focus, canvas:focus, div:focus {
+        outline: none !important;
+        box-shadow: none !important;
       }
       .marquee-container {
         overflow: hidden;
@@ -54,6 +56,21 @@
       @keyframes marquee {
         0% { transform: translateX(0%); }
         100% { transform: translateX(-100%); }
+      }
+
+      /* Premium smooth transition animation for active tab content */
+      @keyframes fadeInSlideUp {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .tab-content-active {
+        animation: fadeInSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
     </style>
   <script type="importmap">

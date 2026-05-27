@@ -3,37 +3,12 @@ import PerformanceOverview from './components/PerformanceOverview';
 import ConversionDetails from './components/ConversionDetails';
 import InfluencerPerformance from './components/InfluencerPerformance';
 import KpiRunrate from './components/KpiRunrate';
-import { KpiTarget, VideoMetric } from './types';
+import { KpiTarget } from './types';
 import { supabaseClient } from './services/supabaseClient';
 import { fetchAffiliates, fetchClickReport } from './services/trackdeskService';
 import { getQuarterInfo, getQuarterDateRange } from './utils/timeHelper';
 
 type Tab = 'affiliate' | 'conversion' | 'influencer' | 'kpi';
-
-const calculateViewGrowth = (metrics: VideoMetric[], videoIds: string[], rangeStart: Date, rangeEnd: Date): number => {
-    const metricsByVideo = new Map<string, VideoMetric[]>();
-    metrics.forEach(m => {
-        if (!metricsByVideo.has(m.video_id)) metricsByVideo.set(m.video_id, []);
-        metricsByVideo.get(m.video_id)!.push(m);
-    });
-
-    let totalGrowth = 0;
-    for (const videoId of videoIds) {
-        const videoMetrics = metricsByVideo.get(videoId) || [];
-        const findViewCount = (date: Date): number => {
-            let latestMetricBeforeDate: VideoMetric | null = null;
-            for (const metric of videoMetrics) {
-                if (new Date(metric.recorded_at) <= date) latestMetricBeforeDate = metric;
-                else break;
-            }
-            return latestMetricBeforeDate?.view_count || 0;
-        };
-        const startViews = findViewCount(rangeStart);
-        const endViews = findViewCount(rangeEnd);
-        if(endViews > startViews) totalGrowth += endViews - startViews;
-    }
-    return totalGrowth;
-};
 
 // --- App Component ---
 
@@ -101,8 +76,14 @@ const App: React.FC = () => {
 
   const fetchKpiProgressData = useCallback(async () => {
       const { year, quarter } = getQuarterInfo();
-      const { affiliates: nonKolAffiliates } = await fetchAffiliates({ tierName: 'NonKOL' });
+      // Fetch all affiliates to partition KOL vs NonKOL in memory (Trackdesk API does not filter tierName reliably)
+      const { affiliates: allAffiliates } = await fetchAffiliates();
+      const nonKolAffiliates = allAffiliates.filter(aff => {
+          const rawTier = aff.tierName || 'NonKOL';
+          return !(rawTier === 'KOL (Old Offer)' || rawTier === 'KOL (New Offer)' || rawTier === 'Standard');
+      });
       const nonKolPublicIds = nonKolAffiliates.map(aff => aff.publicId);
+      const nonKolPublicIdsSet = new Set(nonKolPublicIds);
       
       const { data: kolVideos, error: kolVideosError } = await supabaseClient.from('videos').select('id').not('kol_id', 'is', null);
       if(kolVideosError) throw new Error(`Failed to fetch KOL videos: ${kolVideosError.message}`);
@@ -115,20 +96,40 @@ const App: React.FC = () => {
           const to = q === quarter ? now : end;
           const timeRange = { from: start.toISOString(), to: to.toISOString() };
           
-          const signupFilters = { registeredFrom: timeRange.from, registeredTo: timeRange.to, tierName: 'NonKOL' };
+          const signupFilters = { registeredFrom: timeRange.from, registeredTo: timeRange.to };
           const clickFilters = { sourceId: nonKolPublicIds };
 
-          const [signupsRes, clicksRes, videoMetricsRes] = await Promise.all([
-              nonKolPublicIds.length > 0 ? fetchAffiliates(signupFilters) : Promise.resolve({ affiliates: [] }),
+          const [signupsRes, clicksRes, videoPerformanceRes] = await Promise.all([
+              fetchAffiliates(signupFilters),
               nonKolPublicIds.length > 0 ? fetchClickReport(timeRange, clickFilters) : Promise.resolve({ rows: [] }),
-              kolVideoIds.length > 0 ? supabaseClient.from('video_metrics').select('video_id, view_count, recorded_at').in('video_id', kolVideoIds).lte('recorded_at', timeRange.to).order('recorded_at') : Promise.resolve({ data: [], error: null }),
+              // Use get_video_performance RPC to bypass Supabase 1000 row truncation limit
+              kolVideoIds.length > 0 ? supabaseClient.rpc('get_video_performance', {
+                  p_video_ids: kolVideoIds,
+                  p_start_date: timeRange.from,
+                  p_end_date: timeRange.to
+              }) : Promise.resolve({ data: [], error: null }),
           ]);
 
-          if(videoMetricsRes.error) throw new Error(`Failed to fetch video metrics: ${videoMetricsRes.error.message}`);
+          if(videoPerformanceRes.error) throw new Error(`Failed to fetch video metrics: ${videoPerformanceRes.error.message}`);
           
-          const clicks = clicksRes.rows.length;
-          const signups = signupsRes.affiliates.length;
-          const viewcount = calculateViewGrowth((videoMetricsRes.data as VideoMetric[]) || [], kolVideoIds, start, to);
+          // Perform in-memory filtering to ensure count accuracy
+          const clicks = clicksRes.rows.filter(click => {
+              const publicId = click.source?.publicId;
+              return publicId && nonKolPublicIdsSet.has(publicId);
+          }).length;
+
+          const signups = signupsRes.affiliates.filter(aff => {
+              const rawTier = aff.tierName || 'NonKOL';
+              return !(rawTier === 'KOL (Old Offer)' || rawTier === 'KOL (New Offer)' || rawTier === 'Standard');
+          }).length;
+
+          let viewcount = 0;
+          if (videoPerformanceRes.data) {
+              videoPerformanceRes.data.forEach((m: { start_views: number, end_views: number }) => {
+                  const growth = m.end_views - m.start_views;
+                  if (growth > 0) viewcount += growth;
+              });
+          }
           
           return { quarter: `q${q}`, progress: { signups, clicks, viewcount } };
       });
@@ -147,8 +148,6 @@ const App: React.FC = () => {
       return { currentQuarterProgress, pastQuartersProgress };
   }, []);
 
-
-  const [isInfluencerSidebarOpen, setIsInfluencerSidebarOpen] = useState(false);
 
   const loadKpiData = useCallback(async () => {
     setKpiLoading(true);
@@ -174,6 +173,7 @@ const App: React.FC = () => {
   }, [loadKpiData]);
 
 
+
   const renderContent = () => {
     switch (activeTab) {
       case 'affiliate':
@@ -181,10 +181,7 @@ const App: React.FC = () => {
       case 'conversion':
         return <ConversionDetails />;
       case 'influencer':
-        return <InfluencerPerformance 
-                 isSidebarOpen={isInfluencerSidebarOpen} 
-                 onSidebarToggle={setIsInfluencerSidebarOpen} 
-               />;
+        return <InfluencerPerformance />;
       case 'kpi':
         return <KpiRunrate loading={kpiLoading} error={kpiError} data={kpiData} onSave={loadKpiData} />;
       default:
@@ -193,23 +190,11 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-slate-50 text-slate-800 ${isInfluencerSidebarOpen ? 'overflow-x-hidden' : 'overflow-x-hidden'}`}>
-      <div 
-        className="transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex"
-        style={{ width: '100%' }}
-      >
-        <div 
-          className="flex-1 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] px-4 md:px-8 lg:px-12"
-          style={{ 
-            maxWidth: isInfluencerSidebarOpen ? 'calc(100% - 640px)' : '1800px',
-            marginRight: isInfluencerSidebarOpen ? '640px' : 'auto',
-            marginLeft: isInfluencerSidebarOpen ? '0' : 'auto'
-          }}
-        >
-          <Header />
-          <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
-          <main>{renderContent()}</main>
-        </div>
+    <div className="min-h-screen bg-slate-50 text-slate-800 overflow-x-hidden">
+      <div className="max-w-[1800px] mx-auto px-4 md:px-8 lg:px-12">
+        <Header />
+        <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        <main key={activeTab} className="tab-content-active">{renderContent()}</main>
       </div>
     </div>
   );
