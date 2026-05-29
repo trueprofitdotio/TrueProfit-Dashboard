@@ -135,9 +135,11 @@ export interface MerchantDetailsData {
   installedDate: string | null;
   lastPayoutDate: string | null;
   merchantLifetime: string | null;
+  merchantLifetimeDays: number | null;
   totalLifetimeRevenue: number;
   totalLifetimePayout: number;
   allConversions: ConversionReportRow[];
+  payoutCount: number;
 }
 
 
