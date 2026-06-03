@@ -63,7 +63,7 @@ const Filters: React.FC<FiltersProps> = ({
 
     return (
         <div className="card p-6 mb-8">
-            <div className="flex flex-col space-y-4">
+            <div className="flex flex-col space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Time Range</label>
@@ -75,48 +75,55 @@ const Filters: React.FC<FiltersProps> = ({
                     </div>
                 </div>
 
-                <div className="flex flex-col space-y-2 pt-2 border-t border-[#bfdbfe]/30">
-                    <label className="flex items-center space-x-2 cursor-pointer group w-fit">
-                        <div className="relative flex items-center">
-                            <input 
-                                type="checkbox" 
-                                checked={compareEnabled}
-                                onChange={(e) => setCompareEnabled(e.target.checked)}
-                                className="peer sr-only"
-                            />
-                            <div className="w-5 h-5 border-2 border-[#bfdbfe]/80 rounded peer-checked:border-[var(--accent-color)] peer-checked:bg-[var(--accent-color)] transition-all"></div>
-                            <svg className="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity left-[3px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">Compare with specific period</span>
-                    </label>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-4 border-t border-[#bfdbfe]/30">
+                    <div className="space-y-4">
+                        <label className="flex items-center space-x-2 cursor-pointer group w-fit">
+                            <div className="relative flex items-center">
+                                <input 
+                                    type="checkbox" 
+                                    checked={compareEnabled}
+                                    onChange={(e) => setCompareEnabled(e.target.checked)}
+                                    className="peer sr-only"
+                                />
+                                <div className="w-5 h-5 border-2 border-[#bfdbfe]/80 rounded peer-checked:border-[var(--accent-color)] peer-checked:bg-[var(--accent-color)] transition-all"></div>
+                                <svg className="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity left-[3px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">Compare with specific period</span>
+                        </label>
 
-                    {compareEnabled && (
-                        <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                            {[
-                                { id: 'previous_period', label: 'Previous Period' },
-                                { id: 'previous_month', label: 'Previous Month' },
-                                { id: 'previous_year', label: 'Previous Year' }
-                            ].map((type) => (
-                                <button
-                                    key={type.id}
-                                    onClick={() => setCompareType(type.id as CompareType)}
-                                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
-                                        compareType === type.id 
-                                        ? 'bg-[var(--accent-color)] text-white border-[var(--accent-color)] shadow-none' 
-                                        : 'bg-white text-slate-600 border-[#bfdbfe]/50 hover:bg-emerald-50/50'
-                                    }`}
-                                >
-                                    {type.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                        {compareEnabled && (
+                            <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                {[
+                                    { id: 'previous_period', label: 'Previous Period' },
+                                    { id: 'previous_month', label: 'Previous Month' },
+                                    { id: 'previous_year', label: 'Previous Year' }
+                                ].map((type) => (
+                                    <button
+                                        key={type.id}
+                                        onClick={() => setCompareType(type.id as CompareType)}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                                            compareType === type.id 
+                                            ? 'bg-[var(--accent-color)] text-white border-[var(--accent-color)] shadow-none' 
+                                            : 'bg-white text-slate-600 border-[#bfdbfe]/50 hover:bg-emerald-50/50'
+                                        }`}
+                                    >
+                                        {type.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    
+                    <button 
+                        onClick={onFetch} 
+                        disabled={loading} 
+                        className="px-8 py-2.5 text-white font-semibold rounded-full primary-btn bg-[var(--accent-color)] focus:outline-none disabled:bg-slate-400 disabled:cursor-not-allowed shadow-none h-[42px] border-none self-end md:self-auto"
+                    >
+                        {loading ? 'Loading...' : 'Get Metrics'}
+                    </button>
                 </div>
-                <button onClick={onFetch} disabled={loading} className="px-8 py-2.5 text-white font-semibold rounded-full primary-btn bg-[var(--accent-color)] focus:outline-none disabled:bg-slate-400 disabled:cursor-not-allowed shadow-none h-[42px] border-none">
-                    {loading ? 'Loading...' : 'Get Metrics'}
-                </button>
             </div>
         </div>
     );
@@ -292,7 +299,133 @@ const MerchantsDetails: React.FC = () => {
     const periodPayoutHeader = `Payout (${formatDisplayDateGmt7(dateRange.from)} - ${formatDisplayDateGmt7(dateRange.to)})`;
     const headers = [{key: 'customerId', label: 'Customer ID'}, {key: 'affiliateName', label: 'Affiliate'}, {key: 'revenueInPeriod', label: periodRevenueHeader}, {key: 'payoutInPeriod', label: periodPayoutHeader}, {key: 'status', label: 'Status'}, {key: 'installedDate', label: 'Installed Date'}, {key: 'lastPayoutDate', label: 'Last Payout Date'}, {key: 'merchantLifetime', label: 'Merchant Lifetime'}, {key: 'totalLifetimeRevenue', label: 'Lifetime Revenue'}, {key: 'totalLifetimePayout', label: 'Total Payout'}];
 
-    return ( <div className="space-y-8"> <Filters dateRange={dateRange} setDateRange={setDateRange} allAffiliates={allAffiliates} selectedAffiliates={selectedAffiliates} setSelectedAffiliates={setSelectedAffiliates} onFetch={handleGetMetrics} loading={loading} compareEnabled={compareEnabled} setCompareEnabled={setCompareEnabled} compareType={compareType} setCompareType={setCompareType} /> {loading && <Loader />} {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3" role="alert">{error}</div>} {!loading && !error && summaryData && ( <div className="card p-6"> <div className="mb-6"> <h3 className="text-lg font-semibold text-slate-800 mb-2">Overview</h3> <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center"> <div><p className="text-sm text-slate-500">Total Revenue (period)</p><p className="text-3xl font-bold text-blue-700">{formatCurrency(summaryData.current.totalRevenue)}</p><ChangeIndicatorText value={calculatePercentageChange(summaryData.current.totalRevenue, summaryData.previous.totalRevenue)} vsDateRangeText={prevPeriodVsText} /></div> <div><p className="text-sm text-slate-500">Total Payout (period)</p><p className="text-3xl font-bold text-orange-600">{formatCurrency(summaryData.current.totalPayout)}</p><ChangeIndicatorText value={calculatePercentageChange(summaryData.current.totalPayout, summaryData.previous.totalPayout)} vsDateRangeText={prevPeriodVsText} /></div> </div> </div> <hr className="my-6 border-[#bfdbfe]/30" /> <div className="overflow-x-auto"> <h3 className="text-lg font-semibold text-slate-800 mb-4">Merchants Details</h3> {sortedMerchantsData.length > 0 ? ( <table className="w-full text-sm text-left text-slate-500"><thead className="text-xs text-[#2236ba] font-bold uppercase"><tr>{headers.map(h => (<th scope="col" key={h.key} className="px-4 py-3 cursor-pointer hover:text-blue-800" onClick={() => requestSort(h.key as keyof MerchantDetailsData)}>{h.label} <span className="text-slate-400">{getSortIndicator(h.key as keyof MerchantDetailsData)}</span></th>))}</tr></thead><tbody>{sortedMerchantsData.map((row) => (<React.Fragment key={row.customerId}> <tr onClick={() => setExpandedCustomerId(expandedCustomerId === row.customerId ? null : row.customerId)} className="bg-white border-b border-[#bfdbfe]/30 hover:bg-[#F8F9FA]/50 cursor-pointer"> <td className="px-4 py-3 font-medium text-slate-900">{row.customerId}</td> <td className="px-4 py-3 text-slate-600">{row.affiliateName} <span className="text-slate-400 text-xs">({row.affiliateId})</span></td> <td className="px-4 py-3 text-right text-slate-800">{formatCurrency(row.revenueInPeriod)}</td><td className="px-4 py-3 text-right text-slate-800">{formatCurrency(row.payoutInPeriod)}</td> <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${row.status === 'Paying' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>{row.status}</span></td> <td className="px-4 py-3">{formatDisplayDateGmt7(row.installedDate)}</td><td className="px-4 py-3">{formatDisplayDateGmt7(row.lastPayoutDate)}</td> <td className="px-4 py-3">{row.merchantLifetime || 'N/A'}</td><td className="px-4 py-3 text-right text-emerald-600">{formatCurrency(row.totalLifetimeRevenue)}</td> <td className="px-4 py-3 text-right text-orange-600">{formatCurrency(row.totalLifetimePayout)}</td> </tr> {expandedCustomerId === row.customerId && (<tr><td colSpan={10} className="p-4 bg-[#F8F9FA]"><div className="max-h-60 overflow-y-auto pr-2"><h4 className="font-semibold text-slate-700 text-xs mb-2">Payout History</h4><table className="w-full text-xs"><thead className="text-slate-600"><tr><th className="px-4 py-2 text-left">Payout</th><th className="px-4 py-2 text-left">Time</th><th className="px-4 py-2 text-right">Revenue</th><th className="px-4 py-2 text-right">Payout</th></tr></thead><tbody>{row.allConversions.filter(c => c.conversionType.name.toLowerCase() === 'payout').sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((conv, index, arr) => { const payoutNum = arr.length - index; return (<tr key={conv.createdAt + index} className="border-b border-[#bfdbfe]/30 last:border-b-0"><td className="px-4 py-2">{`${payoutNum}${getOrdinalSuffix(payoutNum)} Payout`}</td><td className="px-4 py-2">{formatDisplayDateGmt7(conv.createdAt)}</td><td className="px-4 py-2 text-right">{formatCurrency(parseFloat(conv.revenue.value||'0'))}</td><td className="px-4 py-2 text-right">{formatCurrency(parseFloat(conv.cost.value||'0'))}</td></tr>);})}</tbody></table></div></td></tr>)} </React.Fragment>))}</tbody></table> ) : (<div className="text-center py-16"><p className="text-slate-500 mt-2">No merchant data found for the selected filters. Please adjust your criteria and try again.</p></div>)} </div> </div> )} </div> );
+    return (
+        <div className="space-y-8">
+            <Filters 
+                dateRange={dateRange} 
+                setDateRange={setDateRange} 
+                allAffiliates={allAffiliates} 
+                selectedAffiliates={selectedAffiliates} 
+                setSelectedAffiliates={setSelectedAffiliates} 
+                onFetch={handleGetMetrics} 
+                loading={loading} 
+                compareEnabled={compareEnabled} 
+                setCompareEnabled={setCompareEnabled} 
+                compareType={compareType} 
+                setCompareType={setCompareType} 
+            /> 
+            {loading && <Loader />} 
+            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg" role="alert">{error}</div>} 
+            {!loading && !error && summaryData && ( 
+                <div className="card p-6"> 
+                    <div className="mb-6"> 
+                        <h3 className="text-lg font-semibold text-slate-800 mb-2">Overview</h3> 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center"> 
+                            <div>
+                                <p className="text-sm text-slate-500">Total Revenue (period)</p>
+                                <p className="text-3xl font-bold text-blue-700">{formatCurrency(summaryData.current.totalRevenue)}</p>
+                                <ChangeIndicatorText value={calculatePercentageChange(summaryData.current.totalRevenue, summaryData.previous.totalRevenue)} vsDateRangeText={prevPeriodVsText} />
+                            </div> 
+                            <div>
+                                <p className="text-sm text-slate-500">Total Payout (period)</p>
+                                <p className="text-3xl font-bold text-orange-600">{formatCurrency(summaryData.current.totalPayout)}</p>
+                                <ChangeIndicatorText value={calculatePercentageChange(summaryData.current.totalPayout, summaryData.previous.totalPayout)} vsDateRangeText={prevPeriodVsText} />
+                            </div> 
+                        </div> 
+                    </div> 
+                    <hr className="my-6 border-[#bfdbfe]/30" /> 
+                    <div className="overflow-x-auto"> 
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Merchants Details</h3> 
+                        {sortedMerchantsData.length > 0 ? ( 
+                            <table className="w-full text-sm text-left text-slate-500">
+                                <thead className="text-xs text-[#2236ba] font-bold uppercase">
+                                    <tr>
+                                        {headers.map(h => (
+                                            <th 
+                                                scope="col" 
+                                                key={h.key} 
+                                                className="px-4 py-3 cursor-pointer hover:text-blue-800" 
+                                                onClick={() => requestSort(h.key as keyof MerchantDetailsData)}
+                                            >
+                                                {h.label} <span className="text-slate-400">{getSortIndicator(h.key as keyof MerchantDetailsData)}</span>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {sortedMerchantsData.map((row) => (
+                                        <React.Fragment key={row.customerId}>
+                                            <tr 
+                                                onClick={() => setExpandedCustomerId(expandedCustomerId === row.customerId ? null : row.customerId)} 
+                                                className="bg-white border-b border-[#bfdbfe]/30 hover:bg-[#F8F9FA]/50 cursor-pointer"
+                                            >
+                                                <td className="px-4 py-3 font-medium text-slate-900">{row.customerId}</td>
+                                                <td className="px-4 py-3 text-slate-600">
+                                                    {row.affiliateName} <span className="text-slate-400 text-xs">({row.affiliateId})</span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-slate-800">{formatCurrency(row.revenueInPeriod)}</td>
+                                                <td className="px-4 py-3 text-right text-slate-800">{formatCurrency(row.payoutInPeriod)}</td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${row.status === 'Paying' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                        {row.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">{formatDisplayDateGmt7(row.installedDate)}</td>
+                                                <td className="px-4 py-3">{formatDisplayDateGmt7(row.lastPayoutDate)}</td>
+                                                <td className="px-4 py-3">{row.merchantLifetime || 'N/A'}</td>
+                                                <td className="px-4 py-3 text-right text-emerald-600">{formatCurrency(row.totalLifetimeRevenue)}</td>
+                                                <td className="px-4 py-3 text-right text-orange-600">{formatCurrency(row.totalLifetimePayout)}</td>
+                                            </tr>
+                                            {expandedCustomerId === row.customerId && (
+                                                <tr>
+                                                    <td colSpan={10} className="p-4 bg-[#F8F9FA]">
+                                                        <div className="max-h-60 overflow-y-auto pr-2">
+                                                            <h4 className="font-semibold text-slate-700 text-xs mb-2">Payout History</h4>
+                                                            <table className="w-full text-xs">
+                                                                <thead className="text-slate-600">
+                                                                    <tr>
+                                                                        <th className="px-4 py-2 text-left">Payout</th>
+                                                                        <th className="px-4 py-2 text-left">Time</th>
+                                                                        <th className="px-4 py-2 text-right">Revenue</th>
+                                                                        <th className="px-4 py-2 text-right">Payout</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {row.allConversions
+                                                                        .filter(c => c.conversionType.name.toLowerCase() === 'payout')
+                                                                        .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                                                        .map((conv, index, arr) => {
+                                                                            const payoutNum = arr.length - index;
+                                                                            return (
+                                                                                <tr key={conv.createdAt + index} className="border-b border-[#bfdbfe]/30 last:border-b-0">
+                                                                                    <td className="px-4 py-2">{`${payoutNum}${getOrdinalSuffix(payoutNum)} Payout`}</td>
+                                                                                    <td className="px-4 py-2">{formatDisplayDateGmt7(conv.createdAt)}</td>
+                                                                                    <td className="px-4 py-2 text-right">{formatCurrency(parseFloat(conv.revenue.value||'0'))}</td>
+                                                                                    <td className="px-4 py-2 text-right">{formatCurrency(parseFloat(conv.cost.value||'0'))}</td>
+                                                                                </tr>
+                                                                            );
+                                                                        })
+                                                                    }
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </tbody>
+                            </table> 
+                        ) : (
+                            <div className="text-center py-16">
+                                <p className="text-slate-500 mt-2">No merchant data found for the selected filters. Please adjust your criteria and try again.</p>
+                            </div>
+                        )} 
+                    </div> 
+                </div> 
+            )} 
+        </div>
+    );
 };
 
 export default MerchantsDetails;
