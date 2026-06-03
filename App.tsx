@@ -18,9 +18,6 @@ const Header: React.FC = () => (
     <h1 className="text-4xl font-extrabold text-[#05339C] tracking-tight">
       TrueProfit Affiliate Dashboard
     </h1>
-    <p className="text-slate-500 text-sm mt-2 max-w-md mx-auto">
-      Monitor partner performance, track referred merchant payouts, and review quarterly progress.
-    </p>
   </header>
 );
 

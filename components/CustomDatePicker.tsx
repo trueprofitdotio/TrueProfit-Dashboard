@@ -92,7 +92,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange }) 
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full bg-white text-left p-2.5 border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px]"
+                className="w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"
                 aria-haspopup="true"
                 aria-expanded={isOpen}
             >
@@ -101,11 +101,11 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange }) 
             </button>
 
             {isOpen && (
-                <div className="absolute z-20 mt-1 w-full sm:w-80 bg-white shadow-lg border border-slate-200 p-4">
+                <div className="absolute z-20 mt-1 w-full sm:w-80 bg-white border border-[#bfdbfe]/50 p-4 rounded-2xl shadow-none">
                     <div className="flex justify-between items-center mb-4">
-                        <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-100" aria-label="Previous month">&lt;</button>
+                        <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-emerald-50 rounded-full w-8 h-8 flex items-center justify-center" aria-label="Previous month">&lt;</button>
                         <span className="font-semibold text-slate-800">{formatMonthYear(viewDate)}</span>
-                        <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-100" aria-label="Next month">&gt;</button>
+                        <button onClick={() => changeMonth(1)} className="p-2 hover:bg-emerald-50 rounded-full w-8 h-8 flex items-center justify-center" aria-label="Next month">&gt;</button>
                     </div>
                     <div className="grid grid-cols-7 gap-1 text-center text-sm">
                         {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => <div key={day} className="font-medium text-slate-500">{day}</div>)}
@@ -116,7 +116,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange }) 
                                     // FIX: The ref callback should not return a value. Using braces ensures an implicit return is avoided.
                                     ref={el => { dayButtonRefs.current[index] = el; }}
                                     onClick={() => handleSelectDate(date)}
-                                    className={`w-10 h-10 flex items-center justify-center transition-colors duration-150
+                                    className={`w-10 h-10 flex items-center justify-center transition-colors duration-150 rounded-full
                                         ${isSameDay(date, value) ? 'bg-[var(--accent-color)] text-white font-bold' : ''}
                                         ${!isSameDay(date, value) ? 'hover:bg-emerald-50' : ''}
                                         ${isSameDay(date, new Date()) && !isSameDay(date, value) ? 'text-[var(--accent-color)] font-semibold' : ''}

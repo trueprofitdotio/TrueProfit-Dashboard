@@ -130,11 +130,11 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, onChange, onPr
     const renderMonth = (grid: (Date|null)[], monthTitle: string) => (
         <div className="px-4">
             <div className="flex justify-between items-center mb-4">
-                 <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-100 rounded-full" aria-label="Previous month">
+                 <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-emerald-50 rounded-full" aria-label="Previous month">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                 </button>
                 <div className="text-center font-semibold text-slate-800">{monthTitle}</div>
-                <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-100 rounded-full" aria-label="Next month">
+                <button onClick={() => changeMonth(1)} className="p-2 hover:bg-emerald-50 rounded-full" aria-label="Next month">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                 </button>
             </div>
@@ -155,7 +155,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, onChange, onPr
 
     return (
         <div className="relative w-full" ref={containerRef}>
-            <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full bg-white text-left p-2.5 border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5">
+            <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5">
                 <span className="text-slate-800">{formattedRange}</span>
                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             </button>
@@ -164,10 +164,10 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, onChange, onPr
                 <div className="absolute z-20 mt-1 bg-white border border-[#bfdbfe]/50 p-4 rounded-2xl overflow-hidden" onMouseLeave={() => setHoverDate(null)}>
                     <div className="flex">
                         {renderMonth(leftMonthGrid, formatMonthYear(viewDate))}
-                        <div className="border-l border-slate-200 mx-2"></div>
+                        <div className="border-l border-[#bfdbfe]/30 mx-2"></div>
                         {renderMonth(rightMonthGrid, formatMonthYear(nextMonthDate))}
                     </div>
-                    <div className="border-t border-slate-200 mt-4 pt-4">
+                    <div className="border-t border-[#bfdbfe]/30 mt-4 pt-4">
                         <div className="grid grid-cols-5 gap-4">
                             {presetColumns.map((col, colIndex) => (
                                 <div key={colIndex} className="flex flex-col space-y-2">
