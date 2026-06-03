@@ -105,52 +105,83 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
     const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white card p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+            <div className="bg-white card p-6 w-full max-w-2xl max-h-[90vh] flex flex-col border border-[#bfdbfe]/50">
                 <h2 className="text-xl font-bold text-slate-800 mb-4">Set Quarterly KPIs</h2>
                 
                 <div className="mb-6">
-                    <label htmlFor="year" className="block text-sm font-medium text-slate-700">Year</label>
-                    <select id="year" value={year} onChange={e => setYear(parseInt(e.target.value))} className="mt-1 block w-full p-2 text-base bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] sm:text-sm">
-                        {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
+                    <label htmlFor="year" className="block text-sm font-semibold text-slate-700 mb-1.5">Year</label>
+                    <div className="relative">
+                        <select id="year" value={year} onChange={e => setYear(parseInt(e.target.value))} className="w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] h-[42px] rounded-full px-5 appearance-none text-slate-800 text-sm">
+                            {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex-grow overflow-y-auto pr-2 space-y-6">
-                    <div className="p-4 border border-slate-200 rounded-md">
-                         <h3 className="font-semibold text-slate-700 mb-2">NonKOL Signups</h3>
+                    <div className="p-5 border border-[#bfdbfe]/50 rounded-2xl bg-[#F8F9FA]/50">
+                         <h3 className="font-bold text-[#05339C] text-sm mb-3">NonKOL Signups</h3>
                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <input type="number" placeholder="Q1" value={signupTargets.q1 || ''} onChange={e => handleInputChange('signups', 'q1', e.target.value)} className="w-full p-2 border border-slate-300" />
-                            <input type="number" placeholder="Q2" value={signupTargets.q2 || ''} onChange={e => handleInputChange('signups', 'q2', e.target.value)} className="w-full p-2 border border-slate-300" />
-                            <input type="number" placeholder="Q3" value={signupTargets.q3 || ''} onChange={e => handleInputChange('signups', 'q3', e.target.value)} className="w-full p-2 border border-slate-300" />
-                            <input type="number" placeholder="Q4" value={signupTargets.q4 || ''} onChange={e => handleInputChange('signups', 'q4', e.target.value)} className="w-full p-2 border border-slate-300" />
+                            {(['q1', 'q2', 'q3', 'q4'] as const).map((q) => (
+                                <div key={q} className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase">{q}</span>
+                                    <input 
+                                        type="number" 
+                                        placeholder="0" 
+                                        value={signupTargets[q] || ''} 
+                                        onChange={e => handleInputChange('signups', q, e.target.value)} 
+                                        className="w-full pl-11 pr-4 py-2 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] rounded-full text-slate-800 text-sm h-[40px]" 
+                                    />
+                                </div>
+                            ))}
                          </div>
                     </div>
-                     <div className="p-4 border border-slate-200 rounded-md">
-                         <h3 className="font-semibold text-slate-700 mb-2">NonKOL Clicks</h3>
+                    
+                    <div className="p-5 border border-[#bfdbfe]/50 rounded-2xl bg-[#F8F9FA]/50">
+                         <h3 className="font-bold text-[#05339C] text-sm mb-3">NonKOL Clicks</h3>
                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <input type="number" placeholder="Q1" value={clickTargets.q1 || ''} onChange={e => handleInputChange('clicks', 'q1', e.target.value)} className="w-full p-2 border border-slate-300" />
-                            <input type="number" placeholder="Q2" value={clickTargets.q2 || ''} onChange={e => handleInputChange('clicks', 'q2', e.target.value)} className="w-full p-2 border border-slate-300" />
-                            <input type="number" placeholder="Q3" value={clickTargets.q3 || ''} onChange={e => handleInputChange('clicks', 'q3', e.target.value)} className="w-full p-2 border border-slate-300" />
-                            <input type="number" placeholder="Q4" value={clickTargets.q4 || ''} onChange={e => handleInputChange('clicks', 'q4', e.target.value)} className="w-full p-2 border border-slate-300" />
+                            {(['q1', 'q2', 'q3', 'q4'] as const).map((q) => (
+                                <div key={q} className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase">{q}</span>
+                                    <input 
+                                        type="number" 
+                                        placeholder="0" 
+                                        value={clickTargets[q] || ''} 
+                                        onChange={e => handleInputChange('clicks', q, e.target.value)} 
+                                        className="w-full pl-11 pr-4 py-2 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] rounded-full text-slate-800 text-sm h-[40px]" 
+                                    />
+                                </div>
+                            ))}
                          </div>
                     </div>
-                     <div className="p-4 border border-slate-200 rounded-md">
-                         <h3 className="font-semibold text-slate-700 mb-2">KOL Viewcount</h3>
+
+                    <div className="p-5 border border-[#bfdbfe]/50 rounded-2xl bg-[#F8F9FA]/50">
+                         <h3 className="font-bold text-[#05339C] text-sm mb-3">KOL Viewcount</h3>
                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <input type="number" placeholder="Q1" value={viewcountTargets.q1 || ''} onChange={e => handleInputChange('viewcount', 'q1', e.target.value)} className="w-full p-2 border border-slate-300" />
-                            <input type="number" placeholder="Q2" value={viewcountTargets.q2 || ''} onChange={e => handleInputChange('viewcount', 'q2', e.target.value)} className="w-full p-2 border border-slate-300" />
-                            <input type="number" placeholder="Q3" value={viewcountTargets.q3 || ''} onChange={e => handleInputChange('viewcount', 'q3', e.target.value)} className="w-full p-2 border border-slate-300" />
-                            <input type="number" placeholder="Q4" value={viewcountTargets.q4 || ''} onChange={e => handleInputChange('viewcount', 'q4', e.target.value)} className="w-full p-2 border border-slate-300" />
+                            {(['q1', 'q2', 'q3', 'q4'] as const).map((q) => (
+                                <div key={q} className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase">{q}</span>
+                                    <input 
+                                        type="number" 
+                                        placeholder="0" 
+                                        value={viewcountTargets[q] || ''} 
+                                        onChange={e => handleInputChange('viewcount', q, e.target.value)} 
+                                        className="w-full pl-11 pr-4 py-2 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] rounded-full text-slate-800 text-sm h-[40px]" 
+                                    />
+                                </div>
+                            ))}
                          </div>
                     </div>
                 </div>
                 
                 {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
 
-                <div className="mt-6 pt-4 border-t border-slate-200 flex justify-end space-x-4">
-                    <button onClick={onClose} disabled={loading} className="px-4 py-2 bg-white text-slate-800 border border-slate-300 disabled:opacity-50">Cancel</button>
-                    <button onClick={handleSave} disabled={loading} className="px-4 py-2 bg-[var(--accent-color)] text-white primary-btn disabled:bg-slate-400">
+                <div className="mt-6 pt-4 border-t border-[#bfdbfe]/50 flex justify-end space-x-3">
+                    <button onClick={onClose} disabled={loading} className="px-6 py-2 bg-white text-slate-600 border border-[#bfdbfe]/50 rounded-full hover:bg-slate-50 transition-all duration-200 text-sm font-semibold disabled:opacity-50">Cancel</button>
+                    <button onClick={handleSave} disabled={loading} className="px-6 py-2 bg-[var(--accent-color)] text-white rounded-full hover:bg-[#1ea072] transition-all duration-200 text-sm font-semibold disabled:bg-slate-400">
                         {loading ? 'Saving...' : 'Save Targets'}
                     </button>
                 </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 
 export const API_KEY = '2RG6k3b7b96qXzeSty7SbEkQKMgASchi';
-export const API_BASE_URL = 'https://trueprofit.trackdesk.com';
+export const API_BASE_URL = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://trueprofit.trackdesk.com';
 
 export const PALETTE = {
   signups: '#657C6A',

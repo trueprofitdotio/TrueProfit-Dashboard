@@ -37,9 +37,16 @@ export const toGmt7EndOfDay = (date: Date | string | number): Date => {
  * @param date - Date to format
  * @param options - Intl.DateTimeFormatOptions
  */
-export const formatDisplayDateGmt7 = (date: Date | string | number | null): string => {
+export const formatDisplayDateGmt7 = (date: Date | string | number | null, customOptions?: Intl.DateTimeFormatOptions): string => {
     if (!date) return 'N/A';
     const d = new Date(date);
+    if (customOptions) {
+        const options: Intl.DateTimeFormatOptions = {
+            timeZone: TIMEZONE_GMT7,
+            ...customOptions
+        };
+        return new Intl.DateTimeFormat('en-US', options).format(d);
+    }
     const options: Intl.DateTimeFormatOptions = {
         year: 'numeric',
         month: '2-digit',

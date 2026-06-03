@@ -107,7 +107,7 @@ const KpiRunrate: React.FC<KpiRunrateProps> = ({ loading, error, data, onSave })
         <div className="space-y-8">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-slate-800">Q{quarter} {year} KPI Runrate</h2>
-                <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-[var(--accent-color)] text-white font-semibold primary-btn">Setup KPIs</button>
+                <button onClick={() => setIsModalOpen(true)} className="px-6 py-2 bg-[var(--accent-color)] text-white rounded-full hover:bg-[#1ea072] transition-all duration-200 text-sm font-semibold">Setup KPIs</button>
             </div>
              {loading ? <Loader /> : error ? <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md">{error}</div> : (
                 <>

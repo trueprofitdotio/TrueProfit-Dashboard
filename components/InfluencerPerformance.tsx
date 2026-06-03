@@ -315,22 +315,27 @@ const Filters: React.FC<FiltersProps> = ({
                     <DateRangePicker value={dateRange} onChange={handleRangeChange} onPresetSelect={handlePresetSelect} />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">KOL Name</label>
-                    <select
-                        value={selectedKolId}
-                        onChange={(e) => setSelectedKolId(e.target.value)}
-                        className="w-full h-[42px] px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition-all"
-                    >
-                        <option value="">All KOLs</option>
-                        {kolsList.map((kol) => (
-                            <option key={kol.id} value={kol.id}>
-                                {kol.name}
-                            </option>
-                        ))}
-                    </select>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">KOL Name</label>
+                    <div className="relative">
+                        <select
+                            value={selectedKolId}
+                            onChange={(e) => setSelectedKolId(e.target.value)}
+                            className="w-full h-[42px] px-5 py-2 bg-white border border-[#bfdbfe]/50 rounded-full text-sm font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] transition-all appearance-none"
+                        >
+                            <option value="">All KOLs</option>
+                            {kolsList.map((kol) => (
+                                <option key={kol.id} value={kol.id}>
+                                    {kol.name}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                    </div>
                 </div>
                 <div className="self-end">
-                     <button onClick={onFetch} disabled={loading} className="w-full h-[42px] px-8 py-2.5 text-white font-semibold shadow-sm primary-btn bg-[var(--accent-color)] focus:outline-none focus:ring-1 focus:ring-offset-2 focus:ring-[var(--accent-color)] disabled:bg-slate-400 disabled:cursor-not-allowed">
+                     <button onClick={onFetch} disabled={loading} className="w-full h-[42px] px-8 py-2 text-white font-semibold rounded-full hover:bg-[#1ea072] transition-all duration-200 bg-[var(--accent-color)] focus:outline-none focus:ring-1 focus:ring-offset-2 focus:ring-[var(--accent-color)] disabled:bg-slate-400 disabled:cursor-not-allowed text-sm">
                         {loading ? 'Loading...' : 'Get Performance'}
                     </button>
                 </div>
@@ -365,8 +370,8 @@ const Filters: React.FC<FiltersProps> = ({
                                 onClick={() => setCompareType(type.id as CompareType)}
                                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
                                     compareType === type.id 
-                                    ? 'bg-[var(--accent-color)] text-white border-[var(--accent-color)] shadow-sm' 
-                                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                    ? 'bg-[var(--accent-color)] text-white border-[var(--accent-color)]' 
+                                    : 'bg-white text-slate-600 border-[#bfdbfe]/50 hover:bg-slate-50'
                                 }`}
                             >
                                 {type.label}
@@ -613,9 +618,9 @@ const DetailedPerformanceModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl w-full max-w-[1600px] max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-[#fcfcfc] rounded-2xl w-full max-w-[1600px] max-h-[90vh] overflow-hidden flex flex-col border border-[#bfdbfe]/50">
+                <div className="p-6 border-b border-[#bfdbfe]/30 flex justify-between items-center bg-slate-50/50">
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
                         <p className="text-slate-500 text-sm">Detailed view growth from release date</p>
@@ -1001,7 +1006,7 @@ const InfluencerPerformance: React.FC = () => {
     }, [filteredVideos]);
 
     return (
-        <div className="relative min-h-screen bg-slate-50/50">
+        <div className="relative min-h-screen bg-[#F8F9FA]">
             {/* Main Content Wrapper - Motion is controlled by App.tsx */}
             <div className="w-full">
                 <div className="p-8 space-y-8 max-w-full mx-auto">
@@ -1022,23 +1027,23 @@ const InfluencerPerformance: React.FC = () => {
                     {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl shadow-sm animate-in fade-in duration-300" role="alert">{error}</div>}
                     {!loading && !error && overviewStats && (
                         <>
-                            <div className="card p-8 space-y-8 shadow-sm border-slate-100">
+                            <div className="card p-8 space-y-8">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-xl font-bold text-slate-800">Performance Overview</h3>
-                                    <div className="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-bold text-slate-500 uppercase tracking-widest">Live Metrics</div>
+                                    <div className="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-bold text-slate-500 uppercase tracking-widest border border-[#bfdbfe]/30">Live Metrics</div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
+                                    <div className="p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100/30">
                                         <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">Total View Growth</p>
                                         <p className="text-4xl font-black text-emerald-700 mb-1">{formatNumber(overviewStats.current.totalGrowth)}</p>
                                         <ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.totalGrowth, overviewStats.previous.totalGrowth)} vsDateRange={overviewStats.vsDateRange} />
                                     </div>
-                                    <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                    <div className="p-6 bg-white rounded-2xl border border-[#bfdbfe]/50">
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">New Video Views</p>
                                         <p className="text-4xl font-black text-slate-800 mb-1">{formatNumber(overviewStats.current.newVideoGrowth)}</p>
                                         <ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.newVideoGrowth, overviewStats.previous.newVideoGrowth)} vsDateRange={overviewStats.vsDateRange} />
                                     </div>
-                                    <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                    <div className="p-6 bg-white rounded-2xl border border-[#bfdbfe]/50">
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Old Video Views</p>
                                         <p className="text-4xl font-black text-slate-800 mb-1">{formatNumber(overviewStats.current.oldVideoGrowth)}</p>
                                         <ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.oldVideoGrowth, overviewStats.previous.oldVideoGrowth)} vsDateRange={overviewStats.vsDateRange} />
@@ -1080,8 +1085,8 @@ const InfluencerPerformance: React.FC = () => {
                         </>
                     )}
                     {!loading && !error && !overviewStats && (
-                        <div className="text-center py-24 card border-dashed border-2 border-slate-200 bg-white/50">
-                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="text-center py-24 card border-dashed border border-[#bfdbfe]/80 bg-white/50">
+                            <div className="w-16 h-16 bg-[#F8F9FA] border border-[#bfdbfe]/40 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <ArrowUpDown className="text-slate-400" size={32} />
                             </div>
                             <h3 className="text-lg font-bold text-slate-700">No Data Selected</h3>
@@ -1101,10 +1106,10 @@ const InfluencerPerformance: React.FC = () => {
                     />
 
                     {/* Sidebar panel */}
-                    <div className={`fixed top-0 right-0 h-full w-[520px] bg-white z-[100] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                    <div className={`fixed top-0 right-0 h-full w-[520px] bg-white z-[100] flex flex-col border-l border-[#bfdbfe]/50 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
 
                         {/* ── Header ── */}
-                        <div className="flex-none bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-5">
+                        <div className="flex-none bg-slate-900 px-6 py-5">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Video Trendline</p>
@@ -1135,7 +1140,7 @@ const InfluencerPerformance: React.FC = () => {
 
                         {/* ── View Growth Badge ── */}
                         {selectedVideo && (
-                            <div className="flex-none px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                            <div className="flex-none px-6 py-3 border-b border-[#bfdbfe]/30 bg-slate-50/50 flex items-center justify-between">
                                 <span className="text-xs text-slate-500 font-medium">View Growth (selected period)</span>
                                 <span className="text-sm font-black text-emerald-600">+{formatNumber(selectedVideo.viewGrowth)}</span>
                             </div>
@@ -1171,10 +1176,8 @@ const InfluencerPerformance: React.FC = () => {
                                         <p className="text-xs text-slate-400">Could not load trendline data.</p>
                                     </div>
                                 )}
-                            </div>
-
-                            {/* Divider */}
-                            <div className="mx-6 my-3 border-t border-slate-100" />
+                                                    {/* Divider */}
+                            <div className="mx-6 my-3 border-t border-[#bfdbfe]/30" />
 
                             {/* Video details */}
                             {selectedVideo && (
@@ -1182,22 +1185,22 @@ const InfluencerPerformance: React.FC = () => {
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Video Details</p>
 
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+                                        <div className="bg-[#F8F9FA] rounded-xl p-3.5 border border-[#bfdbfe]/40">
                                             <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Platform</p>
                                             {(() => {
                                                 const platform = getPlatformTag(selectedVideo.video_url);
                                                 return <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${platform.color}`}>{platform.label}</span>;
                                             })()}
                                         </div>
-                                        <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+                                        <div className="bg-[#F8F9FA] rounded-xl p-3.5 border border-[#bfdbfe]/40">
                                             <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">KOL</p>
                                             <p className="text-sm font-bold text-slate-800 truncate">{selectedVideo.kols?.name || '—'}</p>
                                         </div>
-                                        <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+                                        <div className="bg-[#F8F9FA] rounded-xl p-3.5 border border-[#bfdbfe]/40">
                                             <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Released</p>
                                             <p className="text-sm font-bold text-slate-800">{formatDisplayDateGmt7(utcInputStringToDate(selectedVideo.released_date))}</p>
                                         </div>
-                                        <div className="bg-emerald-50 rounded-xl p-3.5 border border-emerald-100">
+                                        <div className="bg-emerald-50 rounded-xl p-3.5 border border-emerald-100/50">
                                             <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider mb-1">View Growth</p>
                                             <p className="text-sm font-black text-emerald-700">+{formatNumber(selectedVideo.viewGrowth)}</p>
                                         </div>
@@ -1208,7 +1211,7 @@ const InfluencerPerformance: React.FC = () => {
                                             href={selectedVideo.video_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex w-full items-center justify-center gap-2 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition-all shadow-sm"
+                                            className="flex w-full items-center justify-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-full transition-all border border-[#bfdbfe]/30"
                                         >
                                             Open Video ↗
                                         </a>
@@ -1217,7 +1220,8 @@ const InfluencerPerformance: React.FC = () => {
                             )}
                         </div>
                     </div>
-                </>
+                </div>
+            </>
             , document.body) }
         </div>
     );

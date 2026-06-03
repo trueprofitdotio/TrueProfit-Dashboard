@@ -13,10 +13,14 @@ type Tab = 'affiliate' | 'conversion' | 'influencer' | 'kpi';
 // --- App Component ---
 
 const Header: React.FC = () => (
-  <header className="text-center py-8">
-    <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-color)] to-teal-500">
+  <header className="text-center py-10">
+    <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest block mb-2">Internal Workspace</span>
+    <h1 className="text-4xl font-extrabold text-[#05339C] tracking-tight">
       TrueProfit Affiliate Dashboard
     </h1>
+    <p className="text-slate-500 text-sm mt-2 max-w-md mx-auto">
+      Monitor partner performance, track referred merchant payouts, and review quarterly progress.
+    </p>
   </header>
 );
 
@@ -30,17 +34,17 @@ const Tabs: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ 
 
   return (
     <nav className="mb-12">
-      <div className="flex justify-center gap-2">
+      <div className="flex justify-center gap-3">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => !tab.disabled && setActiveTab(tab.id)}
             disabled={tab.disabled}
-            className={`px-8 py-2.5 text-sm font-bold transition-all duration-300 ease-in-out rounded-full focus:outline-none
+            className={`px-6 py-2 text-sm font-semibold transition-all duration-200 rounded-full focus:outline-none border
               ${
                 activeTab === tab.id
-                  ? 'bg-[#BFFEDF] text-[#10714F] shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                  ? 'bg-[#e8f8f2] text-[#10714F] border-[#23C48C]/40'
+                  : 'bg-white text-slate-500 border-[#bfdbfe]/50 hover:text-slate-800 hover:bg-slate-50'
               }
               ${tab.disabled ? 'cursor-not-allowed opacity-50' : ''}
             `}
@@ -190,7 +194,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8F9FA] text-slate-800 overflow-x-hidden">
       <div className="max-w-[1800px] mx-auto px-4 md:px-8 lg:px-12">
         <Header />
         <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
