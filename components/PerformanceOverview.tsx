@@ -559,7 +559,7 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                         stack: 'clicks_installs',
                         itemStyle: { 
                             color: PALETTE.installs,
-                            borderColor: '#fecdd3',
+                            borderColor: '#be123c',
                             borderWidth: 1
                         }, 
                         data: sortedDailyData.map(d => d.installs) 
@@ -580,7 +580,7 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                                     { offset: 1, color: hexToRgba(PALETTE.clicks, 0.6) }
                                 ]
                             },
-                            borderColor: '#a7f3d0',
+                            borderColor: '#10714f',
                             borderWidth: 1
                         }, 
                         data: sortedDailyData.map(d => d.clicks) 
@@ -689,10 +689,18 @@ const MerchantsDetailsSection: React.FC<{ metrics: any; vsDateRangeText: string 
     const pctLeThree = Math.round((metrics.payoutLeThreeCount / totalPaying) * 100);
     const pctGtThree = Math.round((metrics.payoutGtThreeCount / totalPaying) * 100);
 
+    const toSentenceCase = (str: string) => {
+        if (!str) return '';
+        const lower = str.toLowerCase();
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+    };
+
     const MetricBlock = ({ title, value, unit = '', changeText, description, colorClass = 'text-slate-800', hoverTooltip }: any) => (
         <div className="bg-white p-6 rounded-xl border border-[#bfdbfe]/50 flex flex-col justify-between transition-all duration-300">
             <div>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">{title}</span>
+                <span style={{ fontSize: '14px', color: 'rgb(30, 41, 59)', fontWeight: 600, textTransform: 'none' }} className="block mb-1">
+                    {toSentenceCase(title)}
+                </span>
                 <h4 title={hoverTooltip} className={`text-4xl font-extrabold ${colorClass} tracking-tight my-2 ${hoverTooltip ? 'cursor-help border-b border-dashed border-[#bfdbfe]/50 inline-block pb-0.5' : ''}`}>
                     {typeof value === 'number' ? formatNumber(value) : value} {unit && <span className="text-lg font-semibold text-slate-500 font-normal">{unit}</span>}
                 </h4>
@@ -701,8 +709,8 @@ const MerchantsDetailsSection: React.FC<{ metrics: any; vsDateRangeText: string 
                 </div>
             </div>
             {description && (
-                <div className="mt-4 pt-4 border-t border-[#bfdbfe]/30 text-xs text-slate-400 flex items-start">
-                    <svg className="w-4 h-4 mr-1.5 text-slate-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div style={{ color: 'rgb(148, 163, 184)' }} className="mt-4 pt-4 border-t border-[#bfdbfe]/30 text-xs flex items-start">
+                    <svg style={{ color: 'rgb(148, 163, 184)' }} className="w-4 h-4 mr-1.5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span>{description}</span>
@@ -712,11 +720,11 @@ const MerchantsDetailsSection: React.FC<{ metrics: any; vsDateRangeText: string 
     );
 
     const renderChange = (change: number) => {
-        if (change === 0) return <span className="text-sm text-slate-400">— {vsDateRangeText}</span>;
+        if (change === 0) return <span style={{ color: 'rgb(148, 163, 184)' }} className="text-sm">— {vsDateRangeText}</span>;
         return (
             <span className={`text-sm font-semibold flex items-center ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {change > 0 ? '+' : ''}{change.toFixed(1)}% 
-                <span className="text-slate-400 font-normal ml-1.5">{vsDateRangeText}</span>
+                <span style={{ color: 'rgb(148, 163, 184)' }} className="font-normal ml-1.5">{vsDateRangeText}</span>
             </span>
         );
     };
@@ -771,7 +779,7 @@ const MerchantsDetailsSection: React.FC<{ metrics: any; vsDateRangeText: string 
                     value={metrics.avgLifetime.toFixed(1)} 
                     unit="days"
                     colorClass="text-blue-700"
-                    changeText={<span className="text-sm text-slate-400">— active average lifetime</span>} 
+                    changeText={<span style={{ color: 'rgb(148, 163, 184)' }} className="text-sm">— active average lifetime</span>} 
                     description="Average active days between merchant install and latest payout." 
                 />
             </div>
@@ -845,16 +853,16 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                 yAxis: [
                     {
                         type: 'value',
-                        name: 'Revenue',
+                        name: 'Clicks / Installs',
                         axisLabel: {
-                            formatter: '${value}'
+                            formatter: '{value}'
                         }
                     },
                     {
                         type: 'value',
-                        name: 'Clicks / Installs',
+                        name: 'Revenue',
                         axisLabel: {
-                            formatter: '{value}'
+                            formatter: '${value}'
                         }
                     }
                 ],
@@ -866,18 +874,18 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                         areaStyle: {
                             opacity: 0.15
                         },
-                        yAxisIndex: 0,
+                        yAxisIndex: 1,
                         itemStyle: { color: PALETTE.revenue },
                         data: top10.map(d => d.revenue)
                     },
                     {
                         name: 'Installs',
                         type: 'bar',
-                        yAxisIndex: 1,
+                        yAxisIndex: 0,
                         stack: 'clicks_installs',
                         itemStyle: { 
                             color: PALETTE.installs,
-                            borderColor: '#fecdd3',
+                            borderColor: '#be123c',
                             borderWidth: 1
                         },
                         data: top10.map(d => d.installs)
@@ -885,7 +893,7 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                     {
                         name: 'Clicks',
                         type: 'bar',
-                        yAxisIndex: 1,
+                        yAxisIndex: 0,
                         stack: 'clicks_installs',
                         itemStyle: {
                             color: {
@@ -899,7 +907,7 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                                     { offset: 1, color: hexToRgba(PALETTE.clicks, 0.6) }
                                 ]
                             },
-                            borderColor: '#a7f3d0',
+                            borderColor: '#10714f',
                             borderWidth: 1
                         },
                         data: top10.map(d => d.clicks)

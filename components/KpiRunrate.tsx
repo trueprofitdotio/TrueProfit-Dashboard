@@ -5,7 +5,7 @@ import { KpiData } from '../App';
 import { getQuarterInfo } from '../utils/timeHelper';
 
 declare const echarts: {
-    init: (el: HTMLElement) => {
+    init: (el: HTMLElement, theme?: string | object | null, opts?: { renderer?: 'canvas' | 'svg' }) => {
         setOption: (option: object) => void;
         resize: () => void;
         dispose: () => void;
@@ -25,23 +25,82 @@ const getProgressColor = (progress: number) => {
     if (p <= 25) return '#DC143C'; if (p <= 79) return '#FA812F'; return '#23C48C';
 };
 
+const getProgressGradient = (progress: number) => {
+    const p = progress * 100;
+    let topColor = '#3ce1a5';
+    let bottomColor = '#1aa473';
+    
+    if (p <= 25) {
+        topColor = '#ff4d6e';
+        bottomColor = '#b3092b';
+    } else if (p <= 79) {
+        topColor = '#ffa05e';
+        bottomColor = '#e06410';
+    }
+    
+    return {
+        type: 'linear',
+        x: 0,
+        y: 0,
+        x2: 0,
+        y2: 1,
+        colorStops: [
+            { offset: 0, color: topColor },
+            { offset: 1, color: bottomColor }
+        ]
+    };
+};
+
 interface KpiGaugeProps { title: React.ReactNode; progress: number; predicted?: number; kpi: number; achieved: number; isSmall?: boolean; }
 const KpiGauge: React.FC<KpiGaugeProps> = ({ title, progress, predicted, kpi, achieved, isSmall = false }) => {
-    const chartRef = useRef<HTMLDivElement>(null); const color = getProgressColor(progress);
+    const chartRef = useRef<HTMLDivElement>(null);
+    const color = getProgressColor(progress);
     useEffect(() => {
         if (chartRef.current) {
-            const chart = echarts.init(chartRef.current);
-            const option = { series: [{ type: 'liquidFill', data: [Math.min(progress, 1)], radius: '80%', color: [color], backgroundStyle: { color: '#F0FDF4' }, outline: { show: false }, label: { formatter: `${(progress * 100).toFixed(1)}%`, fontSize: isSmall ? 24 : 40, fontWeight: 'bold', color: '#004D40' } }] };
-            chart.setOption(option); return () => chart.dispose();
+            const chart = echarts.init(chartRef.current, null, { renderer: 'canvas' });
+            const gradient = getProgressGradient(progress);
+            const option = {
+                series: [{
+                    type: 'liquidFill',
+                    data: [Math.min(progress, 1)],
+                    radius: '80%',
+                    color: [gradient],
+                    backgroundStyle: {
+                        color: '#F0FDF4',
+                        shadowBlur: 0
+                    },
+                    itemStyle: {
+                        shadowBlur: 0
+                    },
+                    outline: { show: false },
+                    label: {
+                        formatter: `${(progress * 100).toFixed(1)}%`,
+                        fontSize: isSmall ? 24 : 40,
+                        fontWeight: 'bold',
+                        color: '#004D40'
+                    }
+                }]
+            };
+            chart.setOption(option);
+            
+            const handleResize = () => {
+                chart.resize();
+            };
+            window.addEventListener('resize', handleResize);
+            
+            return () => {
+                window.removeEventListener('resize', handleResize);
+                chart.dispose();
+            };
         }
-    }, [progress, color, isSmall]);
+    }, [progress, isSmall]);
 
     return (
-        <div className="card p-6 text-center">
+        <div className="card p-6 text-center relative">
             <div className={`font-semibold text-slate-800 ${isSmall ? 'text-base' : 'text-lg'}`}>{title}</div>
-            <div ref={chartRef} style={{ width: '100%', height: isSmall ? '150px' : '250px' }}></div>
+            <div ref={chartRef} className="relative mx-auto" style={{ width: '100%', height: isSmall ? '150px' : '250px' }}></div>
             <div className="text-slate-500 text-sm mt-2 space-y-1">
-                {predicted !== undefined && <p>Predicted: <span className="font-bold text-slate-700">{predicted.toFixed(0)}%</span></p>}
+                {predicted !== undefined && <p>Predicted: <span className="font-bold" style={{ color }}>{predicted.toFixed(0)}%</span></p>}
                 <p>KPI: <span className="font-bold text-slate-700">{formatNumber(kpi)}</span></p>
                 <p>Achieved: <span className="font-bold text-slate-700">{formatNumber(achieved)}</span></p>
             </div>

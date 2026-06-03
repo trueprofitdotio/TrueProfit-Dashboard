@@ -522,21 +522,58 @@
           const renderGauge = (elId, title, progress, predicted, kpi, achieved, isSmall = false) => {
             const el = document.getElementById(elId);
             if (!el) return;
-            const color = progress * 100 <= 25 ? '#DC143C' : progress * 100 <= 79 ? '#FA812F' : '#23C48C';
+            
+            const p = progress * 100;
+            let topColor = '#3ce1a5';
+            let bottomColor = '#1aa473';
+            
+            if (p <= 25) {
+              topColor = '#ff4d6e';
+              bottomColor = '#b3092b';
+            } else if (p <= 79) {
+              topColor = '#ffa05e';
+              bottomColor = '#e06410';
+            }
+            const baseColor = p <= 25 ? '#DC143C' : p <= 79 ? '#FA812F' : '#23C48C';
+            
+            const gradient = {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: topColor },
+                { offset: 1, color: bottomColor }
+              ]
+            };
+
             el.innerHTML = `
-              <div class="bg-white p-6 universal-border universal-shadow text-center">
+              <div class="bg-white p-6 universal-border universal-shadow text-center relative">
                 <div class="font-semibold text-slate-800 ${isSmall ? 'text-base' : 'text-lg'}">${title}</div>
-                <div id="chart-${elId}" style="width: 100%; height: ${isSmall ? '150px' : '250px'}"></div>
+                <div id="chart-${elId}" class="relative mx-auto" style="width: 100%; height: ${isSmall ? '150px' : '250px'}"></div>
                 <div class="text-slate-500 text-sm mt-2 space-y-1">
-                    ${predicted !== undefined ? `<p>Predicted: <span class="font-bold text-slate-700">${predicted.toFixed(0)}%</span></p>` : ''}
+                    ${predicted !== undefined ? `<p>Predicted: <span class="font-bold" style="color: ${baseColor}">${predicted.toFixed(0)}%</span></p>` : ''}
                     <p>KPI: <span class="font-bold text-slate-700">${formatNumber(kpi)}</span></p>
                     <p>Achieved: <span class="font-bold text-slate-700">${formatNumber(achieved)}</span></p>
                 </div>
               </div>`;
             const chartEl = document.getElementById(`chart-${elId}`);
             if (chartEl) {
-              const chart = echarts.init(chartEl);
-              chart.setOption({ series: [{ type: 'liquidFill', data: [Math.min(progress, 1)], radius: '80%', color: [color], backgroundStyle: { color: '#F0FDF4' }, outline: { show: false }, label: { formatter: `${(progress * 100).toFixed(1)}%`, fontSize: isSmall ? 24 : 40, fontWeight: 'bold', color: '#004D40' }}]});
+              const chart = echarts.init(chartEl, null, { renderer: 'canvas' });
+              chart.setOption({ series: [{ type: 'liquidFill', data: [Math.min(progress, 1)], radius: '80%', color: [gradient], backgroundStyle: { color: '#F0FDF4', shadowBlur: 0 }, itemStyle: { shadowBlur: 0 }, outline: { show: false }, label: { formatter: `${(progress * 100).toFixed(1)}%`, fontSize: isSmall ? 24 : 40, fontWeight: 'bold', color: '#004D40' }}]);
+              
+              const handleResize = () => chart.resize();
+              window.addEventListener('resize', handleResize);
+              
+              const observer = new MutationObserver(() => {
+                if (!document.getElementById(`chart-${elId}`)) {
+                  window.removeEventListener('resize', handleResize);
+                  chart.dispose();
+                  observer.disconnect();
+                }
+              });
+              observer.observe(el, { childList: true, subtree: true });
             }
           };
 
