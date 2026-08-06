@@ -4,6 +4,7 @@ import { X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { supabaseClient } from '../services/supabaseClient';
 import { DateRange, Video, VideoPerformanceData, TrendlineData, Kol, OverviewStats } from '../types';
 import DateRangePicker from './DateRangePicker';
+import KOLCell from './KOLCell';
 import { 
     getPresetDateRange, 
     formatDisplayDateGmt7, 
@@ -26,6 +27,7 @@ declare const echarts: {
 interface KolPerformanceData {
     kolId: string;
     kolName: string;
+    kolData?: Kol;
     startViews: number;
     endViews: number;
     viewGrowth: number;
@@ -449,7 +451,9 @@ const TopKolTable: React.FC<{ title: string; data: KolPerformanceData[]; dateRan
                 {displayedData.map(kol => (
                     <React.Fragment key={kol.kolId}>
                         <tr onClick={() => toggleKol(kol.kolId)} className="border-b border-slate-100 hover:bg-slate-50/50 cursor-pointer">
-                            <td className="px-4 py-3 font-medium text-slate-900">{kol.kolName}</td>
+                            <td className="px-4 py-3">
+                                <KOLCell kol={kol.kolData} fallbackName={kol.kolName} />
+                            </td>
                             <td className="px-4 py-3 text-right">{formatNumber(kol.startViews)}</td>
                             <td className="px-4 py-3 text-right">{formatNumber(kol.endViews)}</td>
                             <td className="px-4 py-3 text-right font-semibold text-emerald-600">{formatNumber(kol.viewGrowth)}</td>
@@ -932,7 +936,7 @@ const InfluencerPerformance: React.FC = () => {
 
             if (!performanceByKol.has(kolId)) {
                 performanceByKol.set(kolId, {
-                    kolId, kolName, startViews: 0, endViews: 0, viewGrowth: 0, growthPercentage: 0, videos: []
+                    kolId, kolName, kolData: video.kols, startViews: 0, endViews: 0, viewGrowth: 0, growthPercentage: 0, videos: []
                 });
             }
             const kolData = performanceByKol.get(kolId)!;

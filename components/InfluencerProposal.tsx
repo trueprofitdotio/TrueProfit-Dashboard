@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabaseClient } from '../services/supabaseClient';
-
-interface Kol {
-    id: string;
-    name: string;
-}
+import KOLCell, { KolData } from './KOLCell';
 
 interface ProposalKol {
     kol_id: string;
-    kols: Kol;
+    kols: KolData;
 }
 
 interface Proposal {
@@ -26,7 +22,7 @@ interface Proposal {
 
 const InfluencerProposal: React.FC = () => {
     const [proposals, setProposals] = useState<Proposal[]>([]);
-    const [allKols, setAllKols] = useState<Kol[]>([]);
+    const [allKols, setAllKols] = useState<KolData[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
@@ -48,11 +44,11 @@ const InfluencerProposal: React.FC = () => {
             const [proposalsRes, kolsRes] = await Promise.all([
                 supabaseClient
                     .from('proposals')
-                    .select('*, proposal_kols(kol_id, kols(id, name))')
+                    .select('*, proposal_kols(kol_id, kols(*))')
                     .order('created_at', { ascending: false }),
                 supabaseClient
                     .from('kols')
-                    .select('id, name')
+                    .select('*')
                     .order('name')
             ]);
                 
@@ -60,7 +56,7 @@ const InfluencerProposal: React.FC = () => {
             if (kolsRes.error) throw kolsRes.error;
             
             setProposals(proposalsRes.data as unknown as Proposal[]);
-            setAllKols(kolsRes.data as Kol[]);
+            setAllKols(kolsRes.data as KolData[]);
         } catch (e) {
             console.error('Error fetching proposals:', e);
         } finally {
@@ -298,11 +294,11 @@ const InfluencerProposal: React.FC = () => {
                                                             <label key={kol.id} className="flex items-center p-2 hover:bg-white rounded cursor-pointer">
                                                                 <input 
                                                                     type="checkbox" 
-                                                                    checked={selectedKolIds.includes(kol.id)}
-                                                                    onChange={() => toggleKol(kol.id)}
-                                                                    className="h-4 w-4 text-[var(--accent-color)] border-slate-300 rounded focus:ring-[var(--accent-color)] mr-3"
+                                                                    checked={selectedKolIds.includes(kol.id!)}
+                                                                    onChange={() => toggleKol(kol.id!)}
+                                                                    className="h-4 w-4 text-[var(--accent-color)] border-slate-300 rounded focus:ring-[var(--accent-color)] mr-3 shrink-0"
                                                                 />
-                                                                <span className="text-sm text-slate-700">{kol.name}</span>
+                                                                <KOLCell kol={kol} />
                                                             </label>
                                                         ))}
                                                     </div>
