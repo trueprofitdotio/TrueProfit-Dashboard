@@ -9,14 +9,14 @@ from supabase import create_client, Client
 # --- CẤU HÌNH ---
 # Lấy từ biến môi trường (Github) hoặc hardcode (Local)
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://wpzigasfuizrabqqzxln.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_secret_tPw7wEcEku1sVGVITE2X7A_MNtKlCww")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_pmVTsi7Ja776fvYKBacBUA_0YwFIVv6")
 
 # YouTube API Key pool - rotate khi bị quota limit (403)
 YOUTUBE_API_KEYS = [
-    os.environ.get("YOUTUBE_API_KEY",  "AIzaSyChr_rRRYlsH9_wfY8JB1UJ30fPDMBtp0c"),  # key1
-    "AIzaSyAHFSLQGngrIVVMw2ERmyuOhCuJLhtM5jc",  # key2
-    "AIzaSyDiyxt3nc4qdSx7OtsOIkKCU7S94_uWiUc",  # key3
-    "AIzaSyDgftThC9A0310-g0ocCeDd_Pkf8v-zhZM",  # key4
+    "AIzaSyA30cT-T7yF6o-To4nAQzfg8mG750ihhgI",
+    os.environ.get("YOUTUBE_API_KEY",  "AIzaSyChr_rRRYlsH9_wfY8JB1UJ30fPDMBtp0c"),
+    "AIzaSyAHFSLQGngrIVVMw2ERmyuOhCuJLhtM5jc",
+    "AIzaSyDiyxt3nc4qdSx7OtsOIkKCU7S94_uWiUc",
 ]
 _yt_key_index = 0  # con trỏ key hiện tại
 
@@ -124,7 +124,7 @@ def fetch_non_yt_data(url):
             info = ydl.extract_info(url, download=False)
             return info.get('view_count'), info.get('title')
     except Exception as e:
-        print(f"   [!] yt-dlp không cào được {url} (Lỗi: {repr(e)})")
+        print(f"   [!] yt-dlp failed on {url}")
         return None, None
 
 def check_youtube_video_status(video_id: str) -> str:
@@ -211,9 +211,9 @@ def sync_progress_to_db():
         for item in db_res:
             if item.get('new_id'):
                 existing_videos[item['new_id']] = item.get('status')
-        print(f"ℹ️ Đã load {len(db_res)} videos từ DB.")
+        print(f"[+] Loaded {len(db_res)} videos from DB.")
     except Exception as e:
-        print(f"⚠️ Không load được danh sách video cũ: {repr(e)}")
+        print(f"[!] Could not load existing videos list: {repr(e)}")
 
     for row in records:
         kol_id = row.get('kol_id')
@@ -250,9 +250,9 @@ def sync_progress_to_db():
                 # Upsert dựa trên new_id thay vì video_url
                 supabase.table('videos').upsert(video_data, on_conflict='new_id').execute()
             except Exception as e:
-                print(f"   [!] Lỗi upsert video {new_id}: {repr(e)}")
+                print(f"   [!] Error upserting video {new_id}: {repr(e)}")
 
-    print("✅ Đã đồng bộ metadata.")
+    print("[+] Metadata sync complete.")
 
 
 # --- TASK 2: TRACK VIEW ---
@@ -361,7 +361,7 @@ def track_youtube_views():
                 upsert_metrics_with_comparison(metrics_insert)
                 updated_count += len(metrics_insert)
 
-    print(f"✅ Đã cập nhật {updated_count} records.")
+    print(f"[+] Updated {updated_count} records.")
 
 
 # --- TASK 2.5: UPDATE VIDEO STATUSES ---
@@ -385,7 +385,7 @@ def update_video_statuses():
         if new_status != "Unknown" and new_status != current:
             try:
                 supabase.table('videos').update({'status': new_status}).eq('id', vid_id).execute()
-                print(f"   ✏️ {url[:50]}: {current} -> {new_status}")
+                print(f"   [+] {url[:50]}: {current} -> {new_status}")
             except: pass
 
 
@@ -394,7 +394,7 @@ if __name__ == "__main__":
         sync_progress_to_db()
         track_youtube_views()
         update_video_statuses()
-        print("\n🚀 ALL TASKS COMPLETED!")
+        print("\n[+] ALL TASKS COMPLETED!")
     except Exception as e:
-        print(f"\n❌ FATAL ERROR: {repr(e)}")
+        print(f"\n[!] FATAL ERROR: {repr(e)}")
 

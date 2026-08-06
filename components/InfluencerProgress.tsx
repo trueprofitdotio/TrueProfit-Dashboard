@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabaseClient } from '../services/supabaseClient';
 import KOLCell, { KolData } from './KOLCell';
-import { Calendar, Filter, Search, ArrowUpDown, Plus, Trash2, Edit2, Check, X, ExternalLink, Play } from 'lucide-react';
+import { Calendar, Filter, Search, ArrowUpDown, Plus, Trash2, ExternalLink, Play, X } from 'lucide-react';
 
 interface VideoRecord {
     id: string;
@@ -62,7 +62,7 @@ const parsePackageNumber = (val?: string | number | null): number => {
     return isNaN(num) ? 0 : num;
 };
 
-// Date Formatter: YYYY-MM-DD -> MMM DD, YYYY
+// Date Formatter: YYYY-MM-DD or text -> MMM DD, YYYY
 const formatDateDisplay = (dateStr?: string | null): string => {
     if (!dateStr) return 'Select Date';
     try {
@@ -100,6 +100,8 @@ const InfluencerProgress: React.FC = () => {
     // Popover input values
     const [dateInputVal, setDateInputVal] = useState('');
     const [spentInputVal, setSpentInputVal] = useState<string>('0');
+    const [pkgInputVal, setPkgInputVal] = useState<string>('');
+    const [countInputVal, setCountInputVal] = useState<number>(1);
     const [videoUrlsList, setVideoUrlsList] = useState<string[]>([]);
     const [newVideoUrlInput, setNewVideoUrlInput] = useState('');
 
@@ -151,7 +153,6 @@ const InfluencerProgress: React.FC = () => {
                     };
                 });
 
-                // Pick the earliest or latest video release date for the collaboration if missing
                 const latestRelDate = matchedVids.map(v => v.released_date).filter(Boolean)[0] || c.released_date;
 
                 return {
@@ -174,7 +175,7 @@ const InfluencerProgress: React.FC = () => {
         fetchData();
     }, []);
 
-    // Close popovers on click outside
+    // Close popovers on click outside or scroll
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
@@ -203,7 +204,11 @@ const InfluencerProgress: React.FC = () => {
     };
 
     // Open Sticky Cell Popover
-    const openPopover = (e: React.MouseEvent, row: CollaborationRow, type: 'date' | 'progress' | 'payment' | 'videos') => {
+    const openPopover = (
+        e: React.MouseEvent, 
+        row: CollaborationRow, 
+        type: 'date' | 'progress' | 'payment' | 'videos' | 'package' | 'count'
+    ) => {
         e.stopPropagation();
         const targetElement = e.currentTarget as HTMLElement;
         const rect = targetElement.getBoundingClientRect();
@@ -216,6 +221,10 @@ const InfluencerProgress: React.FC = () => {
             const urls = (row.report_links || '').match(/(https?:\/\/[^\s,]+)/g) || [];
             setVideoUrlsList(urls);
             setNewVideoUrlInput('');
+        } else if (type === 'package') {
+            setPkgInputVal(row.total_package || '');
+        } else if (type === 'count') {
+            setCountInputVal(row.content_count || 1);
         }
 
         setActivePopover({
@@ -256,7 +265,7 @@ const InfluencerProgress: React.FC = () => {
         fetchData();
     };
 
-    // Add new progress tag
+    // Add new custom progress tag
     const handleAddCustomTag = () => {
         if (!newCustomTagInput.trim()) return;
         const tag = newCustomTagInput.trim();
@@ -324,7 +333,7 @@ const InfluencerProgress: React.FC = () => {
         }
     };
 
-    // Filter & Sort Logic
+    // Filter & Chronological Sort Logic
     const processedCollaborations = collaborations
         .filter(c => {
             const kolName = (c.kols?.name || '').toLowerCase();
@@ -341,7 +350,11 @@ const InfluencerProgress: React.FC = () => {
             let valA: any = a[sortField as keyof CollaborationRow];
             let valB: any = b[sortField as keyof CollaborationRow];
 
-            if (sortField === 'kol_name') {
+            if (sortField === 'start_month') {
+                // CHRONOLOGICAL DATE SORTING
+                valA = a.start_month ? (Date.parse(a.start_month) || 0) : 0;
+                valB = b.start_month ? (Date.parse(b.start_month) || 0) : 0;
+            } else if (sortField === 'kol_name') {
                 valA = a.kols?.name || '';
                 valB = b.kols?.name || '';
             } else if (sortField === 'payment_percent') {
@@ -374,7 +387,7 @@ const InfluencerProgress: React.FC = () => {
                         </span>
                     </h2>
                     <p className="text-sm text-slate-500 mt-1">
-                        Track partnership deals, inline progress tags, actual budget spent, and YouTube videos.
+                        Track partnership deals, inline progress statuses, actual budget spent, and YouTube videos.
                     </p>
                 </div>
                 <button 
@@ -400,7 +413,7 @@ const InfluencerProgress: React.FC = () => {
                     />
                 </div>
 
-                {/* Filter by Progress Tag */}
+                {/* Filter by Status */}
                 <div className="flex items-center gap-2">
                     <Filter className="w-4 h-4 text-slate-400 shrink-0" />
                     <select 
@@ -408,7 +421,7 @@ const InfluencerProgress: React.FC = () => {
                         onChange={e => setFilterTag(e.target.value)}
                         className="w-full p-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none"
                     >
-                        <option value="All">All Progress Tags</option>
+                        <option value="All">All Statuses</option>
                         {tagOptions.map(t => (
                             <option key={t} value={t}>{t}</option>
                         ))}
@@ -449,7 +462,7 @@ const InfluencerProgress: React.FC = () => {
                             </th>
                             <th onClick={() => handleSort('progress_status')} className="px-4 py-3.5 min-w-[160px] cursor-pointer hover:bg-slate-100/80 transition-colors">
                                 <div className="flex items-center gap-1">
-                                    <span>Progress Tag</span>
+                                    <span>Status</span>
                                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                                 </div>
                             </th>
@@ -485,7 +498,7 @@ const InfluencerProgress: React.FC = () => {
                                 return (
                                     <tr key={c.id} className="hover:bg-emerald-50/20 transition-colors group">
                                         
-                                        {/* 1. Collab Started (Date Cell) */}
+                                        {/* 1. Collab Started (Chronological Sortable Date Cell) */}
                                         <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
                                             <button 
                                                 onClick={e => openPopover(e, c, 'date')}
@@ -502,15 +515,14 @@ const InfluencerProgress: React.FC = () => {
                                             <KOLCell kol={c.kols} />
                                         </td>
 
-                                        {/* 3. Progress Tag Column (Single-click Menu) */}
+                                        {/* 3. Status Tag Column (Single-click Menu, No Arrow inside badge) */}
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <button
                                                 onClick={e => openPopover(e, c, 'progress')}
-                                                className={`px-3 py-1 rounded-full text-xs border transition-transform hover:scale-105 inline-flex items-center gap-1.5 shadow-2xs ${getProgressTagStyle(c.progress_status)}`}
-                                                title="Single click to change progress tag"
+                                                className={`px-3 py-1 rounded-full text-xs border transition-transform hover:scale-105 inline-block shadow-2xs ${getProgressTagStyle(c.progress_status)}`}
+                                                title="Single click to change status tag"
                                             >
-                                                <span>{c.progress_status || 'Select Tag'}</span>
-                                                <ArrowUpDown className="w-3 h-3 opacity-60" />
+                                                <span>{c.progress_status || 'Select Status'}</span>
                                             </button>
                                         </td>
 
@@ -519,7 +531,7 @@ const InfluencerProgress: React.FC = () => {
                                             <div 
                                                 onClick={e => openPopover(e, c, 'payment')}
                                                 className="cursor-pointer group/bar p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors border border-transparent hover:border-slate-200"
-                                                title="Click to update Actual Spent Budget"
+                                                title="Click to update Actual Budget Spent"
                                             >
                                                 <div className="flex justify-between items-center text-xs mb-1 font-semibold">
                                                     <span className="text-slate-500 text-[11px]">
@@ -544,35 +556,29 @@ const InfluencerProgress: React.FC = () => {
                                             </div>
                                         </td>
 
-                                        {/* 5. Package Column ($ USD) */}
+                                        {/* 5. Package Column ($ USD) with Anchored Popover */}
                                         <td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">
                                             <button 
-                                                onClick={() => {
-                                                    const val = prompt('Edit Contract Package ($ USD):', c.total_package || '');
-                                                    if (val !== null) updateCollaborationField(c.id, 'total_package', val);
-                                                }}
-                                                className="hover:bg-slate-100 px-2 py-1 rounded transition-colors text-right inline-block"
+                                                onClick={e => openPopover(e, c, 'package')}
+                                                className="hover:bg-slate-100 px-2 py-1 rounded transition-colors text-right inline-block text-slate-800 font-semibold border border-transparent hover:border-slate-200"
                                                 title="Click to edit package"
                                             >
                                                 {formatCurrencyUSD(c.total_package)}
                                             </button>
                                         </td>
 
-                                        {/* 6. Content Count Column */}
+                                        {/* 6. Content Count Column with Anchored Popover */}
                                         <td className="px-4 py-3 text-center whitespace-nowrap">
                                             <button 
-                                                onClick={() => {
-                                                    const val = prompt('Edit Content Count:', String(c.content_count || 1));
-                                                    if (val !== null) updateCollaborationField(c.id, 'content_count', parseInt(val) || 0);
-                                                }}
-                                                className="hover:bg-slate-100 px-2.5 py-1 rounded font-bold text-slate-800 transition-colors"
+                                                onClick={e => openPopover(e, c, 'count')}
+                                                className="hover:bg-slate-100 px-2.5 py-1 rounded font-bold text-slate-800 transition-colors border border-transparent hover:border-slate-200"
                                                 title="Click to edit content count"
                                             >
                                                 {c.content_count || 1}
                                             </button>
                                         </td>
 
-                                        {/* 7. Reported Videos Column (Video Title + Embedded Clickable URL) */}
+                                        {/* 7. Reported Videos Column (Embedded Video Titles as Clickable Hyperlinks) */}
                                         <td className="px-4 py-3 max-w-[260px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'videos')}
@@ -580,27 +586,26 @@ const InfluencerProgress: React.FC = () => {
                                                 title="Click to manage videos & links"
                                             >
                                                 {c.videosList && c.videosList.length > 0 ? (
-                                                    <div className="space-y-2">
-                                                        {c.videosList.map((vid, idx) => (
-                                                            <div key={idx} className="text-xs">
-                                                                {vid.title ? (
-                                                                    <div className="font-semibold text-slate-800 line-clamp-1 flex items-center gap-1">
+                                                    <div className="space-y-1.5">
+                                                        {c.videosList.map((vid, idx) => {
+                                                            const displayTitle = vid.title || (vid.video_url ? vid.video_url.replace(/^https?:\/\/(www\.)?/, '') : `Video #${idx + 1}`);
+                                                            return (
+                                                                <div key={idx} className="text-xs">
+                                                                    <a 
+                                                                        href={vid.video_url} 
+                                                                        target="_blank" 
+                                                                        rel="noopener noreferrer" 
+                                                                        onClick={e => e.stopPropagation()}
+                                                                        className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 truncate max-w-[240px] py-0.5"
+                                                                        title={vid.video_url}
+                                                                    >
                                                                         <Play className="w-3 h-3 text-red-500 shrink-0 fill-red-500" />
-                                                                        <span>{vid.title}</span>
-                                                                    </div>
-                                                                ) : null}
-                                                                <a 
-                                                                    href={vid.video_url} 
-                                                                    target="_blank" 
-                                                                    rel="noopener noreferrer" 
-                                                                    onClick={e => e.stopPropagation()}
-                                                                    className="text-[11px] font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 truncate max-w-[220px] mt-0.5"
-                                                                >
-                                                                    <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
-                                                                    <span className="truncate">{vid.video_url.replace(/^https?:\/\/(www\.)?/, '')}</span>
-                                                                </a>
-                                                            </div>
-                                                        ))}
+                                                                        <span className="truncate">{displayTitle}</span>
+                                                                        <ExternalLink className="w-3 h-3 shrink-0 opacity-60" />
+                                                                    </a>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 ) : (
                                                     <span className="text-xs text-slate-400 italic flex items-center gap-1">
@@ -611,9 +616,19 @@ const InfluencerProgress: React.FC = () => {
                                             </div>
                                         </td>
 
-                                        {/* 8. Released Date Column (Synced from videos table) */}
+                                        {/* 8. Released Date Column (Multi-Video Corresponding Dates) */}
                                         <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-700 font-medium">
-                                            {c.released_date ? formatDateDisplay(c.released_date) : '—'}
+                                            {c.videosList && c.videosList.length > 0 ? (
+                                                <div className="space-y-1.5">
+                                                    {c.videosList.map((vid, idx) => (
+                                                        <div key={idx} className="py-0.5 truncate text-slate-700">
+                                                            {vid.released_date ? formatDateDisplay(vid.released_date) : '—'}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <span>{c.released_date ? formatDateDisplay(c.released_date) : '—'}</span>
+                                            )}
                                         </td>
 
                                         {/* 9. Agreement Link Column */}
@@ -641,14 +656,14 @@ const InfluencerProgress: React.FC = () => {
                 </table>
             </div>
 
-            {/* STICKY POPOVERS (ANCHORED DIRECTLY TO CLICKED CELL) */}
+            {/* STICKY CELL-ANCHORED POPOVERS */}
             {activePopover && activePopover.anchorRect && (
                 <div 
                     ref={popoverRef}
                     style={{
                         position: 'fixed',
-                        top: `${Math.min(window.innerHeight - 300, activePopover.anchorRect.bottom + 6)}px`,
-                        left: `${Math.min(window.innerWidth - 320, Math.max(16, activePopover.anchorRect.left))}px`,
+                        top: `${Math.min(window.innerHeight - 280, activePopover.anchorRect.bottom + 4)}px`,
+                        left: `${Math.min(window.innerWidth - 300, Math.max(16, activePopover.anchorRect.left))}px`,
                         zIndex: 999
                     }}
                     className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 w-72 animate-in fade-in zoom-in-95 duration-150"
@@ -669,7 +684,7 @@ const InfluencerProgress: React.FC = () => {
                                 onChange={e => setDateInputVal(formatDateDisplay(e.target.value))} 
                                 className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
                             />
-                            <div className="text-xs text-slate-500 font-medium">Or type custom format:</div>
+                            <div className="text-xs text-slate-500 font-medium">Or type date text:</div>
                             <input 
                                 type="text"
                                 value={dateInputVal}
@@ -689,11 +704,11 @@ const InfluencerProgress: React.FC = () => {
                         </div>
                     )}
 
-                    {/* 2. Progress Tag Popover */}
+                    {/* 2. Status Popover */}
                     {activePopover.type === 'progress' && (
                         <div className="space-y-3">
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Progress Status Tag</span>
+                                <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Status Tag</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
 
@@ -732,7 +747,7 @@ const InfluencerProgress: React.FC = () => {
                                 onClick={() => updateCollaborationField(activePopover.rowId, 'progress_status', null)}
                                 className="w-full text-center text-xs text-rose-600 hover:text-rose-700 font-semibold py-1 hover:bg-rose-50 rounded-lg"
                             >
-                                Clear Progress Tag
+                                Clear Status
                             </button>
                         </div>
                     )}
@@ -776,7 +791,75 @@ const InfluencerProgress: React.FC = () => {
                         </div>
                     )}
 
-                    {/* 4. Video Links Manager Popover */}
+                    {/* 4. Package Amount Sticky Popover */}
+                    {activePopover.type === 'package' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Contract Package</span>
+                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                                    Package Amount ($ USD)
+                                </label>
+                                <input 
+                                    type="text"
+                                    autoFocus
+                                    value={pkgInputVal}
+                                    onChange={e => setPkgInputVal(e.target.value)}
+                                    className="w-full p-2 border border-slate-300 rounded-xl text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                                    placeholder="$5,000"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button 
+                                    onClick={() => updateCollaborationField(activePopover.rowId, 'total_package', pkgInputVal)} 
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-lg shadow-xs"
+                                >
+                                    Save Package
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 5. Content Count Sticky Popover */}
+                    {activePopover.type === 'count' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Content Count</span>
+                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                                    Number of Contents
+                                </label>
+                                <input 
+                                    type="number"
+                                    min="0"
+                                    autoFocus
+                                    value={countInputVal}
+                                    onChange={e => setCountInputVal(parseInt(e.target.value) || 0)}
+                                    className="w-full p-2 border border-slate-300 rounded-xl text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button 
+                                    onClick={() => updateCollaborationField(activePopover.rowId, 'content_count', countInputVal)} 
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-lg shadow-xs"
+                                >
+                                    Save Count
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 6. Video Links Manager Popover */}
                     {activePopover.type === 'videos' && (
                         <div className="space-y-3">
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
