@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabaseClient } from '../services/supabaseClient';
 import KOLCell, { KolData } from './KOLCell';
-import { fetchYouTubeVideoDetails } from '../services/youtubeService';
+import { Calendar, Filter, Search, ArrowUpDown, Plus, Trash2, Edit2, Check, X, ExternalLink, Play } from 'lucide-react';
+
+interface VideoRecord {
+    id: string;
+    video_url: string;
+    title?: string | null;
+    released_date?: string | null;
+    current_views?: number | null;
+}
 
 interface CollaborationRow {
     id: string;
@@ -17,10 +25,10 @@ interface CollaborationRow {
     actual_spent?: number | null;
     notes?: string | null;
     kols?: KolData | null;
+    videosList?: VideoRecord[];
 }
 
-// Predefined status tags
-const PROGRESS_TAG_OPTIONS = [
+const DEFAULT_PROGRESS_TAGS = [
     'All done',
     'Pending/Canceled',
     '1st Payment Done',
@@ -54,30 +62,60 @@ const parsePackageNumber = (val?: string | number | null): number => {
     return isNaN(num) ? 0 : num;
 };
 
+// Date Formatter: YYYY-MM-DD -> MMM DD, YYYY
+const formatDateDisplay = (dateStr?: string | null): string => {
+    if (!dateStr) return 'Select Date';
+    try {
+        const dt = new Date(dateStr);
+        if (isNaN(dt.getTime())) return dateStr;
+        return dt.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+    } catch {
+        return dateStr;
+    }
+};
+
 const InfluencerProgress: React.FC = () => {
     const [collaborations, setCollaborations] = useState<CollaborationRow[]>([]);
     const [allKols, setAllKols] = useState<KolData[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Active inline editing state: { rowId, field }
-    const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+    // Custom Tag Options list
+    const [tagOptions, setTagOptions] = useState<string[]>(DEFAULT_PROGRESS_TAGS);
+    const [newCustomTagInput, setNewCustomTagInput] = useState('');
 
-    // Modal state for Payment & Actual Budget Spent
-    const [paymentModalRow, setPaymentModalRow] = useState<CollaborationRow | null>(null);
-    const [actualSpentInput, setActualSpentInput] = useState<string>('0');
-    const [paymentStatusInput, setPaymentStatusInput] = useState<string>('');
+    // Filters & Sorting state
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterTag, setFilterTag] = useState<string>('All');
+    const [filterCountry, setFilterCountry] = useState<string>('All');
+    const [sortField, setSortField] = useState<keyof CollaborationRow | 'kol_name' | 'payment_percent'>('start_month');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-    // Modal state for adding a new record
+    // Sticky Popover states: anchored to specific row and cell type
+    const [activePopover, setActivePopover] = useState<{
+        rowId: string;
+        type: 'date' | 'progress' | 'payment' | 'videos' | 'package' | 'count';
+        anchorRect?: DOMRect;
+    } | null>(null);
+
+    // Popover input values
+    const [dateInputVal, setDateInputVal] = useState('');
+    const [spentInputVal, setSpentInputVal] = useState<string>('0');
+    const [videoUrlsList, setVideoUrlsList] = useState<string[]>([]);
+    const [newVideoUrlInput, setNewVideoUrlInput] = useState('');
+
+    // Modal state for adding new record
     const [showAddModal, setShowAddModal] = useState(false);
     const [newKolId, setNewKolId] = useState('');
     const [newKolName, setNewKolName] = useState('');
     const [newStartMonth, setNewStartMonth] = useState('');
     const [newPackage, setNewPackage] = useState('');
 
+    const popoverRef = useRef<HTMLDivElement>(null);
+
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [collabRes, kolsRes] = await Promise.all([
+            const [collabRes, kolsRes, videosRes] = await Promise.all([
                 supabaseClient
                     .from('collaborations')
                     .select('*, kols(*)')
@@ -85,13 +123,45 @@ const InfluencerProgress: React.FC = () => {
                 supabaseClient
                     .from('kols')
                     .select('*')
-                    .order('name')
+                    .order('name'),
+                supabaseClient
+                    .from('videos')
+                    .select('id, kol_id, video_url, title, released_date, current_views')
             ]);
             
             if (collabRes.error) throw collabRes.error;
             if (kolsRes.error) throw kolsRes.error;
+            
+            const rawCollabs = collabRes.data as unknown as CollaborationRow[];
+            const videosData = (videosRes.data || []) as VideoRecord[];
 
-            setCollaborations(collabRes.data as unknown as CollaborationRow[]);
+            // Map videos to collaborations by report_links / kol_id
+            const collabsWithVideos = rawCollabs.map(c => {
+                const reportLinks = c.report_links || '';
+                const foundUrls = reportLinks.match(/(https?:\/\/[^\s,]+)/g) || [];
+                
+                const matchedVids: VideoRecord[] = foundUrls.map(url => {
+                    const found = videosData.find(v => v.video_url === url || (v.video_url && url.includes(v.video_url)));
+                    return {
+                        id: found?.id || url,
+                        video_url: url,
+                        title: found?.title || null,
+                        released_date: found?.released_date || null,
+                        current_views: found?.current_views || null
+                    };
+                });
+
+                // Pick the earliest or latest video release date for the collaboration if missing
+                const latestRelDate = matchedVids.map(v => v.released_date).filter(Boolean)[0] || c.released_date;
+
+                return {
+                    ...c,
+                    released_date: latestRelDate,
+                    videosList: matchedVids
+                };
+            });
+
+            setCollaborations(collabsWithVideos);
             setAllKols(kolsRes.data as KolData[]);
         } catch (e) {
             console.error('Error fetching progress data:', e);
@@ -104,88 +174,110 @@ const InfluencerProgress: React.FC = () => {
         fetchData();
     }, []);
 
-    // Helper to update field in state and Supabase directly
-    const updateField = async (rowId: string, field: keyof CollaborationRow, value: any) => {
-        // Update local state immediately for fast feedback
+    // Close popovers on click outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+                setActivePopover(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Update cell value in local state & Supabase
+    const updateCollaborationField = async (rowId: string, field: keyof CollaborationRow, value: any) => {
         setCollaborations(prev => prev.map(c => c.id === rowId ? { ...c, [field]: value } : c));
-        setEditingCell(null);
+        setActivePopover(null);
 
         try {
             const { error } = await supabaseClient
                 .from('collaborations')
                 .update({ [field]: value, updated_at: new Date().toISOString() })
                 .eq('id', rowId);
-
             if (error) throw error;
         } catch (e) {
             console.error(`Failed to update ${field}:`, e);
-            fetchData(); // Rollback on error
+            fetchData();
         }
     };
 
-    // Auto release date fetcher when report links change
-    const handleReportLinksChange = async (rowId: string, newLinksText: string) => {
-        await updateField(rowId, 'report_links', newLinksText);
+    // Open Sticky Cell Popover
+    const openPopover = (e: React.MouseEvent, row: CollaborationRow, type: 'date' | 'progress' | 'payment' | 'videos') => {
+        e.stopPropagation();
+        const targetElement = e.currentTarget as HTMLElement;
+        const rect = targetElement.getBoundingClientRect();
 
-        // Check if there are YouTube links in newLinksText
-        const urls = newLinksText.match(/(https?:\/\/[^\s,]+)/g) || [];
-        for (const url of urls) {
-            if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                const details = await fetchYouTubeVideoDetails(url);
-                if (details && details.publishedAt) {
-                    await updateField(rowId, 'released_date', details.publishedAt);
-                    break;
+        if (type === 'date') {
+            setDateInputVal(row.start_month || '');
+        } else if (type === 'payment') {
+            setSpentInputVal(String(row.actual_spent || 0));
+        } else if (type === 'videos') {
+            const urls = (row.report_links || '').match(/(https?:\/\/[^\s,]+)/g) || [];
+            setVideoUrlsList(urls);
+            setNewVideoUrlInput('');
+        }
+
+        setActivePopover({
+            rowId: row.id,
+            type,
+            anchorRect: rect
+        });
+    };
+
+    // Video manager: Add / Edit / Remove link
+    const handleSaveVideosPopover = async (rowId: string) => {
+        let finalUrls = [...videoUrlsList];
+        if (newVideoUrlInput.trim()) {
+            finalUrls.push(newVideoUrlInput.trim());
+        }
+        const updatedLinksText = finalUrls.join('\n');
+        await updateCollaborationField(rowId, 'report_links', updatedLinksText);
+
+        // Upsert videos to Supabase videos table so daily_worker.py will scan them
+        const targetCollab = collaborations.find(c => c.id === rowId);
+        if (targetCollab && targetCollab.kol_id) {
+            for (const url of finalUrls) {
+                const matchId = url.match(/(?:v=|\/|embed\/|youtu\.be\/)([\w-]{11})(?=&|\?|$)/);
+                if (matchId) {
+                    const ytId = matchId[1];
+                    const newId = `yt_${ytId}`;
+                    await supabaseClient.from('videos').upsert({
+                        new_id: newId,
+                        kol_id: targetCollab.kol_id,
+                        video_url: url,
+                        status: 'HEALTHY'
+                    }, { onConflict: 'new_id' });
                 }
             }
         }
+
+        setActivePopover(null);
+        fetchData();
     };
 
-    // Payment progress bar click handler -> opens Actual Spent modal
-    const openPaymentModal = (row: CollaborationRow) => {
-        setPaymentModalRow(row);
-        setActualSpentInput(String(row.actual_spent || 0));
-        setPaymentStatusInput(row.payment_status || 'All Payment Done');
-    };
-
-    const handleSavePaymentModal = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!paymentModalRow) return;
-
-        const spentNum = parseFloat(actualSpentInput) || 0;
-
-        try {
-            await supabaseClient
-                .from('collaborations')
-                .update({ 
-                    actual_spent: spentNum, 
-                    payment_status: paymentStatusInput,
-                    updated_at: new Date().toISOString() 
-                })
-                .eq('id', paymentModalRow.id);
-
-            setCollaborations(prev => prev.map(c => 
-                c.id === paymentModalRow.id 
-                    ? { ...c, actual_spent: spentNum, payment_status: paymentStatusInput } 
-                    : c
-            ));
-            setPaymentModalRow(null);
-        } catch (e) {
-            console.error('Failed to save payment details:', e);
-            alert('Failed to update payment details.');
+    // Add new progress tag
+    const handleAddCustomTag = () => {
+        if (!newCustomTagInput.trim()) return;
+        const tag = newCustomTagInput.trim();
+        if (!tagOptions.includes(tag)) {
+            setTagOptions(prev => [...prev, tag]);
         }
+        if (activePopover?.rowId) {
+            updateCollaborationField(activePopover.rowId, 'progress_status', tag);
+        }
+        setNewCustomTagInput('');
     };
 
-    // Add new collaboration
+    // Create New Collaboration Record
     const handleCreateCollaboration = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             let kolIdToUse = newKolId;
-
-            // If user typed a new KOL name instead of selecting existing
-            if (!kolIdToUse && newKolName.strip()) {
+            if (!kolIdToUse && newKolName.trim()) {
                 const { data: newKol, error: kolErr } = await supabaseClient
                     .from('kols')
-                    .insert({ name: newKolName.strip(), country: 'US' })
+                    .insert({ name: newKolName.trim(), country: 'United States' })
                     .select()
                     .single();
                 if (kolErr) throw kolErr;
@@ -193,7 +285,7 @@ const InfluencerProgress: React.FC = () => {
             }
 
             if (!kolIdToUse) {
-                alert('Please select or type a KOL name.');
+                alert('Please select or enter a KOL name.');
                 return;
             }
 
@@ -201,7 +293,7 @@ const InfluencerProgress: React.FC = () => {
                 .from('collaborations')
                 .insert({
                     kol_id: kolIdToUse,
-                    start_month: newStartMonth || new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                    start_month: newStartMonth || formatDateDisplay(new Date().toISOString()),
                     total_package: newPackage,
                     progress_status: 'Awaiting Content',
                     payment_status: 'Awaiting Payment',
@@ -217,85 +309,192 @@ const InfluencerProgress: React.FC = () => {
             setNewPackage('');
             fetchData();
         } catch (e) {
-            console.error('Error creating record:', e);
-            alert('Failed to create record.');
+            console.error('Error creating deal:', e);
+            alert('Failed to create deal.');
         }
     };
 
+    // Sort Handler
+    const handleSort = (field: keyof CollaborationRow | 'kol_name' | 'payment_percent') => {
+        if (sortField === field) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('desc');
+        }
+    };
+
+    // Filter & Sort Logic
+    const processedCollaborations = collaborations
+        .filter(c => {
+            const kolName = (c.kols?.name || '').toLowerCase();
+            const country = c.kols?.country || '';
+            const tag = c.progress_status || '';
+
+            const matchesSearch = !searchQuery || kolName.includes(searchQuery.toLowerCase());
+            const matchesTag = filterTag === 'All' || tag === filterTag;
+            const matchesCountry = filterCountry === 'All' || country === filterCountry;
+
+            return matchesSearch && matchesTag && matchesCountry;
+        })
+        .sort((a, b) => {
+            let valA: any = a[sortField as keyof CollaborationRow];
+            let valB: any = b[sortField as keyof CollaborationRow];
+
+            if (sortField === 'kol_name') {
+                valA = a.kols?.name || '';
+                valB = b.kols?.name || '';
+            } else if (sortField === 'payment_percent') {
+                const pkgA = parsePackageNumber(a.total_package);
+                const pkgB = parsePackageNumber(b.total_package);
+                valA = pkgA > 0 ? ((a.actual_spent || 0) / pkgA) * 100 : 0;
+                valB = pkgB > 0 ? ((b.actual_spent || 0) / pkgB) * 100 : 0;
+            } else if (sortField === 'total_package') {
+                valA = parsePackageNumber(a.total_package);
+                valB = parsePackageNumber(b.total_package);
+            }
+
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+    // Unique countries for filter dropdown
+    const availableCountries = Array.from(new Set(allKols.map(k => k.country).filter(Boolean)));
+
     return (
         <div className="card p-6 space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Header & Main Toolbar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                        <span>Influencer Deal Progress</span>
+                        <span>Influencer Progress Workspace</span>
                         <span className="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                            Live Source of Truth
+                            Live System
                         </span>
                     </h2>
                     <p className="text-sm text-slate-500 mt-1">
-                        Directly edit deal statuses, packages, video report links, and actual budget spent.
+                        Track partnership deals, inline progress tags, actual budget spent, and YouTube videos.
                     </p>
                 </div>
                 <button 
                     onClick={() => setShowAddModal(true)}
-                    className="bg-[var(--accent-color)] text-white px-5 py-2.5 rounded-full font-semibold hover:bg-emerald-600 transition-colors shadow-sm text-sm flex items-center justify-center gap-1.5 w-fit"
+                    className="bg-[var(--accent-color)] text-white px-5 py-2.5 rounded-full font-semibold hover:bg-emerald-600 transition-colors shadow-sm text-sm flex items-center justify-center gap-1.5 w-fit shrink-0"
                 >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                    <Plus className="w-4 h-4" />
                     <span>Add New Deal</span>
                 </button>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto border border-[#bfdbfe]/50 rounded-2xl shadow-xs bg-white">
+            {/* Filter Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/80 p-4 rounded-2xl border border-[#bfdbfe]/50">
+                {/* Search KOL */}
+                <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <input 
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="Search KOL name..."
+                        className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none"
+                    />
+                </div>
+
+                {/* Filter by Progress Tag */}
+                <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+                    <select 
+                        value={filterTag}
+                        onChange={e => setFilterTag(e.target.value)}
+                        className="w-full p-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none"
+                    >
+                        <option value="All">All Progress Tags</option>
+                        {tagOptions.map(t => (
+                            <option key={t} value={t}>{t}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Filter by Country */}
+                <div className="flex items-center gap-2">
+                    <select 
+                        value={filterCountry}
+                        onChange={e => setFilterCountry(e.target.value)}
+                        className="w-full p-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none"
+                    >
+                        <option value="All">All Countries</option>
+                        {availableCountries.map(c => (
+                            <option key={c} value={c!}>{c}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            {/* Table Area */}
+            <div className="overflow-x-auto border border-[#bfdbfe]/50 rounded-2xl shadow-xs bg-white relative">
                 <table className="w-full text-sm text-left text-slate-600 border-collapse">
-                    <thead className="text-xs text-[#2236ba] font-bold uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50">
+                    <thead className="text-xs text-[#2236ba] font-bold uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
                         <tr>
-                            <th className="px-4 py-3.5 whitespace-nowrap min-w-[120px]">Date / Month</th>
-                            <th className="px-4 py-3.5 min-w-[220px]">KOL</th>
-                            <th className="px-4 py-3.5 min-w-[150px]">Progress Tag</th>
-                            <th className="px-4 py-3.5 min-w-[170px]">Payment Progress</th>
-                            <th className="px-4 py-3.5 text-right min-w-[110px]">Package ($)</th>
-                            <th className="px-4 py-3.5 text-center min-w-[80px]">Videos</th>
-                            <th className="px-4 py-3.5 min-w-[200px]">Report Links</th>
+                            <th onClick={() => handleSort('start_month')} className="px-4 py-3.5 whitespace-nowrap min-w-[130px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                <div className="flex items-center gap-1">
+                                    <span>Collab Started</span>
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('kol_name')} className="px-4 py-3.5 min-w-[220px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                <div className="flex items-center gap-1">
+                                    <span>KOL</span>
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('progress_status')} className="px-4 py-3.5 min-w-[160px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                <div className="flex items-center gap-1">
+                                    <span>Progress Tag</span>
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('payment_percent')} className="px-4 py-3.5 min-w-[160px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                <div className="flex items-center gap-1">
+                                    <span>Payment Progress</span>
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('total_package')} className="px-4 py-3.5 text-right min-w-[110px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                <div className="flex items-center justify-end gap-1">
+                                    <span>Package ($)</span>
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                </div>
+                            </th>
+                            <th className="px-4 py-3.5 text-center min-w-[80px]">Content</th>
+                            <th className="px-4 py-3.5 min-w-[240px]">Reported Videos</th>
                             <th className="px-4 py-3.5 min-w-[120px]">Released Date</th>
                             <th className="px-4 py-3.5 min-w-[100px]">Agreement</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[#bfdbfe]/30">
                         {loading ? (
-                            <tr><td colSpan={9} className="text-center py-12 text-slate-400">Loading deal records...</td></tr>
-                        ) : collaborations.length === 0 ? (
-                            <tr><td colSpan={9} className="text-center py-12 text-slate-400">No records found. Click "+ Add New Deal" to create one.</td></tr>
+                            <tr><td colSpan={9} className="text-center py-12 text-slate-400">Loading progress workspace...</td></tr>
+                        ) : processedCollaborations.length === 0 ? (
+                            <tr><td colSpan={9} className="text-center py-12 text-slate-400">No matching deals found.</td></tr>
                         ) : (
-                            collaborations.map(c => {
+                            processedCollaborations.map(c => {
                                 const totalPkgNum = parsePackageNumber(c.total_package);
                                 const actualSpent = c.actual_spent || 0;
-                                const paymentPercent = totalPkgNum > 0 ? Math.min(100, Math.round((actualSpent / totalPkgNum) * 100)) : (c.payment_status === 'All Payment Done' ? 100 : 0);
+                                const paymentPercent = totalPkgNum > 0 ? Math.min(100, Math.round((actualSpent / totalPkgNum) * 100)) : 0;
 
                                 return (
                                     <tr key={c.id} className="hover:bg-emerald-50/20 transition-colors group">
                                         
-                                        {/* 1. Leftmost Date / Month Column */}
+                                        {/* 1. Collab Started (Date Cell) */}
                                         <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
-                                            {editingCell?.id === c.id && editingCell?.field === 'start_month' ? (
-                                                <input
-                                                    type="text"
-                                                    autoFocus
-                                                    defaultValue={c.start_month || ''}
-                                                    onBlur={e => updateField(c.id, 'start_month', e.target.value)}
-                                                    onKeyDown={e => e.key === 'Enter' && updateField(c.id, 'start_month', (e.target as HTMLInputElement).value)}
-                                                    className="w-full p-1 border border-[var(--accent-color)] rounded outline-none text-xs bg-white shadow-xs"
-                                                />
-                                            ) : (
-                                                <div 
-                                                    onClick={() => setEditingCell({ id: c.id, field: 'start_month' })}
-                                                    className="cursor-pointer hover:bg-slate-100 px-2 py-1 rounded text-slate-700 transition-colors inline-block w-full"
-                                                    title="Click to edit date"
-                                                >
-                                                    {c.start_month || 'MMM YYYY'}
-                                                </div>
-                                            )}
+                                            <button 
+                                                onClick={e => openPopover(e, c, 'date')}
+                                                className="hover:bg-slate-100 px-2.5 py-1 rounded-lg text-slate-700 font-medium transition-colors flex items-center gap-1.5 border border-transparent hover:border-slate-200"
+                                                title="Click to change partnership start date"
+                                            >
+                                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                                <span>{c.start_month || 'Select Date'}</span>
+                                            </button>
                                         </td>
 
                                         {/* 2. KOL Universal Column */}
@@ -303,44 +502,28 @@ const InfluencerProgress: React.FC = () => {
                                             <KOLCell kol={c.kols} />
                                         </td>
 
-                                        {/* 3. Progress Tag Column ("Hili Tag") */}
+                                        {/* 3. Progress Tag Column (Single-click Menu) */}
                                         <td className="px-4 py-3 whitespace-nowrap">
-                                            {editingCell?.id === c.id && editingCell?.field === 'progress_status' ? (
-                                                <div className="relative">
-                                                    <select
-                                                        autoFocus
-                                                        defaultValue={c.progress_status || ''}
-                                                        onChange={e => updateField(c.id, 'progress_status', e.target.value)}
-                                                        onBlur={() => setEditingCell(null)}
-                                                        className="p-1.5 border border-[var(--accent-color)] rounded-lg text-xs bg-white outline-none w-full shadow-xs"
-                                                    >
-                                                        {PROGRESS_TAG_OPTIONS.map(opt => (
-                                                            <option key={opt} value={opt}>{opt}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    onClick={() => setEditingCell({ id: c.id, field: 'progress_status' })}
-                                                    className={`px-3 py-1 rounded-full text-xs border transition-transform hover:scale-105 inline-flex items-center gap-1 ${getProgressTagStyle(c.progress_status)}`}
-                                                    title="Click to change progress status"
-                                                >
-                                                    <span>{c.progress_status || 'Select Status'}</span>
-                                                    <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                                                </button>
-                                            )}
+                                            <button
+                                                onClick={e => openPopover(e, c, 'progress')}
+                                                className={`px-3 py-1 rounded-full text-xs border transition-transform hover:scale-105 inline-flex items-center gap-1.5 shadow-2xs ${getProgressTagStyle(c.progress_status)}`}
+                                                title="Single click to change progress tag"
+                                            >
+                                                <span>{c.progress_status || 'Select Tag'}</span>
+                                                <ArrowUpDown className="w-3 h-3 opacity-60" />
+                                            </button>
                                         </td>
 
-                                        {/* 4. Payment Progress Bar Column (Click -> Modal) */}
+                                        {/* 4. Payment Progress Column (Only Spent & Progress Bar, Sticky Popover) */}
                                         <td className="px-4 py-3">
                                             <div 
-                                                onClick={() => openPaymentModal(c)}
-                                                className="cursor-pointer group/bar p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                                                title="Click to update Actual Budget Spent & Payment Status"
+                                                onClick={e => openPopover(e, c, 'payment')}
+                                                className="cursor-pointer group/bar p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors border border-transparent hover:border-slate-200"
+                                                title="Click to update Actual Spent Budget"
                                             >
                                                 <div className="flex justify-between items-center text-xs mb-1 font-semibold">
-                                                    <span className="text-slate-600 truncate max-w-[100px]">
-                                                        {c.payment_status || 'Payment'}
+                                                    <span className="text-slate-500 text-[11px]">
+                                                        Spent: <strong className="text-slate-700">{formatCurrencyUSD(actualSpent)}</strong>
                                                     </span>
                                                     <span className={`${paymentPercent === 100 ? 'text-emerald-600' : 'text-blue-600'} font-bold`}>
                                                         {paymentPercent}%
@@ -358,118 +541,79 @@ const InfluencerProgress: React.FC = () => {
                                                         style={{ width: `${paymentPercent}%` }}
                                                     />
                                                 </div>
-                                                <div className="text-[10px] text-slate-400 mt-1 flex justify-between">
-                                                    <span>Spent: {formatCurrencyUSD(actualSpent)}</span>
-                                                    <span>Pkg: {formatCurrencyUSD(totalPkgNum)}</span>
-                                                </div>
                                             </div>
                                         </td>
 
                                         {/* 5. Package Column ($ USD) */}
                                         <td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">
-                                            {editingCell?.id === c.id && editingCell?.field === 'total_package' ? (
-                                                <input
-                                                    type="text"
-                                                    autoFocus
-                                                    defaultValue={c.total_package || ''}
-                                                    onBlur={e => updateField(c.id, 'total_package', e.target.value)}
-                                                    onKeyDown={e => e.key === 'Enter' && updateField(c.id, 'total_package', (e.target as HTMLInputElement).value)}
-                                                    className="w-24 p-1 border border-[var(--accent-color)] rounded outline-none text-xs text-right bg-white shadow-xs"
-                                                />
-                                            ) : (
-                                                <div 
-                                                    onClick={() => setEditingCell({ id: c.id, field: 'total_package' })}
-                                                    className="cursor-pointer hover:bg-slate-100 px-2 py-1 rounded transition-colors inline-block"
-                                                    title="Click to edit package"
-                                                >
-                                                    {formatCurrencyUSD(c.total_package)}
-                                                </div>
-                                            )}
+                                            <button 
+                                                onClick={() => {
+                                                    const val = prompt('Edit Contract Package ($ USD):', c.total_package || '');
+                                                    if (val !== null) updateCollaborationField(c.id, 'total_package', val);
+                                                }}
+                                                className="hover:bg-slate-100 px-2 py-1 rounded transition-colors text-right inline-block"
+                                                title="Click to edit package"
+                                            >
+                                                {formatCurrencyUSD(c.total_package)}
+                                            </button>
                                         </td>
 
-                                        {/* 6. Dedicated Content Count Column */}
+                                        {/* 6. Content Count Column */}
                                         <td className="px-4 py-3 text-center whitespace-nowrap">
-                                            {editingCell?.id === c.id && editingCell?.field === 'content_count' ? (
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    autoFocus
-                                                    defaultValue={c.content_count || 1}
-                                                    onBlur={e => updateField(c.id, 'content_count', parseInt(e.target.value) || 0)}
-                                                    onKeyDown={e => e.key === 'Enter' && updateField(c.id, 'content_count', parseInt((e.target as HTMLInputElement).value) || 0)}
-                                                    className="w-14 p-1 border border-[var(--accent-color)] rounded outline-none text-xs text-center bg-white shadow-xs"
-                                                />
-                                            ) : (
-                                                <span 
-                                                    onClick={() => setEditingCell({ id: c.id, field: 'content_count' })}
-                                                    className="cursor-pointer hover:bg-slate-100 px-2 py-1 rounded text-slate-700 font-bold transition-colors inline-block"
-                                                    title="Click to edit content count"
-                                                >
-                                                    {c.content_count || 1}
-                                                </span>
-                                            )}
+                                            <button 
+                                                onClick={() => {
+                                                    const val = prompt('Edit Content Count:', String(c.content_count || 1));
+                                                    if (val !== null) updateCollaborationField(c.id, 'content_count', parseInt(val) || 0);
+                                                }}
+                                                className="hover:bg-slate-100 px-2.5 py-1 rounded font-bold text-slate-800 transition-colors"
+                                                title="Click to edit content count"
+                                            >
+                                                {c.content_count || 1}
+                                            </button>
                                         </td>
 
-                                        {/* 7. Videos / Report Links Column (Clickable URLs) */}
-                                        <td className="px-4 py-3 max-w-[240px]">
-                                            {editingCell?.id === c.id && editingCell?.field === 'report_links' ? (
-                                                <textarea
-                                                    autoFocus
-                                                    rows={3}
-                                                    defaultValue={c.report_links || ''}
-                                                    onBlur={e => handleReportLinksChange(c.id, e.target.value)}
-                                                    className="w-full p-2 border border-[var(--accent-color)] rounded-lg text-xs bg-white outline-none resize-none shadow-xs"
-                                                    placeholder="Paste video URLs..."
-                                                />
-                                            ) : (
-                                                <div 
-                                                    onClick={() => setEditingCell({ id: c.id, field: 'report_links' })}
-                                                    className="cursor-pointer hover:bg-slate-100/80 p-1.5 rounded-lg transition-colors min-h-[36px] flex flex-col justify-center"
-                                                    title="Click to edit report video links"
-                                                >
-                                                    {c.report_links ? (
-                                                        <div className="space-y-1">
-                                                            {(c.report_links.match(/(https?:\/\/[^\s,]+)/g) || [c.report_links]).map((link, idx) => (
+                                        {/* 7. Reported Videos Column (Video Title + Embedded Clickable URL) */}
+                                        <td className="px-4 py-3 max-w-[260px]">
+                                            <div 
+                                                onClick={e => openPopover(e, c, 'videos')}
+                                                className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px] flex flex-col justify-center"
+                                                title="Click to manage videos & links"
+                                            >
+                                                {c.videosList && c.videosList.length > 0 ? (
+                                                    <div className="space-y-2">
+                                                        {c.videosList.map((vid, idx) => (
+                                                            <div key={idx} className="text-xs">
+                                                                {vid.title ? (
+                                                                    <div className="font-semibold text-slate-800 line-clamp-1 flex items-center gap-1">
+                                                                        <Play className="w-3 h-3 text-red-500 shrink-0 fill-red-500" />
+                                                                        <span>{vid.title}</span>
+                                                                    </div>
+                                                                ) : null}
                                                                 <a 
-                                                                    key={idx}
-                                                                    href={link}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
+                                                                    href={vid.video_url} 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer" 
                                                                     onClick={e => e.stopPropagation()}
-                                                                    className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 truncate max-w-[200px]"
+                                                                    className="text-[11px] font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 truncate max-w-[220px] mt-0.5"
                                                                 >
-                                                                    <svg className="w-3.5 h-3.5 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                                                                    <span className="truncate">{link.replace(/^https?:\/\/(www\.)?/, '')}</span>
+                                                                    <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
+                                                                    <span className="truncate">{vid.video_url.replace(/^https?:\/\/(www\.)?/, '')}</span>
                                                                 </a>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-slate-400 italic">+ Add Video Links</span>
-                                                    )}
-                                                </div>
-                                            )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                        <span>Add Video Links</span>
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
 
-                                        {/* 8. Released Date Column */}
-                                        <td className="px-4 py-3 whitespace-nowrap text-xs">
-                                            {editingCell?.id === c.id && editingCell?.field === 'released_date' ? (
-                                                <input
-                                                    type="date"
-                                                    autoFocus
-                                                    defaultValue={c.released_date || ''}
-                                                    onBlur={e => updateField(c.id, 'released_date', e.target.value)}
-                                                    onChange={e => updateField(c.id, 'released_date', e.target.value)}
-                                                    className="p-1 border border-[var(--accent-color)] rounded outline-none text-xs bg-white shadow-xs"
-                                                />
-                                            ) : (
-                                                <div 
-                                                    onClick={() => setEditingCell({ id: c.id, field: 'released_date' })}
-                                                    className="cursor-pointer hover:bg-slate-100 px-2 py-1 rounded text-slate-700 font-medium transition-colors"
-                                                    title="Click to edit release date"
-                                                >
-                                                    {c.released_date ? new Date(c.released_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '—'}
-                                                </div>
-                                            )}
+                                        {/* 8. Released Date Column (Synced from videos table) */}
+                                        <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-700 font-medium">
+                                            {c.released_date ? formatDateDisplay(c.released_date) : '—'}
                                         </td>
 
                                         {/* 9. Agreement Link Column */}
@@ -482,7 +626,7 @@ const InfluencerProgress: React.FC = () => {
                                                     className="text-xs font-semibold text-slate-600 hover:text-[var(--accent-color)] hover:underline inline-flex items-center gap-1"
                                                 >
                                                     <span>View Contract</span>
-                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                    <ExternalLink className="w-3 h-3" />
                                                 </a>
                                             ) : (
                                                 <span className="text-xs text-slate-400">—</span>
@@ -497,86 +641,188 @@ const InfluencerProgress: React.FC = () => {
                 </table>
             </div>
 
-            {/* Modal: Actual Budget Spent & Payment Status */}
-            {paymentModalRow && (
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-800">Payment & Budget Details</h3>
-                                <p className="text-xs text-slate-500 mt-0.5">KOL: <strong className="text-slate-700">{paymentModalRow.kols?.name}</strong></p>
+            {/* STICKY POPOVERS (ANCHORED DIRECTLY TO CLICKED CELL) */}
+            {activePopover && activePopover.anchorRect && (
+                <div 
+                    ref={popoverRef}
+                    style={{
+                        position: 'fixed',
+                        top: `${Math.min(window.innerHeight - 300, activePopover.anchorRect.bottom + 6)}px`,
+                        left: `${Math.min(window.innerWidth - 320, Math.max(16, activePopover.anchorRect.left))}px`,
+                        zIndex: 999
+                    }}
+                    className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 w-72 animate-in fade-in zoom-in-95 duration-150"
+                >
+                    {/* 1. Date Mini Calendar Popover */}
+                    {activePopover.type === 'date' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Calendar className="w-4 h-4 text-[var(--accent-color)]" />
+                                    <span>Collab Started Date</span>
+                                </span>
+                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
-                            <button onClick={() => setPaymentModalRow(null)} className="text-slate-400 hover:text-slate-600">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            <input 
+                                type="date" 
+                                value={dateInputVal ? (dateInputVal.includes('-') ? dateInputVal : '') : ''} 
+                                onChange={e => setDateInputVal(formatDateDisplay(e.target.value))} 
+                                className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                            />
+                            <div className="text-xs text-slate-500 font-medium">Or type custom format:</div>
+                            <input 
+                                type="text"
+                                value={dateInputVal}
+                                onChange={e => setDateInputVal(e.target.value)}
+                                placeholder="e.g. Feb 01, 2026"
+                                className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                            />
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button 
+                                    onClick={() => updateCollaborationField(activePopover.rowId, 'start_month', dateInputVal)} 
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-lg shadow-xs"
+                                >
+                                    Save Date
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 2. Progress Tag Popover */}
+                    {activePopover.type === 'progress' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Progress Status Tag</span>
+                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            </div>
+
+                            {/* Tag Selection List */}
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                                {tagOptions.map(t => (
+                                    <button
+                                        key={t}
+                                        onClick={() => updateCollaborationField(activePopover.rowId, 'progress_status', t)}
+                                        className={`w-full text-left px-3 py-1.5 rounded-lg text-xs border transition-colors flex justify-between items-center ${getProgressTagStyle(t)}`}
+                                    >
+                                        <span>{t}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Add Custom Tag */}
+                            <div className="pt-2 border-t border-slate-100 flex gap-1.5">
+                                <input 
+                                    type="text" 
+                                    value={newCustomTagInput} 
+                                    onChange={e => setNewCustomTagInput(e.target.value)} 
+                                    placeholder="New tag name..." 
+                                    className="w-full p-1.5 border border-slate-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-[var(--accent-color)]"
+                                />
+                                <button 
+                                    onClick={handleAddCustomTag}
+                                    className="px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg shrink-0"
+                                >
+                                    Add
+                                </button>
+                            </div>
+
+                            {/* Clear Tag */}
+                            <button 
+                                onClick={() => updateCollaborationField(activePopover.rowId, 'progress_status', null)}
+                                className="w-full text-center text-xs text-rose-600 hover:text-rose-700 font-semibold py-1 hover:bg-rose-50 rounded-lg"
+                            >
+                                Clear Progress Tag
                             </button>
                         </div>
+                    )}
 
-                        <form onSubmit={handleSavePaymentModal} className="p-6 space-y-5">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                    Total Contract Package
-                                </label>
-                                <div className="p-3 bg-slate-100 rounded-xl font-extrabold text-slate-800 text-lg border border-slate-200">
-                                    {formatCurrencyUSD(paymentModalRow.total_package)}
-                                </div>
+                    {/* 3. Payment Actual Spent Sticky Popover */}
+                    {activePopover.type === 'payment' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Actual Spent Budget</span>
+                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                    Actual Budget Spent ($ USD) *
+                                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                                    Actual Budget Spent ($ USD)
                                 </label>
                                 <div className="relative">
-                                    <span className="absolute left-3.5 top-2.5 text-slate-400 font-bold">$</span>
+                                    <span className="absolute left-3 top-2 text-slate-400 font-bold">$</span>
                                     <input 
-                                        type="number" 
+                                        type="number"
                                         min="0"
                                         step="any"
-                                        required
-                                        value={actualSpentInput}
-                                        onChange={e => setActualSpentInput(e.target.value)}
-                                        className="w-full pl-8 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent outline-none font-bold text-slate-800 text-lg shadow-xs"
+                                        autoFocus
+                                        value={spentInputVal}
+                                        onChange={e => setSpentInputVal(e.target.value)}
+                                        className="w-full pl-7 pr-3 py-1.5 border border-slate-300 rounded-xl text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
                                         placeholder="0"
                                     />
                                 </div>
-                                <p className="text-xs text-slate-400 mt-1">
-                                    Progress percentage: <strong className="text-slate-700">{parsePackageNumber(paymentModalRow.total_package) > 0 ? Math.min(100, Math.round(((parseFloat(actualSpentInput) || 0) / parsePackageNumber(paymentModalRow.total_package)) * 100)) : 0}%</strong>
-                                </p>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                    Payment Status Note
-                                </label>
-                                <select 
-                                    value={paymentStatusInput}
-                                    onChange={e => setPaymentStatusInput(e.target.value)}
-                                    className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white font-medium text-slate-700 text-sm shadow-xs"
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button 
+                                    onClick={() => updateCollaborationField(activePopover.rowId, 'actual_spent', parseFloat(spentInputVal) || 0)} 
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-lg shadow-xs"
                                 >
-                                    <option value="All Payment Done">All Payment Done (100%)</option>
-                                    <option value="1st Payment Done">1st Payment Done</option>
-                                    <option value="2nd Payment Done">2nd Payment Done</option>
-                                    <option value="Awaiting Payment">Awaiting Payment</option>
-                                    <option value="Free of charge">Free of charge</option>
-                                </select>
+                                    Save Spent
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 4. Video Links Manager Popover */}
+                    {activePopover.type === 'videos' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Manage Video Links</span>
+                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                            {/* Existing Video List */}
+                            <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                {videoUrlsList.map((url, idx) => (
+                                    <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                                        <span className="text-[11px] font-medium text-slate-700 truncate max-w-[180px]">{url}</span>
+                                        <button 
+                                            onClick={() => setVideoUrlsList(prev => prev.filter((_, i) => i !== idx))} 
+                                            className="text-rose-500 hover:text-rose-700 p-1"
+                                            title="Delete video link"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Add New Video Link Input */}
+                            <div className="pt-2 border-t border-slate-100 space-y-2">
+                                <label className="block text-[11px] font-bold text-slate-600 uppercase">Add New Video URL</label>
+                                <input 
+                                    type="text" 
+                                    value={newVideoUrlInput} 
+                                    onChange={e => setNewVideoUrlInput(e.target.value)} 
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                                 <button 
-                                    type="button" 
-                                    onClick={() => setPaymentModalRow(null)} 
-                                    className="px-5 py-2.5 rounded-full font-semibold text-slate-600 hover:bg-slate-100 transition-colors text-sm"
+                                    onClick={() => handleSaveVideosPopover(activePopover.rowId)} 
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-lg shadow-xs"
                                 >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    className="px-6 py-2.5 rounded-full font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 transition-colors shadow-sm text-sm"
-                                >
-                                    Save Budget Update
+                                    Save Video Links
                                 </button>
                             </div>
-                        </form>
-                    </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -586,9 +832,7 @@ const InfluencerProgress: React.FC = () => {
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
                             <h3 className="text-lg font-bold text-slate-800">Add New Influencer Deal</h3>
-                            <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
+                            <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
                         </div>
 
                         <form onSubmit={handleCreateCollaboration} className="p-6 space-y-4">
@@ -603,7 +847,7 @@ const InfluencerProgress: React.FC = () => {
                                 >
                                     <option value="">-- Select from list --</option>
                                     {allKols.map(k => (
-                                        <option key={k.id} value={k.id}>{k.name} ({k.country || 'US'})</option>
+                                        <option key={k.id} value={k.id}>{k.name} ({k.country || 'United States'})</option>
                                     ))}
                                 </select>
                             </div>
@@ -626,7 +870,7 @@ const InfluencerProgress: React.FC = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                                        Date / Month
+                                        Collab Started Date
                                     </label>
                                     <input 
                                         type="text" 
