@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabaseClient } from '../services/supabaseClient';
 import KOLCell, { KolData } from './KOLCell';
 import { Calendar, Filter, Search, ArrowUpDown, Plus, Trash2, ExternalLink, Play, X } from 'lucide-react';
@@ -113,6 +114,7 @@ const InfluencerProgress: React.FC = () => {
     const [newPackage, setNewPackage] = useState('');
 
     const popoverRef = useRef<HTMLDivElement>(null);
+    const tableContainerRef = useRef<HTMLDivElement>(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -182,8 +184,15 @@ const InfluencerProgress: React.FC = () => {
                 setActivePopover(null);
             }
         };
+        const handleScroll = () => {
+            setActivePopover(null);
+        };
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        window.addEventListener('scroll', handleScroll, true);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('scroll', handleScroll, true);
+        };
     }, []);
 
     // Update cell value in local state & Supabase
@@ -444,7 +453,7 @@ const InfluencerProgress: React.FC = () => {
             </div>
 
             {/* Table Area */}
-            <div className="overflow-x-auto border border-[#bfdbfe]/50 rounded-2xl shadow-xs bg-white relative">
+            <div ref={tableContainerRef} className="overflow-x-auto border border-[#bfdbfe]/50 rounded-2xl shadow-xs bg-white relative">
                 <table className="w-full text-sm text-left text-slate-600 border-collapse">
                     <thead className="text-xs text-[#2236ba] font-bold uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
                         <tr>
@@ -656,17 +665,17 @@ const InfluencerProgress: React.FC = () => {
                 </table>
             </div>
 
-            {/* STICKY CELL-ANCHORED POPOVERS */}
-            {activePopover && activePopover.anchorRect && (
+            {/* STICKY CELL-ANCHORED POPOVERS — rendered via Portal to escape CSS transform containment */}
+            {activePopover && activePopover.anchorRect && createPortal(
                 <div 
                     ref={popoverRef}
                     style={{
                         position: 'fixed',
                         top: `${Math.min(window.innerHeight - 280, activePopover.anchorRect.bottom + 4)}px`,
                         left: `${Math.min(window.innerWidth - 300, Math.max(16, activePopover.anchorRect.left))}px`,
-                        zIndex: 999
+                        zIndex: 99999
                     }}
-                    className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 w-72 animate-in fade-in zoom-in-95 duration-150"
+                    className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 w-72"
                 >
                     {/* 1. Date Mini Calendar Popover */}
                     {activePopover.type === 'date' && (
@@ -906,7 +915,8 @@ const InfluencerProgress: React.FC = () => {
                             </div>
                         </div>
                     )}
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Modal: Add New Deal */}
