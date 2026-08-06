@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PerformanceOverview from './components/PerformanceOverview';
-import ConversionDetails from './components/ConversionDetails';
-import InfluencerPerformance from './components/InfluencerPerformance';
+import InfluencerWorkspace from './components/InfluencerWorkspace';
 import KpiRunrate from './components/KpiRunrate';
 import { KpiTarget } from './types';
 import { supabaseClient } from './services/supabaseClient';
@@ -22,12 +21,11 @@ const Header: React.FC = () => (
 );
 
 const Tabs: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ activeTab, setActiveTab }) => {
-  const tabs: { id: Tab; label: string; disabled?: boolean }[] = [
-    { id: 'affiliate', label: 'Affiliate Performance' },
-    { id: 'conversion', label: 'Merchants Details' },
-    { id: 'influencer', label: 'Influencer Performance' },
-    { id: 'kpi', label: 'KPI Runrate' },
-  ];
+    const tabs: { id: Tab; label: string; disabled?: boolean }[] = [
+        { id: 'affiliate', label: 'Affiliate' },
+        { id: 'influencer', label: 'Influencer' },
+        { id: 'kpi', label: 'KPI Runrate' },
+    ];
 
   return (
     <nav className="mb-12">
@@ -179,10 +177,8 @@ const App: React.FC = () => {
     switch (activeTab) {
       case 'affiliate':
         return <PerformanceOverview />;
-      case 'conversion':
-        return <ConversionDetails />;
       case 'influencer':
-        return <InfluencerPerformance />;
+        return <InfluencerWorkspace />;
       case 'kpi':
         return <KpiRunrate loading={kpiLoading} error={kpiError} data={kpiData} onSave={loadKpiData} />;
       default:
