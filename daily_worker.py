@@ -6,8 +6,14 @@ from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 
 # --- ENVIRONMENT & CONFIGURATION ---
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://wpzigasfuizrabqqzxln.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_pmVTsi7Ja776fvYKBacBUA_0YwFIVv6")
+DEFAULT_SUPABASE_URL = "https://wpzigasfuizrabqqzxln.supabase.co"
+DEFAULT_SUPABASE_KEY = "sb_publishable_pmVTsi7Ja776fvYKBacBUA_0YwFIVv6"
+
+raw_url = (os.environ.get("SUPABASE_URL") or "").strip()
+SUPABASE_URL = raw_url if raw_url else DEFAULT_SUPABASE_URL
+
+raw_key = (os.environ.get("SUPABASE_KEY") or "").strip()
+SUPABASE_KEY = raw_key if raw_key else DEFAULT_SUPABASE_KEY
 
 # YouTube API Key pool - auto-rotates on 403 quota limits
 YOUTUBE_API_KEYS = [
