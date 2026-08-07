@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabaseClient } from '../services/supabaseClient';
 import KOLCell, { KolData } from './KOLCell';
-import { Calendar, Filter, Search, ArrowUpDown, Plus, Trash2, ExternalLink, Play, X } from 'lucide-react';
+import { 
+    Calendar, Filter, Search, ArrowUpDown, Plus, Trash2, Edit2, Check,
+    ExternalLink, Play, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight 
+} from 'lucide-react';
 
 interface VideoRecord {
     id: string;
@@ -75,6 +78,156 @@ const formatDateDisplay = (dateStr?: string | null): string => {
     }
 };
 
+// Platform Icon Auto-Detector Helper
+const renderPlatformIcon = (url: string) => {
+    const u = (url || '').toLowerCase();
+    if (u.includes('youtube.com') || u.includes('youtu.be')) {
+        return (
+            <svg className="w-3.5 h-3.5 text-red-500 shrink-0 fill-red-500" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+        );
+    }
+    if (u.includes('tiktok.com')) {
+        return (
+            <svg className="w-3.5 h-3.5 shrink-0 text-slate-900 fill-current" viewBox="0 0 24 24">
+                <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 2.13 6.333 6.333 0 0 0 4.148 10.458 6.333 6.333 0 0 0 6.709-6.319V8.2a8.214 8.214 0 0 0 4.77 1.526V6.28a4.8 4.8 0 0 1-1.205-.406z"/>
+            </svg>
+        );
+    }
+    if (u.includes('instagram.com')) {
+        return (
+            <svg className="w-3.5 h-3.5 shrink-0 text-pink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+            </svg>
+        );
+    }
+    if (u.includes('twitter.com') || u.includes('x.com')) {
+        return (
+            <svg className="w-3.5 h-3.5 shrink-0 text-slate-800 fill-current" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+        );
+    }
+    return <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />;
+};
+
+// Custom Single Mini Calendar Picker Component
+interface MiniCalendarPickerProps {
+    initialDate?: string | null;
+    onSelectDate: (formattedDate: string) => void;
+    onClose: () => void;
+}
+
+const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, onSelectDate, onClose }) => {
+    const initialDt = initialDate ? new Date(initialDate) : new Date();
+    const validDt = isNaN(initialDt.getTime()) ? new Date() : initialDt;
+
+    const [viewYear, setViewYear] = useState<number>(validDt.getFullYear());
+    const [viewMonth, setViewMonth] = useState<number>(validDt.getMonth());
+
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const dayHeaders = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+    const handlePrevYear = () => setViewYear(prev => prev - 1);
+    const handleNextYear = () => setViewYear(prev => prev + 1);
+    const handlePrevMonth = () => {
+        if (viewMonth === 0) {
+            setViewMonth(11);
+            setViewYear(prev => prev - 1);
+        } else {
+            setViewMonth(prev => prev - 1);
+        }
+    };
+    const handleNextMonth = () => {
+        if (viewMonth === 11) {
+            setViewMonth(0);
+            setViewYear(prev => prev + 1);
+        } else {
+            setViewMonth(prev => prev + 1);
+        }
+    };
+
+    const firstDayIndex = new Date(viewYear, viewMonth, 1).getDay();
+    const totalDaysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+    const daysGrid: (number | null)[] = [];
+    for (let i = 0; i < firstDayIndex; i++) {
+        daysGrid.push(null);
+    }
+    for (let d = 1; d <= totalDaysInMonth; d++) {
+        daysGrid.push(d);
+    }
+
+    const handleSelectDay = (day: number) => {
+        const selectedDt = new Date(viewYear, viewMonth, day);
+        const formatted = selectedDt.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+        onSelectDate(formatted);
+    };
+
+    return (
+        <div className="space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                <span className="font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-[var(--accent-color)]" />
+                    <span>Collab Started Date</span>
+                </span>
+                <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            </div>
+
+            {/* Navigation Header */}
+            <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-xl border border-slate-200 select-none">
+                <div className="flex items-center gap-0.5">
+                    <button onClick={handlePrevYear} title="Previous Year" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
+                        <ChevronsLeft className="w-4 h-4" />
+                    </button>
+                    <button onClick={handlePrevMonth} title="Previous Month" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                </div>
+                <span className="text-xs font-bold text-slate-800">
+                    {monthNames[viewMonth]} {viewYear}
+                </span>
+                <div className="flex items-center gap-0.5">
+                    <button onClick={handleNextMonth} title="Next Month" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleNextYear} title="Next Year" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
+                        <ChevronsRight className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Days Grid */}
+            <div>
+                <div className="grid grid-cols-7 gap-1 text-center mb-1 select-none">
+                    {dayHeaders.map(dh => (
+                        <div key={dh} className="text-[10px] font-bold text-slate-400 uppercase py-0.5">{dh}</div>
+                    ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center">
+                    {daysGrid.map((day, idx) => {
+                        if (day === null) {
+                            return <div key={idx} className="h-7" />;
+                        }
+                        return (
+                            <button
+                                key={idx}
+                                onClick={() => handleSelectDay(day)}
+                                className="h-7 w-7 mx-auto flex items-center justify-center rounded-lg text-xs font-semibold text-slate-700 hover:bg-[var(--accent-color)] hover:text-white transition-colors"
+                            >
+                                {day}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const InfluencerProgress: React.FC = () => {
     const [collaborations, setCollaborations] = useState<CollaborationRow[]>([]);
     const [allKols, setAllKols] = useState<KolData[]>([]);
@@ -83,6 +236,12 @@ const InfluencerProgress: React.FC = () => {
     // Custom Tag Options list
     const [tagOptions, setTagOptions] = useState<string[]>(DEFAULT_PROGRESS_TAGS);
     const [newCustomTagInput, setNewCustomTagInput] = useState('');
+    const [editingTagIdx, setEditingTagIdx] = useState<number | null>(null);
+    const [editingTagVal, setEditingTagVal] = useState('');
+
+    // Video editing state
+    const [editingUrlIdx, setEditingUrlIdx] = useState<number | null>(null);
+    const [editingUrlVal, setEditingUrlVal] = useState('');
 
     // Filters & Sorting state
     const [searchQuery, setSearchQuery] = useState('');
@@ -99,7 +258,6 @@ const InfluencerProgress: React.FC = () => {
     } | null>(null);
 
     // Popover input values
-    const [dateInputVal, setDateInputVal] = useState('');
     const [spentInputVal, setSpentInputVal] = useState<string>('0');
     const [pkgInputVal, setPkgInputVal] = useState<string>('');
     const [countInputVal, setCountInputVal] = useState<number>(1);
@@ -222,9 +380,10 @@ const InfluencerProgress: React.FC = () => {
         const targetElement = e.currentTarget as HTMLElement;
         const rect = targetElement.getBoundingClientRect();
 
-        if (type === 'date') {
-            setDateInputVal(row.start_month || '');
-        } else if (type === 'payment') {
+        setEditingTagIdx(null);
+        setEditingUrlIdx(null);
+
+        if (type === 'payment') {
             setSpentInputVal(String(row.actual_spent || 0));
         } else if (type === 'videos') {
             const urls = (row.report_links || '').match(/(https?:\/\/[^\s,]+)/g) || [];
@@ -252,7 +411,6 @@ const InfluencerProgress: React.FC = () => {
         const updatedLinksText = finalUrls.join('\n');
         await updateCollaborationField(rowId, 'report_links', updatedLinksText);
 
-        // Upsert videos to Supabase videos table so daily_worker.py will scan them
         const targetCollab = collaborations.find(c => c.id === rowId);
         if (targetCollab && targetCollab.kol_id) {
             for (const url of finalUrls) {
@@ -285,6 +443,35 @@ const InfluencerProgress: React.FC = () => {
             updateCollaborationField(activePopover.rowId, 'progress_status', tag);
         }
         setNewCustomTagInput('');
+    };
+
+    // Save edited tag option name
+    const handleSaveEditTag = (idx: number) => {
+        if (!editingTagVal.trim()) return;
+        const oldTag = tagOptions[idx];
+        const newTag = editingTagVal.trim();
+        setTagOptions(prev => prev.map((t, i) => i === idx ? newTag : t));
+        
+        // Update active row if it was using old tag name
+        if (activePopover?.rowId) {
+            const currentCollab = collaborations.find(c => c.id === activePopover.rowId);
+            if (currentCollab?.progress_status === oldTag) {
+                updateCollaborationField(activePopover.rowId, 'progress_status', newTag);
+            }
+        }
+        setEditingTagIdx(null);
+    };
+
+    // Delete tag option
+    const handleDeleteTag = (idx: number) => {
+        const tagToDelete = tagOptions[idx];
+        setTagOptions(prev => prev.filter((_, i) => i !== idx));
+        if (activePopover?.rowId) {
+            const currentCollab = collaborations.find(c => c.id === activePopover.rowId);
+            if (currentCollab?.progress_status === tagToDelete) {
+                updateCollaborationField(activePopover.rowId, 'progress_status', null);
+            }
+        }
     };
 
     // Create New Collaboration Record
@@ -360,7 +547,6 @@ const InfluencerProgress: React.FC = () => {
             let valB: any = b[sortField as keyof CollaborationRow];
 
             if (sortField === 'start_month') {
-                // CHRONOLOGICAL DATE SORTING
                 valA = a.start_month ? (Date.parse(a.start_month) || 0) : 0;
                 valB = b.start_month ? (Date.parse(b.start_month) || 0) : 0;
             } else if (sortField === 'kol_name') {
@@ -381,7 +567,6 @@ const InfluencerProgress: React.FC = () => {
             return 0;
         });
 
-    // Unique countries for filter dropdown
     const availableCountries = Array.from(new Set(allKols.map(k => k.country).filter(Boolean)));
 
     return (
@@ -396,12 +581,12 @@ const InfluencerProgress: React.FC = () => {
                         </span>
                     </h2>
                     <p className="text-sm text-slate-500 mt-1">
-                        Track partnership deals, inline progress statuses, actual budget spent, and YouTube videos.
+                        Track partnership deals, inline progress statuses, actual budget spent, and social media videos.
                     </p>
                 </div>
                 <button 
                     onClick={() => setShowAddModal(true)}
-                    className="bg-[var(--accent-color)] text-white px-5 py-2.5 rounded-full font-semibold hover:bg-emerald-600 transition-colors shadow-sm text-sm flex items-center justify-center gap-1.5 w-fit shrink-0"
+                    className="bg-[var(--accent-color)] text-white px-5 py-2.5 rounded-full font-semibold hover:bg-emerald-600 transition-colors shadow-xs text-sm flex items-center justify-center gap-1.5 w-fit shrink-0"
                 >
                     <Plus className="w-4 h-4" />
                     <span>Add New Deal</span>
@@ -410,7 +595,6 @@ const InfluencerProgress: React.FC = () => {
 
             {/* Filter Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/80 p-4 rounded-2xl border border-[#bfdbfe]/50">
-                {/* Search KOL */}
                 <div className="relative">
                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     <input 
@@ -422,7 +606,6 @@ const InfluencerProgress: React.FC = () => {
                     />
                 </div>
 
-                {/* Filter by Status */}
                 <div className="flex items-center gap-2">
                     <Filter className="w-4 h-4 text-slate-400 shrink-0" />
                     <select 
@@ -437,7 +620,6 @@ const InfluencerProgress: React.FC = () => {
                     </select>
                 </div>
 
-                {/* Filter by Country */}
                 <div className="flex items-center gap-2">
                     <select 
                         value={filterCountry}
@@ -507,35 +689,35 @@ const InfluencerProgress: React.FC = () => {
                                 return (
                                     <tr key={c.id} className="hover:bg-emerald-50/20 transition-colors group">
                                         
-                                        {/* 1. Collab Started (Chronological Sortable Date Cell) */}
+                                        {/* 1. Collab Started (Single Mini Calendar Picker) */}
                                         <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
                                             <button 
                                                 onClick={e => openPopover(e, c, 'date')}
                                                 className="hover:bg-slate-100 px-2.5 py-1 rounded-lg text-slate-700 font-medium transition-colors flex items-center gap-1.5 border border-transparent hover:border-slate-200"
-                                                title="Click to change partnership start date"
+                                                title="Click to select partnership start date"
                                             >
                                                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                                                 <span>{c.start_month || 'Select Date'}</span>
                                             </button>
                                         </td>
 
-                                        {/* 2. KOL Universal Column */}
+                                        {/* 2. KOL Universal Visual Identity */}
                                         <td className="px-4 py-3">
                                             <KOLCell kol={c.kols} />
                                         </td>
 
-                                        {/* 3. Status Tag Column (Single-click Menu, No Arrow inside badge) */}
+                                        {/* 3. Status Tag Column */}
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <button
                                                 onClick={e => openPopover(e, c, 'progress')}
                                                 className={`px-3 py-1 rounded-full text-xs border transition-transform hover:scale-105 inline-block shadow-2xs ${getProgressTagStyle(c.progress_status)}`}
-                                                title="Single click to change status tag"
+                                                title="Click to change status tag"
                                             >
                                                 <span>{c.progress_status || 'Select Status'}</span>
                                             </button>
                                         </td>
 
-                                        {/* 4. Payment Progress Column (Only Spent & Progress Bar, Sticky Popover) */}
+                                        {/* 4. Payment Progress Column */}
                                         <td className="px-4 py-3">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'payment')}
@@ -565,18 +747,18 @@ const InfluencerProgress: React.FC = () => {
                                             </div>
                                         </td>
 
-                                        {/* 5. Package Column ($ USD) with Anchored Popover */}
+                                        {/* 5. Package Column */}
                                         <td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">
                                             <button 
                                                 onClick={e => openPopover(e, c, 'package')}
                                                 className="hover:bg-slate-100 px-2 py-1 rounded transition-colors text-right inline-block text-slate-800 font-semibold border border-transparent hover:border-slate-200"
-                                                title="Click to edit package"
+                                                title="Click to edit package amount"
                                             >
                                                 {formatCurrencyUSD(c.total_package)}
                                             </button>
                                         </td>
 
-                                        {/* 6. Content Count Column with Anchored Popover */}
+                                        {/* 6. Content Count Column */}
                                         <td className="px-4 py-3 text-center whitespace-nowrap">
                                             <button 
                                                 onClick={e => openPopover(e, c, 'count')}
@@ -587,7 +769,7 @@ const InfluencerProgress: React.FC = () => {
                                             </button>
                                         </td>
 
-                                        {/* 7. Reported Videos Column (Embedded Video Titles as Clickable Hyperlinks) */}
+                                        {/* 7. Reported Videos (Auto-Detected Platform Icons) */}
                                         <td className="px-4 py-3 max-w-[260px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'videos')}
@@ -608,7 +790,7 @@ const InfluencerProgress: React.FC = () => {
                                                                         className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 truncate max-w-[240px] py-0.5"
                                                                         title={vid.video_url}
                                                                     >
-                                                                        <Play className="w-3 h-3 text-red-500 shrink-0 fill-red-500" />
+                                                                        {renderPlatformIcon(vid.video_url)}
                                                                         <span className="truncate">{displayTitle}</span>
                                                                         <ExternalLink className="w-3 h-3 shrink-0 opacity-60" />
                                                                     </a>
@@ -625,7 +807,7 @@ const InfluencerProgress: React.FC = () => {
                                             </div>
                                         </td>
 
-                                        {/* 8. Released Date Column (Multi-Video Corresponding Dates) */}
+                                        {/* 8. Released Date Column */}
                                         <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-700 font-medium">
                                             {c.videosList && c.videosList.length > 0 ? (
                                                 <div className="space-y-1.5">
@@ -665,105 +847,115 @@ const InfluencerProgress: React.FC = () => {
                 </table>
             </div>
 
-            {/* STICKY CELL-ANCHORED POPOVERS — rendered via Portal to escape CSS transform containment */}
+            {/* STICKY CELL-ANCHORED POPOVERS — Clean theme, no heavy shadows */}
             {activePopover && activePopover.anchorRect && createPortal(
                 <div 
                     ref={popoverRef}
+                    onClick={e => e.stopPropagation()}
                     style={{
                         position: 'fixed',
-                        top: `${Math.min(window.innerHeight - 280, activePopover.anchorRect.bottom + 4)}px`,
-                        left: `${Math.min(window.innerWidth - 300, Math.max(16, activePopover.anchorRect.left))}px`,
+                        top: `${Math.min(window.innerHeight - 320, activePopover.anchorRect.bottom + 4)}px`,
+                        left: `${Math.min(window.innerWidth - 340, Math.max(16, activePopover.anchorRect.left))}px`,
                         zIndex: 99999
                     }}
-                    className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 w-72"
+                    className="bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-xs p-4 w-80 font-sans"
                 >
-                    {/* 1. Date Mini Calendar Popover */}
+                    {/* 1. Date Single Mini Calendar Popover */}
                     {activePopover.type === 'date' && (
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Calendar className="w-4 h-4 text-[var(--accent-color)]" />
-                                    <span>Collab Started Date</span>
-                                </span>
-                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
-                            </div>
-                            <input 
-                                type="date" 
-                                value={dateInputVal ? (dateInputVal.includes('-') ? dateInputVal : '') : ''} 
-                                onChange={e => setDateInputVal(formatDateDisplay(e.target.value))} 
-                                className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
-                            />
-                            <div className="text-xs text-slate-500 font-medium">Or type date text:</div>
-                            <input 
-                                type="text"
-                                value={dateInputVal}
-                                onChange={e => setDateInputVal(e.target.value)}
-                                placeholder="e.g. Feb 01, 2026"
-                                className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
-                            />
-                            <div className="flex justify-end gap-2 pt-2">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                                <button 
-                                    onClick={() => updateCollaborationField(activePopover.rowId, 'start_month', dateInputVal)} 
-                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-lg shadow-xs"
-                                >
-                                    Save Date
-                                </button>
-                            </div>
-                        </div>
+                        <MiniCalendarPicker 
+                            initialDate={collaborations.find(c => c.id === activePopover.rowId)?.start_month}
+                            onSelectDate={(formattedDate) => updateCollaborationField(activePopover.rowId, 'start_month', formattedDate)}
+                            onClose={() => setActivePopover(null)}
+                        />
                     )}
 
-                    {/* 2. Status Popover */}
+                    {/* 2. Status Tag Popover (With Hover Edit/Delete Action Icons) */}
                     {activePopover.type === 'progress' && (
-                        <div className="space-y-3">
+                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                                 <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Status Tag</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
 
-                            {/* Tag Selection List */}
-                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                                {tagOptions.map(t => (
-                                    <button
-                                        key={t}
-                                        onClick={() => updateCollaborationField(activePopover.rowId, 'progress_status', t)}
-                                        className={`w-full text-left px-3 py-1.5 rounded-lg text-xs border transition-colors flex justify-between items-center ${getProgressTagStyle(t)}`}
-                                    >
-                                        <span>{t}</span>
-                                    </button>
-                                ))}
+                            {/* Tag Options List */}
+                            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                                {tagOptions.map((t, idx) => {
+                                    if (editingTagIdx === idx) {
+                                        return (
+                                            <div key={idx} className="flex items-center gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-300">
+                                                <input 
+                                                    type="text" 
+                                                    autoFocus 
+                                                    value={editingTagVal}
+                                                    onChange={e => setEditingTagVal(e.target.value)}
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter') handleSaveEditTag(idx);
+                                                    }}
+                                                    className="w-full text-xs p-1 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white"
+                                                />
+                                                <button 
+                                                    onClick={() => handleSaveEditTag(idx)} 
+                                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0"
+                                                    title="Save name"
+                                                >
+                                                    <Check className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div key={t} className="group/tag flex items-center justify-between p-1 rounded-xl hover:bg-slate-50 transition-colors">
+                                            <button
+                                                onClick={() => updateCollaborationField(activePopover.rowId, 'progress_status', t)}
+                                                className={`flex-1 text-left px-3 py-1.5 rounded-lg text-xs border transition-colors ${getProgressTagStyle(t)}`}
+                                            >
+                                                <span>{t}</span>
+                                            </button>
+                                            <div className="opacity-0 group-hover/tag:opacity-100 flex items-center gap-0.5 ml-1 transition-opacity">
+                                                <button 
+                                                    onClick={e => { e.stopPropagation(); setEditingTagIdx(idx); setEditingTagVal(t); }} 
+                                                    className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 rounded-md"
+                                                    title="Rename tag"
+                                                >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button 
+                                                    onClick={e => { e.stopPropagation(); handleDeleteTag(idx); }} 
+                                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md"
+                                                    title="Delete tag option"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
-                            {/* Add Custom Tag */}
+                            {/* Add Custom Tag Form */}
                             <div className="pt-2 border-t border-slate-100 flex gap-1.5">
                                 <input 
                                     type="text" 
                                     value={newCustomTagInput} 
                                     onChange={e => setNewCustomTagInput(e.target.value)} 
-                                    placeholder="New tag name..." 
-                                    className="w-full p-1.5 border border-slate-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-[var(--accent-color)]"
+                                    placeholder="Add custom status tag..." 
+                                    className="w-full p-1.5 border border-slate-300 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[var(--accent-color)]"
+                                    onKeyDown={e => { if (e.key === 'Enter') handleAddCustomTag(); }}
                                 />
                                 <button 
                                     onClick={handleAddCustomTag}
-                                    className="px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg shrink-0"
+                                    className="px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-xl shrink-0"
                                 >
                                     Add
                                 </button>
                             </div>
-
-                            {/* Clear Tag */}
-                            <button 
-                                onClick={() => updateCollaborationField(activePopover.rowId, 'progress_status', null)}
-                                className="w-full text-center text-xs text-rose-600 hover:text-rose-700 font-semibold py-1 hover:bg-rose-50 rounded-lg"
-                            >
-                                Clear Status
-                            </button>
                         </div>
                     )}
 
                     {/* 3. Payment Actual Spent Sticky Popover */}
                     {activePopover.type === 'payment' && (
-                        <div className="space-y-3">
+                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                                 <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Actual Spent Budget</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
@@ -792,7 +984,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'actual_spent', parseFloat(spentInputVal) || 0)} 
-                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-lg shadow-xs"
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
                                 >
                                     Save Spent
                                 </button>
@@ -802,7 +994,7 @@ const InfluencerProgress: React.FC = () => {
 
                     {/* 4. Package Amount Sticky Popover */}
                     {activePopover.type === 'package' && (
-                        <div className="space-y-3">
+                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                                 <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Contract Package</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
@@ -826,7 +1018,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'total_package', pkgInputVal)} 
-                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-lg shadow-xs"
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
                                 >
                                     Save Package
                                 </button>
@@ -836,7 +1028,7 @@ const InfluencerProgress: React.FC = () => {
 
                     {/* 5. Content Count Sticky Popover */}
                     {activePopover.type === 'count' && (
-                        <div className="space-y-3">
+                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                                 <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Content Count</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
@@ -860,7 +1052,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'content_count', countInputVal)} 
-                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-lg shadow-xs"
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
                                 >
                                     Save Count
                                 </button>
@@ -868,28 +1060,68 @@ const InfluencerProgress: React.FC = () => {
                         </div>
                     )}
 
-                    {/* 6. Video Links Manager Popover */}
+                    {/* 6. Video Links Manager Popover (With Platform Icons & Link Editing) */}
                     {activePopover.type === 'videos' && (
-                        <div className="space-y-3">
+                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                                 <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">Manage Video Links</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
 
-                            {/* Existing Video List */}
-                            <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                                {videoUrlsList.map((url, idx) => (
-                                    <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 rounded-lg border border-slate-200">
-                                        <span className="text-[11px] font-medium text-slate-700 truncate max-w-[180px]">{url}</span>
-                                        <button 
-                                            onClick={() => setVideoUrlsList(prev => prev.filter((_, i) => i !== idx))} 
-                                            className="text-rose-500 hover:text-rose-700 p-1"
-                                            title="Delete video link"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                ))}
+                            {/* Existing Video Links List */}
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                {videoUrlsList.map((url, idx) => {
+                                    if (editingUrlIdx === idx) {
+                                        return (
+                                            <div key={idx} className="flex items-center gap-1.5 p-1.5 bg-slate-50 rounded-xl border border-slate-300">
+                                                <input 
+                                                    type="text" 
+                                                    autoFocus 
+                                                    value={editingUrlVal} 
+                                                    onChange={e => setEditingUrlVal(e.target.value)}
+                                                    className="w-full text-xs p-1 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white"
+                                                />
+                                                <button 
+                                                    onClick={() => {
+                                                        const copy = [...videoUrlsList];
+                                                        copy[idx] = editingUrlVal.trim();
+                                                        setVideoUrlsList(copy);
+                                                        setEditingUrlIdx(null);
+                                                    }} 
+                                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0"
+                                                    title="Save URL link"
+                                                >
+                                                    <Check className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-200 group/vlink">
+                                            <div className="flex items-center gap-1.5 truncate max-w-[190px]">
+                                                {renderPlatformIcon(url)}
+                                                <span className="text-[11px] font-medium text-slate-700 truncate">{url}</span>
+                                            </div>
+                                            <div className="flex items-center gap-0.5">
+                                                <button 
+                                                    onClick={() => { setEditingUrlIdx(idx); setEditingUrlVal(url); }}
+                                                    className="text-slate-400 hover:text-slate-700 p-1 rounded-md"
+                                                    title="Edit video URL"
+                                                >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => setVideoUrlsList(prev => prev.filter((_, i) => i !== idx))} 
+                                                    className="text-slate-400 hover:text-rose-600 p-1 rounded-md"
+                                                    title="Delete video link"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             {/* Add New Video Link Input */}
@@ -899,8 +1131,9 @@ const InfluencerProgress: React.FC = () => {
                                     type="text" 
                                     value={newVideoUrlInput} 
                                     onChange={e => setNewVideoUrlInput(e.target.value)} 
-                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    placeholder="https://..."
                                     className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                                    onKeyDown={e => { if (e.key === 'Enter') handleSaveVideosPopover(activePopover.rowId); }}
                                 />
                             </div>
 
@@ -908,7 +1141,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => handleSaveVideosPopover(activePopover.rowId)} 
-                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-lg shadow-xs"
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
                                 >
                                     Save Video Links
                                 </button>
@@ -997,7 +1230,7 @@ const InfluencerProgress: React.FC = () => {
                                 </button>
                                 <button 
                                     type="submit" 
-                                    className="px-6 py-2.5 rounded-full font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 transition-colors shadow-sm text-sm"
+                                    className="px-6 py-2.5 rounded-full font-semibold text-white bg-[var(--accent-color)] hover:bg-emerald-600 transition-colors shadow-xs text-sm"
                                 >
                                     Create Deal
                                 </button>
