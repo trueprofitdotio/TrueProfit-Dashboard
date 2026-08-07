@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabaseClient } from '../services/supabaseClient';
 import KOLCell, { KolData } from './KOLCell';
+import { fetchYouTubeChannelDetails } from '../services/youtubeService';
 import { 
     Calendar, Filter, Search, ArrowUpDown, Plus, Trash2, Edit2, Check,
-    ExternalLink, Play, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight 
+    Play, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Youtube
 } from 'lucide-react';
 
 interface VideoRecord {
@@ -42,15 +43,35 @@ const DEFAULT_PROGRESS_TAGS = [
     'Awaiting Payment'
 ];
 
+const COLOR_PALETTES = [
+    'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold',
+    'bg-rose-100 text-rose-800 border-rose-300 font-semibold',
+    'bg-amber-100 text-amber-800 border-amber-300 font-semibold',
+    'bg-purple-100 text-purple-800 border-purple-300 font-semibold',
+    'bg-sky-100 text-sky-800 border-sky-300 font-semibold',
+    'bg-indigo-100 text-indigo-800 border-indigo-300 font-semibold',
+    'bg-teal-100 text-teal-800 border-teal-300 font-semibold',
+    'bg-pink-100 text-pink-800 border-pink-300 font-semibold',
+    'bg-orange-100 text-orange-800 border-orange-300 font-semibold',
+    'bg-blue-100 text-blue-800 border-blue-300 font-semibold'
+];
+
 const getProgressTagStyle = (status?: string | null) => {
-    if (!status) return 'bg-slate-100 text-slate-700 border-slate-200';
+    if (!status) return 'bg-slate-100 text-slate-700 border-slate-200 font-normal';
     const s = status.trim().toLowerCase();
     if (s === 'all done') return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold';
     if (s === 'pending/canceled' || s === 'canceled' || s === 'cancelled') return 'bg-rose-100 text-rose-800 border-rose-300 font-semibold';
     if (s.includes('1st payment') || s.includes('2nd payment')) return 'bg-amber-100 text-amber-800 border-amber-300 font-semibold';
     if (s.includes('awaiting content') || s.includes('third content')) return 'bg-purple-100 text-purple-800 border-purple-300 font-semibold';
     if (s.includes('awaiting payment')) return 'bg-sky-100 text-sky-800 border-sky-300 font-semibold';
-    return 'bg-slate-100 text-slate-800 border-slate-300 font-normal';
+    
+    // Hash fallback for custom unique tags
+    let hash = 0;
+    for (let i = 0; i < status.length; i++) {
+        hash = status.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const paletteIdx = Math.abs(hash) % COLOR_PALETTES.length;
+    return COLOR_PALETTES[paletteIdx];
 };
 
 const formatCurrencyUSD = (val?: string | number | null): string => {
@@ -111,7 +132,7 @@ const renderPlatformIcon = (url: string) => {
             </svg>
         );
     }
-    return <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />;
+    return <Play className="w-3.5 h-3.5 text-slate-400 shrink-0" />;
 };
 
 // Custom Single Mini Calendar Picker Component
@@ -180,10 +201,10 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
             {/* Navigation Header */}
             <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-xl border border-slate-200 select-none">
                 <div className="flex items-center gap-0.5">
-                    <button onClick={handlePrevYear} title="Previous Year" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
+                    <button type="button" onClick={handlePrevYear} title="Previous Year" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
                         <ChevronsLeft className="w-4 h-4" />
                     </button>
-                    <button onClick={handlePrevMonth} title="Previous Month" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
+                    <button type="button" onClick={handlePrevMonth} title="Previous Month" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
                         <ChevronLeft className="w-4 h-4" />
                     </button>
                 </div>
@@ -191,10 +212,10 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
                     {monthNames[viewMonth]} {viewYear}
                 </span>
                 <div className="flex items-center gap-0.5">
-                    <button onClick={handleNextMonth} title="Next Month" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
+                    <button type="button" onClick={handleNextMonth} title="Next Month" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
                         <ChevronRight className="w-4 h-4" />
                     </button>
-                    <button onClick={handleNextYear} title="Next Year" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
+                    <button type="button" onClick={handleNextYear} title="Next Year" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
                         <ChevronsRight className="w-4 h-4" />
                     </button>
                 </div>
@@ -214,6 +235,7 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
                         }
                         return (
                             <button
+                                type="button"
                                 key={idx}
                                 onClick={() => handleSelectDay(day)}
                                 className="h-7 w-7 mx-auto flex items-center justify-center rounded-lg text-xs font-medium text-slate-700 hover:bg-[var(--accent-color)] hover:text-white transition-colors"
@@ -264,12 +286,17 @@ const InfluencerProgress: React.FC = () => {
     const [videoUrlsList, setVideoUrlsList] = useState<string[]>([]);
     const [newVideoUrlInput, setNewVideoUrlInput] = useState('');
 
-    // Modal state for adding new record
+    // Modal state for adding new deal
     const [showAddModal, setShowAddModal] = useState(false);
+    const [kolSourceMode, setKolSourceMode] = useState<'existing' | 'new_yt'>('existing');
     const [newKolId, setNewKolId] = useState('');
-    const [newKolName, setNewKolName] = useState('');
+    const [ytChannelUrlInput, setYtChannelUrlInput] = useState('');
+    const [fetchingYt, setFetchingYt] = useState(false);
+    const [fetchedKolData, setFetchedKolData] = useState<KolData | null>(null);
+
     const [newStartMonth, setNewStartMonth] = useState('');
     const [newPackage, setNewPackage] = useState('');
+    const [showModalCalendar, setShowModalCalendar] = useState(false);
 
     const popoverRef = useRef<HTMLDivElement>(null);
     const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -311,6 +338,13 @@ const InfluencerProgress: React.FC = () => {
                         released_date: found?.released_date || null,
                         current_views: found?.current_views || null
                     };
+                });
+
+                // AUTO-SORT REPORTED VIDEOS OLDEST (TOP) TO NEWEST (BOTTOM)
+                matchedVids.sort((a, b) => {
+                    const timeA = a.released_date ? (Date.parse(a.released_date) || 0) : 0;
+                    const timeB = b.released_date ? (Date.parse(b.released_date) || 0) : 0;
+                    return timeA - timeB;
                 });
 
                 const latestRelDate = matchedVids.map(v => v.released_date).filter(Boolean)[0] || c.released_date;
@@ -440,20 +474,26 @@ const InfluencerProgress: React.FC = () => {
         setNewCustomTagInput('');
     };
 
-    // Save edited tag option name
-    const handleSaveEditTag = (idx: number) => {
+    // Save edited tag option name & BULK UPDATE database records
+    const handleSaveEditTag = async (idx: number) => {
         if (!editingTagVal.trim()) return;
         const oldTag = tagOptions[idx];
         const newTag = editingTagVal.trim();
-        setTagOptions(prev => prev.map((t, i) => i === idx ? newTag : t));
         
-        if (activePopover?.rowId) {
-            const currentCollab = collaborations.find(c => c.id === activePopover.rowId);
-            if (currentCollab?.progress_status === oldTag) {
-                updateCollaborationField(activePopover.rowId, 'progress_status', newTag);
-            }
-        }
+        setTagOptions(prev => prev.map((t, i) => i === idx ? newTag : t));
         setEditingTagIdx(null);
+
+        // Bulk update database records currently using oldTag
+        try {
+            await supabaseClient
+                .from('collaborations')
+                .update({ progress_status: newTag, updated_at: new Date().toISOString() })
+                .eq('progress_status', oldTag);
+
+            setCollaborations(prev => prev.map(c => c.progress_status === oldTag ? { ...c, progress_status: newTag } : c));
+        } catch (err) {
+            console.error('Failed to bulk update tag name:', err);
+        }
     };
 
     // Delete tag option
@@ -468,23 +508,63 @@ const InfluencerProgress: React.FC = () => {
         }
     };
 
+    // Fetch YouTube Channel Details for Add Modal
+    const handleFetchYtChannel = async () => {
+        if (!ytChannelUrlInput.trim()) return;
+        setFetchingYt(true);
+        try {
+            const info = await fetchYouTubeChannelDetails(ytChannelUrlInput.trim());
+            if (info) {
+                setFetchedKolData({
+                    name: info.title,
+                    avatar_url: info.avatarUrl,
+                    subscriber_count: info.subscriberCount,
+                    country: info.country || 'United States',
+                    channel_link: info.channelLink
+                });
+            } else {
+                alert('Could not fetch YouTube channel. Please check the URL/handle.');
+            }
+        } catch (e) {
+            console.error('Error fetching channel:', e);
+        } finally {
+            setFetchingYt(false);
+        }
+    };
+
     // Create New Collaboration Record
     const handleCreateCollaboration = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            let kolIdToUse = newKolId;
-            if (!kolIdToUse && newKolName.trim()) {
+            let kolIdToUse = '';
+
+            if (kolSourceMode === 'existing') {
+                kolIdToUse = newKolId;
+            } else {
+                if (!fetchedKolData || !fetchedKolData.name) {
+                    alert('Please fetch or enter a YouTube channel URL first.');
+                    return;
+                }
+
+                // Upsert new fetched KOL into Supabase
                 const { data: newKol, error: kolErr } = await supabaseClient
                     .from('kols')
-                    .insert({ name: newKolName.trim(), country: 'United States' })
+                    .upsert({
+                        name: fetchedKolData.name,
+                        avatar_url: fetchedKolData.avatar_url,
+                        subscriber_count: fetchedKolData.subscriber_count,
+                        country: fetchedKolData.country || 'United States',
+                        channel_link: fetchedKolData.channel_link
+                    }, { onConflict: 'name' })
                     .select()
                     .single();
+                
                 if (kolErr) throw kolErr;
                 kolIdToUse = newKol.id;
             }
 
             if (!kolIdToUse) {
-                alert('Please select or enter a KOL name.');
+                alert('Please select or fetch a valid KOL.');
                 return;
             }
 
@@ -503,7 +583,8 @@ const InfluencerProgress: React.FC = () => {
             if (error) throw error;
             setShowAddModal(false);
             setNewKolId('');
-            setNewKolName('');
+            setYtChannelUrlInput('');
+            setFetchedKolData(null);
             setNewStartMonth('');
             setNewPackage('');
             fetchData();
@@ -563,6 +644,9 @@ const InfluencerProgress: React.FC = () => {
 
     const availableCountries = Array.from(new Set(allKols.map(k => k.country).filter(Boolean)));
 
+    // Selected KOL object for modal preview
+    const selectedExistingKol = allKols.find(k => k.id === newKolId);
+
     return (
         <div className="card p-6 space-y-6">
             {/* Header & Main Toolbar */}
@@ -579,7 +663,10 @@ const InfluencerProgress: React.FC = () => {
                     </p>
                 </div>
                 <button 
-                    onClick={() => setShowAddModal(true)}
+                    onClick={() => {
+                        setShowAddModal(true);
+                        setNewStartMonth(formatDateDisplay(new Date().toISOString()));
+                    }}
                     className="bg-[var(--accent-color)] text-white px-5 py-2.5 rounded-full font-medium hover:bg-emerald-600 transition-colors shadow-xs text-sm flex items-center justify-center gap-1.5 w-fit shrink-0"
                 >
                     <Plus className="w-4 h-4" />
@@ -663,7 +750,7 @@ const InfluencerProgress: React.FC = () => {
                                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                                 </div>
                             </th>
-                            <th className="px-4 py-3.5 text-center min-w-[80px]">Content</th>
+                            <th className="px-4 py-3.5 min-w-[130px]">Content</th>
                             <th className="px-4 py-3.5 min-w-[240px]">Reported Videos</th>
                             <th className="px-4 py-3.5 min-w-[120px]">Released Date</th>
                             <th className="px-4 py-3.5 min-w-[100px]">Agreement</th>
@@ -726,7 +813,7 @@ const InfluencerProgress: React.FC = () => {
                                                         {paymentPercent}%
                                                     </span>
                                                 </div>
-                                                <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                                                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                                                     <div 
                                                         className={`h-full rounded-full transition-all duration-500 ${
                                                             paymentPercent === 100 
@@ -752,18 +839,45 @@ const InfluencerProgress: React.FC = () => {
                                             </button>
                                         </td>
 
-                                        {/* 6. Content Count Column */}
-                                        <td className="px-4 py-3 text-center whitespace-nowrap">
-                                            <button 
-                                                onClick={e => openPopover(e, c, 'count')}
-                                                className="hover:bg-slate-100 px-2.5 py-1 rounded font-semibold text-slate-800 transition-colors border border-transparent hover:border-slate-200"
-                                                title="Click to edit content count"
-                                            >
-                                                {c.content_count || 1}
-                                            </button>
+                                        {/* 6. Content Column (Content Progress Bar & Agreed Count) */}
+                                        <td className="px-4 py-3 min-w-[130px]">
+                                            {(() => {
+                                                const recordedCount = c.videosList?.length || 0;
+                                                const agreedCount = c.content_count || 1;
+                                                const percent = Math.min(100, Math.round((recordedCount / agreedCount) * 100));
+
+                                                return (
+                                                    <div 
+                                                        onClick={e => openPopover(e, c, 'count')}
+                                                        className="cursor-pointer group/cnt p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors border border-transparent hover:border-slate-200"
+                                                        title="Click to edit agreed content count"
+                                                    >
+                                                        <div className="flex justify-between items-center text-xs mb-1 font-medium">
+                                                            <span className="text-slate-700 font-semibold text-[11px]">
+                                                                {recordedCount} / {agreedCount} <span className="text-[10px] font-normal text-slate-500">vids</span>
+                                                            </span>
+                                                            <span className={`${percent === 100 ? 'text-emerald-600' : 'text-blue-600'} font-semibold text-[11px]`}>
+                                                                {percent}%
+                                                            </span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                                                            <div 
+                                                                className={`h-full rounded-full transition-all duration-500 ${
+                                                                    percent === 100 
+                                                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-400' 
+                                                                        : percent > 0 
+                                                                        ? 'bg-gradient-to-r from-blue-500 to-indigo-400' 
+                                                                        : 'bg-slate-300'
+                                                                }`}
+                                                                style={{ width: `${percent}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
                                         </td>
 
-                                        {/* 7. Reported Videos (Auto-Detected Platform Icons) */}
+                                        {/* 7. Reported Videos (Auto-Sorted Oldest -> Newest, Platform Icons, NO ExternalLink Icon) */}
                                         <td className="px-4 py-3 max-w-[260px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'videos')}
@@ -786,7 +900,6 @@ const InfluencerProgress: React.FC = () => {
                                                                     >
                                                                         {renderPlatformIcon(vid.video_url)}
                                                                         <span className="truncate">{displayTitle}</span>
-                                                                        <ExternalLink className="w-3 h-3 shrink-0 opacity-60" />
                                                                     </a>
                                                                 </div>
                                                             );
@@ -823,10 +936,9 @@ const InfluencerProgress: React.FC = () => {
                                                     href={c.agreement_link} 
                                                     target="_blank" 
                                                     rel="noopener noreferrer" 
-                                                    className="text-xs font-medium text-slate-600 hover:text-[var(--accent-color)] hover:underline inline-flex items-center gap-1"
+                                                    className="text-xs font-medium text-slate-600 hover:text-[var(--accent-color)] hover:underline flex items-center gap-1"
                                                 >
                                                     <span>View Contract</span>
-                                                    <ExternalLink className="w-3 h-3" />
                                                 </a>
                                             ) : (
                                                 <span className="text-xs text-slate-400">—</span>
@@ -1024,20 +1136,20 @@ const InfluencerProgress: React.FC = () => {
                     {activePopover.type === 'count' && (
                         <div className="space-y-3" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Content Count</span>
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Agreed Content Count</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
 
                             <div>
                                 <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                                    Number of Contents
+                                    Target Number of Contents
                                 </label>
                                 <input 
                                     type="number"
-                                    min="0"
+                                    min="1"
                                     autoFocus
                                     value={countInputVal}
-                                    onChange={e => setCountInputVal(parseInt(e.target.value) || 0)}
+                                    onChange={e => setCountInputVal(parseInt(e.target.value) || 1)}
                                     className="w-full p-2 border border-slate-300 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
                                 />
                             </div>
@@ -1146,62 +1258,149 @@ const InfluencerProgress: React.FC = () => {
                 document.body
             )}
 
-            {/* Modal: Add New Deal */}
-            {showAddModal && (
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
-                            <h3 className="text-lg font-semibold text-slate-800">Add New Influencer Deal</h3>
-                            <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
+            {/* ENHANCED ADD NEW DEAL MODAL — Rendered via Portal to escape parent container scroll */}
+            {showAddModal && createPortal(
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
+                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                            <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+                                <Plus className="w-5 h-5 text-[var(--accent-color)]" />
+                                <span>Add New Influencer Deal</span>
+                            </h3>
+                            <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
                         </div>
 
-                        <form onSubmit={handleCreateCollaboration} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                                    Select Existing KOL
-                                </label>
-                                <select 
-                                    value={newKolId}
-                                    onChange={e => { setNewKolId(e.target.value); setNewKolName(''); }}
-                                    className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-sm"
+                        <form onSubmit={handleCreateCollaboration} className="p-6 space-y-5">
+                            
+                            {/* Mode Tabs: Select Existing vs Add New YouTube Channel */}
+                            <div className="flex rounded-xl bg-slate-100 p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setKolSourceMode('existing')}
+                                    className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                                        kolSourceMode === 'existing'
+                                            ? 'bg-white text-slate-900 shadow-xs'
+                                            : 'text-slate-500 hover:text-slate-800'
+                                    }`}
                                 >
-                                    <option value="">-- Select from list --</option>
-                                    {allKols.map(k => (
-                                        <option key={k.id} value={k.id}>{k.name} ({k.country || 'United States'})</option>
-                                    ))}
-                                </select>
+                                    Existing KOL List
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setKolSourceMode('new_yt')}
+                                    className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                        kolSourceMode === 'new_yt'
+                                            ? 'bg-white text-slate-900 shadow-xs'
+                                            : 'text-slate-500 hover:text-slate-800'
+                                    }`}
+                                >
+                                    <Youtube className="w-3.5 h-3.5 text-red-500 fill-red-500" />
+                                    <span>New YouTube Channel</span>
+                                </button>
                             </div>
 
-                            <div className="text-center text-xs font-medium text-slate-400 uppercase">OR</div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                                    Create New KOL Name
-                                </label>
-                                <input 
-                                    type="text" 
-                                    value={newKolName}
-                                    onChange={e => { setNewKolName(e.target.value); setNewKolId(''); }}
-                                    placeholder="e.g. Marques Brownlee"
-                                    className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-sm"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                                        Collab Started Date
+                            {/* Mode 1: Select Existing KOL */}
+                            {kolSourceMode === 'existing' && (
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                        Select Creator
                                     </label>
-                                    <input 
-                                        type="text" 
-                                        value={newStartMonth}
-                                        onChange={e => setNewStartMonth(e.target.value)}
-                                        placeholder="e.g. Feb 01, 2026"
-                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-sm"
+                                    <select 
+                                        value={newKolId}
+                                        onChange={e => setNewKolId(e.target.value)}
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-sm font-medium"
+                                    >
+                                        <option value="">-- Choose from existing KOLs --</option>
+                                        {allKols.map(k => (
+                                            <option key={k.id} value={k.id}>{k.name} ({k.country || 'United States'})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Mode 2: Fetch New YouTube Channel URL */}
+                            {kolSourceMode === 'new_yt' && (
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                        YouTube Channel URL / Handle
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Youtube className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                                            <input 
+                                                type="text" 
+                                                value={ytChannelUrlInput}
+                                                onChange={e => setYtChannelUrlInput(e.target.value)}
+                                                placeholder="https://www.youtube.com/@Taysthetic"
+                                                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal"
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleFetchYtChannel(); } }}
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleFetchYtChannel}
+                                            disabled={fetchingYt || !ytChannelUrlInput.trim()}
+                                            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+                                        >
+                                            {fetchingYt ? (
+                                                <>
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    <span>Fetching...</span>
+                                                </>
+                                            ) : (
+                                                <span>Fetch Details</span>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* LIVE KOL PREVIEW CARD */}
+                            {((kolSourceMode === 'existing' && selectedExistingKol) || (kolSourceMode === 'new_yt' && fetchedKolData)) && (
+                                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                                        Creator Live Preview
+                                    </div>
+                                    <KOLCell 
+                                        kol={kolSourceMode === 'existing' ? selectedExistingKol : fetchedKolData} 
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                            )}
+
+                            {/* Collab Started Date & Package Amount Inputs */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5 relative">
+                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                        Collab Started Date
+                                    </label>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowModalCalendar(!showModalCalendar)}
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs text-left font-medium flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-1.5 text-slate-800">
+                                            <Calendar className="w-4 h-4 text-slate-400" />
+                                            <span>{newStartMonth || 'Select Date'}</span>
+                                        </div>
+                                    </button>
+
+                                    {/* Modal Single Calendar Picker Popover */}
+                                    {showModalCalendar && (
+                                        <div className="absolute top-full left-0 mt-1 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 w-72 z-50">
+                                            <MiniCalendarPicker 
+                                                initialDate={newStartMonth}
+                                                onSelectDate={(dt) => {
+                                                    setNewStartMonth(dt);
+                                                    setShowModalCalendar(false);
+                                                }}
+                                                onClose={() => setShowModalCalendar(false)}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
                                         Contract Package ($)
                                     </label>
                                     <input 
@@ -1209,11 +1408,12 @@ const InfluencerProgress: React.FC = () => {
                                         value={newPackage}
                                         onChange={e => setNewPackage(e.target.value)}
                                         placeholder="$5,000"
-                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-sm"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-medium"
                                     />
                                 </div>
                             </div>
 
+                            {/* Modal Action Buttons */}
                             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                                 <button 
                                     type="button" 
@@ -1231,7 +1431,8 @@ const InfluencerProgress: React.FC = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
