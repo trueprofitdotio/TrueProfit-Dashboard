@@ -255,8 +255,28 @@ const InfluencerProgress: React.FC = () => {
     const [allKols, setAllKols] = useState<KolData[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Custom Tag Options list
-    const [tagOptions, setTagOptions] = useState<string[]>(DEFAULT_PROGRESS_TAGS);
+    // Custom Tag Options list persisted in localStorage
+    const [tagOptions, setTagOptions] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem('tp_custom_progress_tags');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch (e) {
+            console.error('Failed to load tagOptions from localStorage:', e);
+        }
+        return DEFAULT_PROGRESS_TAGS;
+    });
+
+    const updateTagOptionsState = (newTags: string[]) => {
+        setTagOptions(newTags);
+        try {
+            localStorage.setItem('tp_custom_progress_tags', JSON.stringify(newTags));
+        } catch (e) {
+            console.error('Failed to save tagOptions to localStorage:', e);
+        }
+    };
     const [newCustomTagInput, setNewCustomTagInput] = useState('');
     const [editingTagIdx, setEditingTagIdx] = useState<number | null>(null);
     const [editingTagVal, setEditingTagVal] = useState('');
@@ -366,6 +386,24 @@ const InfluencerProgress: React.FC = () => {
 
             setCollaborations(collabsWithVideos);
             setAllKols(kolsRes.data as KolData[]);
+
+            // Sync database statuses if localStorage not explicitly populated
+            const dbStatuses = rawCollabs.map(c => c.progress_status).filter(Boolean) as string[];
+            setTagOptions(prev => {
+                const saved = localStorage.getItem('tp_custom_progress_tags');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed)) return parsed;
+                    } catch {}
+                }
+                const merged = Array.from(new Set([...prev, ...dbStatuses]));
+                try {
+                    localStorage.setItem('tp_custom_progress_tags', JSON.stringify(merged));
+                } catch (e) {}
+                return merged;
+            });
+
         } catch (e) {
             console.error('Error fetching progress data:', e);
         } finally {
@@ -493,7 +531,8 @@ const InfluencerProgress: React.FC = () => {
         if (!newCustomTagInput.trim()) return;
         const tag = newCustomTagInput.trim();
         if (!tagOptions.includes(tag)) {
-            setTagOptions(prev => [...prev, tag]);
+            const nextTags = [...tagOptions, tag];
+            updateTagOptionsState(nextTags);
         }
         if (activePopover?.rowId) {
             updateCollaborationField(activePopover.rowId, 'progress_status', tag);
@@ -507,8 +546,11 @@ const InfluencerProgress: React.FC = () => {
         const oldTag = tagOptions[idx];
         const newTag = editingTagVal.trim();
         
-        setTagOptions(prev => prev.map((t, i) => i === idx ? newTag : t));
+        const nextTags = tagOptions.map((t, i) => i === idx ? newTag : t);
+        updateTagOptionsState(nextTags);
         setEditingTagIdx(null);
+
+        setSelectedStatuses(prev => prev.map(s => s === oldTag ? newTag : s));
 
         try {
             await supabaseClient
@@ -522,15 +564,24 @@ const InfluencerProgress: React.FC = () => {
         }
     };
 
-    // Delete tag option
-    const handleDeleteTag = (idx: number) => {
+    // Delete tag option & BULK UPDATE database records to null so it never resurrects
+    const handleDeleteTag = async (idx: number) => {
         const tagToDelete = tagOptions[idx];
-        setTagOptions(prev => prev.filter((_, i) => i !== idx));
-        if (activePopover?.rowId) {
-            const currentCollab = collaborations.find(c => c.id === activePopover.rowId);
-            if (currentCollab?.progress_status === tagToDelete) {
-                updateCollaborationField(activePopover.rowId, 'progress_status', null);
-            }
+        const nextTags = tagOptions.filter((_, i) => i !== idx);
+        updateTagOptionsState(nextTags);
+
+        // Update local state immediately for all rows having this tag
+        setCollaborations(prev => prev.map(c => c.progress_status === tagToDelete ? { ...c, progress_status: null } : c));
+        setSelectedStatuses(prev => prev.filter(s => s !== tagToDelete));
+
+        // Bulk update database to clear this tag from all collaborations in Supabase
+        try {
+            await supabaseClient
+                .from('collaborations')
+                .update({ progress_status: null, updated_at: new Date().toISOString() })
+                .eq('progress_status', tagToDelete);
+        } catch (err) {
+            console.error('Failed to bulk delete status tag in DB:', err);
         }
     };
 
@@ -711,10 +762,7 @@ const InfluencerProgress: React.FC = () => {
 
                 {/* Multi-Select Status Filter Button & Dropdown */}
                 {(() => {
-                    const allActiveStatuses = Array.from(new Set([
-                        ...tagOptions,
-                        ...collaborations.map(c => c.progress_status).filter(Boolean) as string[]
-                    ]));
+                    const allActiveStatuses = tagOptions;
                     const isAllOrNone = selectedStatuses.length === 0 || selectedStatuses.length === allActiveStatuses.length;
                     const statusBtnLabel = isAllOrNone 
                         ? 'All Statuses' 
