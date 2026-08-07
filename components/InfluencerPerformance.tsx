@@ -888,7 +888,7 @@ const InfluencerPerformance: React.FC = () => {
                 prevDateRangeVal = { from, to };
             }
 
-            const { data: videos, error: videosError } = await supabaseClient.from('videos').select('*, kols(id, name)');
+            const { data: videos, error: videosError } = await supabaseClient.from('videos').select('*, kols(*)');
             if (videosError) throw new Error(`Failed to fetch videos: ${videosError.message}`);
             
             const typedVideos = videos as (Video & { kols: Kol })[];

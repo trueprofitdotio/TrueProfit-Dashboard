@@ -5,7 +5,7 @@ import KOLCell, { KolData } from './KOLCell';
 import { fetchYouTubeChannelDetails } from '../services/youtubeService';
 import { 
     Calendar, Filter, Search, ArrowUpDown, Plus, Trash2, Edit2, Check,
-    Play, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Youtube
+    Play, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Youtube, FileText
 } from 'lucide-react';
 
 interface VideoRecord {
@@ -265,17 +265,24 @@ const InfluencerProgress: React.FC = () => {
     const [editingUrlIdx, setEditingUrlIdx] = useState<number | null>(null);
     const [editingUrlVal, setEditingUrlVal] = useState('');
 
+    // Agreement Documents editing state
+    const [agreementUrlsList, setAgreementUrlsList] = useState<string[]>([]);
+    const [newAgreementUrlInput, setNewAgreementUrlInput] = useState('');
+    const [editingAgreementIdx, setEditingAgreementIdx] = useState<number | null>(null);
+    const [editingAgreementVal, setEditingAgreementVal] = useState('');
+
     // Filters & Sorting state
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterTag, setFilterTag] = useState<string>('All');
-    const [filterCountry, setFilterCountry] = useState<string>('All');
+    const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['All']);
+    const [showStatusFilterPopover, setShowStatusFilterPopover] = useState(false);
+
     const [sortField, setSortField] = useState<keyof CollaborationRow | 'kol_name' | 'payment_percent'>('start_month');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
     // Sticky Popover states: anchored to specific row and cell type
     const [activePopover, setActivePopover] = useState<{
         rowId: string;
-        type: 'date' | 'progress' | 'payment' | 'videos' | 'package' | 'count';
+        type: 'date' | 'progress' | 'payment' | 'videos' | 'package' | 'count' | 'agreement';
         anchorRect?: DOMRect;
     } | null>(null);
 
@@ -299,6 +306,7 @@ const InfluencerProgress: React.FC = () => {
     const [showModalCalendar, setShowModalCalendar] = useState(false);
 
     const popoverRef = useRef<HTMLDivElement>(null);
+    const statusFilterRef = useRef<HTMLDivElement>(null);
     const tableContainerRef = useRef<HTMLDivElement>(null);
 
     const fetchData = async () => {
@@ -375,6 +383,9 @@ const InfluencerProgress: React.FC = () => {
             if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
                 setActivePopover(null);
             }
+            if (statusFilterRef.current && !statusFilterRef.current.contains(e.target as Node)) {
+                setShowStatusFilterPopover(false);
+            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => {
@@ -403,7 +414,7 @@ const InfluencerProgress: React.FC = () => {
     const openPopover = (
         e: React.MouseEvent, 
         row: CollaborationRow, 
-        type: 'date' | 'progress' | 'payment' | 'videos' | 'package' | 'count'
+        type: 'date' | 'progress' | 'payment' | 'videos' | 'package' | 'count' | 'agreement'
     ) => {
         e.stopPropagation();
         const targetElement = e.currentTarget as HTMLElement;
@@ -411,6 +422,7 @@ const InfluencerProgress: React.FC = () => {
 
         setEditingTagIdx(null);
         setEditingUrlIdx(null);
+        setEditingAgreementIdx(null);
 
         if (type === 'payment') {
             setSpentInputVal(String(row.actual_spent || 0));
@@ -418,6 +430,10 @@ const InfluencerProgress: React.FC = () => {
             const urls = (row.report_links || '').match(/(https?:\/\/[^\s,]+)/g) || [];
             setVideoUrlsList(urls);
             setNewVideoUrlInput('');
+        } else if (type === 'agreement') {
+            const urls = (row.agreement_link || '').match(/(https?:\/\/[^\s,]+)/g) || [];
+            setAgreementUrlsList(urls.length > 0 ? urls : (row.agreement_link ? [row.agreement_link] : []));
+            setNewAgreementUrlInput('');
         } else if (type === 'package') {
             setPkgInputVal(row.total_package || '');
         } else if (type === 'count') {
@@ -461,6 +477,17 @@ const InfluencerProgress: React.FC = () => {
         fetchData();
     };
 
+    // Agreement Documents manager: Add / Edit / Remove document URL
+    const handleSaveAgreementPopover = async (rowId: string) => {
+        let finalUrls = [...agreementUrlsList];
+        if (newAgreementUrlInput.trim()) {
+            finalUrls.push(newAgreementUrlInput.trim());
+        }
+        const updatedLinksText = finalUrls.join('\n');
+        await updateCollaborationField(rowId, 'agreement_link', updatedLinksText);
+        setActivePopover(null);
+    };
+
     // Add new custom progress tag
     const handleAddCustomTag = () => {
         if (!newCustomTagInput.trim()) return;
@@ -483,7 +510,6 @@ const InfluencerProgress: React.FC = () => {
         setTagOptions(prev => prev.map((t, i) => i === idx ? newTag : t));
         setEditingTagIdx(null);
 
-        // Bulk update database records currently using oldTag
         try {
             await supabaseClient
                 .from('collaborations')
@@ -608,14 +634,12 @@ const InfluencerProgress: React.FC = () => {
     const processedCollaborations = collaborations
         .filter(c => {
             const kolName = (c.kols?.name || '').toLowerCase();
-            const country = c.kols?.country || '';
             const tag = c.progress_status || '';
 
             const matchesSearch = !searchQuery || kolName.includes(searchQuery.toLowerCase());
-            const matchesTag = filterTag === 'All' || tag === filterTag;
-            const matchesCountry = filterCountry === 'All' || country === filterCountry;
+            const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes('All') || selectedStatuses.includes(tag);
 
-            return matchesSearch && matchesTag && matchesCountry;
+            return matchesSearch && matchesStatus;
         })
         .sort((a, b) => {
             let valA: any = a[sortField as keyof CollaborationRow];
@@ -641,8 +665,6 @@ const InfluencerProgress: React.FC = () => {
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-
-    const availableCountries = Array.from(new Set(allKols.map(k => k.country).filter(Boolean)));
 
     // Selected KOL object for modal preview
     const selectedExistingKol = allKols.find(k => k.id === newKolId);
@@ -674,44 +696,87 @@ const InfluencerProgress: React.FC = () => {
                 </button>
             </div>
 
-            {/* Filter Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/80 p-4 rounded-2xl border border-[#bfdbfe]/50">
-                <div className="relative">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            {/* Clean Minimal Filter Bar (No outer gray box) */}
+            <div className="flex flex-wrap items-center gap-3">
+                <div className="relative min-w-[240px]">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                     <input 
                         type="text"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Search KOL name..."
-                        className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none"
+                        className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none font-normal"
                     />
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-slate-400 shrink-0" />
-                    <select 
-                        value={filterTag}
-                        onChange={e => setFilterTag(e.target.value)}
-                        className="w-full p-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none"
+                {/* Multi-Select Status Filter Button & Dropdown */}
+                <div className="relative" ref={statusFilterRef}>
+                    <button
+                        type="button"
+                        onClick={() => setShowStatusFilterPopover(!showStatusFilterPopover)}
+                        className="flex items-center gap-2 px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors"
                     >
-                        <option value="All">All Statuses</option>
-                        {tagOptions.map(t => (
-                            <option key={t} value={t}>{t}</option>
-                        ))}
-                    </select>
-                </div>
+                        <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>
+                            {selectedStatuses.length === 0 || selectedStatuses.includes('All')
+                                ? 'All Statuses'
+                                : selectedStatuses.length === 1
+                                ? `Status: ${selectedStatuses[0]}`
+                                : `Status (${selectedStatuses.length} selected)`}
+                        </span>
+                        <ChevronRight className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showStatusFilterPopover ? 'rotate-90' : ''}`} />
+                    </button>
 
-                <div className="flex items-center gap-2">
-                    <select 
-                        value={filterCountry}
-                        onChange={e => setFilterCountry(e.target.value)}
-                        className="w-full p-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none"
-                    >
-                        <option value="All">All Countries</option>
-                        {availableCountries.map(c => (
-                            <option key={c} value={c!}>{c}</option>
-                        ))}
-                    </select>
+                    {showStatusFilterPopover && (
+                        <div className="absolute top-full left-0 mt-1.5 bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-3 w-64 z-50 space-y-2">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100 text-xs font-semibold text-slate-800">
+                                <span>Filter by Status</span>
+                                <button 
+                                    onClick={() => setSelectedStatuses(['All'])} 
+                                    className="text-[11px] text-emerald-600 hover:underline"
+                                >
+                                    Reset All
+                                </button>
+                            </div>
+                            <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                                <label className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700">
+                                    <input 
+                                        type="checkbox"
+                                        checked={selectedStatuses.includes('All') || selectedStatuses.length === 0}
+                                        onChange={() => {
+                                            if (selectedStatuses.includes('All')) {
+                                                setSelectedStatuses([]);
+                                            } else {
+                                                setSelectedStatuses(['All']);
+                                            }
+                                        }}
+                                        className="rounded text-[var(--accent-color)] focus:ring-[var(--accent-color)] h-3.5 w-3.5"
+                                    />
+                                    <span>All Statuses</span>
+                                </label>
+                                {tagOptions.map(t => (
+                                    <label key={t} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700">
+                                        <input 
+                                            type="checkbox"
+                                            checked={selectedStatuses.includes(t)}
+                                            onChange={() => {
+                                                if (selectedStatuses.includes('All')) {
+                                                    setSelectedStatuses([t]);
+                                                } else if (selectedStatuses.includes(t)) {
+                                                    const next = selectedStatuses.filter(s => s !== t);
+                                                    setSelectedStatuses(next.length === 0 ? ['All'] : next);
+                                                } else {
+                                                    setSelectedStatuses([...selectedStatuses, t]);
+                                                }
+                                            }}
+                                            className="rounded text-[var(--accent-color)] focus:ring-[var(--accent-color)] h-3.5 w-3.5"
+                                        />
+                                        <span>{t}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -753,7 +818,7 @@ const InfluencerProgress: React.FC = () => {
                             <th className="px-4 py-3.5 min-w-[130px]">Content</th>
                             <th className="px-4 py-3.5 min-w-[240px]">Reported Videos</th>
                             <th className="px-4 py-3.5 min-w-[120px]">Released Date</th>
-                            <th className="px-4 py-3.5 min-w-[100px]">Agreement</th>
+                            <th className="px-4 py-3.5 min-w-[140px]">Agreement</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[#bfdbfe]/30">
@@ -929,20 +994,53 @@ const InfluencerProgress: React.FC = () => {
                                             )}
                                         </td>
 
-                                        {/* 9. Agreement Link Column */}
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            {c.agreement_link ? (
-                                                <a 
-                                                    href={c.agreement_link} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer" 
-                                                    className="text-xs font-medium text-slate-600 hover:text-[var(--accent-color)] hover:underline flex items-center gap-1"
-                                                >
-                                                    <span>View Contract</span>
-                                                </a>
-                                            ) : (
-                                                <span className="text-xs text-slate-400">—</span>
-                                            )}
+                                        {/* 9. Agreement Link Column (Multi-Contract Manager, NO ExternalLink Icon) */}
+                                        <td className="px-4 py-3 max-w-[200px]">
+                                            <div 
+                                                onClick={e => openPopover(e, c, 'agreement')}
+                                                className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px] flex flex-col justify-center"
+                                                title="Click to manage contract documents & links"
+                                            >
+                                                {(() => {
+                                                    const docUrls = (c.agreement_link || '').match(/(https?:\/\/[^\s,]+)/g) || [];
+                                                    if (docUrls.length > 0) {
+                                                        return (
+                                                            <div className="space-y-1">
+                                                                {docUrls.map((url, idx) => {
+                                                                    const title = docUrls.length > 1 ? `Contract #${idx + 1}` : 'View Contract';
+                                                                    return (
+                                                                        <div key={idx} className="text-xs">
+                                                                            <a 
+                                                                                href={url} 
+                                                                                target="_blank" 
+                                                                                rel="noopener noreferrer" 
+                                                                                onClick={e => e.stopPropagation()}
+                                                                                className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 truncate max-w-[180px] py-0.5"
+                                                                                title={url}
+                                                                            >
+                                                                                <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                                                <span className="truncate">{title}</span>
+                                                                            </a>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        );
+                                                    } else if (c.agreement_link && c.agreement_link.trim()) {
+                                                        return (
+                                                            <span className="font-medium text-emerald-600 text-xs truncate max-w-[180px]">
+                                                                {c.agreement_link}
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                            <Plus className="w-3.5 h-3.5" />
+                                                            <span>Add Contract</span>
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </div>
                                         </td>
 
                                     </tr>
@@ -1250,6 +1348,95 @@ const InfluencerProgress: React.FC = () => {
                                     className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
                                 >
                                     Save Video Links
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 7. Agreement Links Manager Popover */}
+                    {activePopover.type === 'agreement' && (
+                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Manage Contract Documents</span>
+                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            </div>
+
+                            {/* Existing Document Links List */}
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                {agreementUrlsList.map((url, idx) => {
+                                    if (editingAgreementIdx === idx) {
+                                        return (
+                                            <div key={idx} className="flex items-center gap-1.5 p-1.5 bg-slate-50 rounded-xl border border-slate-300">
+                                                <input 
+                                                    type="text" 
+                                                    autoFocus 
+                                                    value={editingAgreementVal} 
+                                                    onChange={e => setEditingAgreementVal(e.target.value)}
+                                                    className="w-full text-xs p-1 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
+                                                />
+                                                <button 
+                                                    onClick={() => {
+                                                        const copy = [...agreementUrlsList];
+                                                        copy[idx] = editingAgreementVal.trim();
+                                                        setAgreementUrlsList(copy);
+                                                        setEditingAgreementIdx(null);
+                                                    }} 
+                                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0"
+                                                    title="Save URL link"
+                                                >
+                                                    <Check className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-200 group/alink">
+                                            <div className="flex items-center gap-1.5 truncate max-w-[190px]">
+                                                <FileText className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                                <span className="text-[11px] font-normal text-slate-700 truncate">{url}</span>
+                                            </div>
+                                            <div className="flex items-center gap-0.5">
+                                                <button 
+                                                    onClick={() => { setEditingAgreementIdx(idx); setEditingAgreementVal(url); }}
+                                                    className="text-slate-400 hover:text-slate-700 p-1 rounded-md"
+                                                    title="Edit document URL"
+                                                >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => setAgreementUrlsList(prev => prev.filter((_, i) => i !== idx))} 
+                                                    className="text-slate-400 hover:text-rose-600 p-1 rounded-md"
+                                                    title="Delete document link"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Add New Document Link Input */}
+                            <div className="pt-2 border-t border-slate-100 space-y-2">
+                                <label className="block text-[11px] font-semibold text-slate-600 uppercase">Add New Document URL</label>
+                                <input 
+                                    type="text" 
+                                    value={newAgreementUrlInput} 
+                                    onChange={e => setNewAgreementUrlInput(e.target.value)} 
+                                    placeholder="https://..."
+                                    className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-normal"
+                                    onKeyDown={e => { if (e.key === 'Enter') handleSaveAgreementPopover(activePopover.rowId); }}
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button 
+                                    onClick={() => handleSaveAgreementPopover(activePopover.rowId)} 
+                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                >
+                                    Save Documents
                                 </button>
                             </div>
                         </div>
