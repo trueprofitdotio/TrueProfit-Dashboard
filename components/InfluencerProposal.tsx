@@ -5,7 +5,7 @@ import KOLCell, { KolData } from './KOLCell';
 import { fetchYouTubeChannelDetails } from '../services/youtubeService';
 import { 
     Plus, Search, Edit2, Trash2, X, Calendar, DollarSign, Filter, ArrowUpDown, Check, 
-    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye
+    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight
 } from 'lucide-react';
 
 interface ProposalKol {
@@ -32,6 +32,43 @@ interface Proposal {
     updated_at?: string;
     proposal_kols?: ProposalKol[];
 }
+
+interface InfluencerProposalProps {
+    onSelectProposalTitle?: (title: string | null) => void;
+}
+
+const DEFAULT_PROPOSAL_TAGS = [
+    'Need to check',
+    'Approved',
+    'Rejected'
+];
+
+const COLOR_PALETTES = [
+    'bg-amber-100 text-amber-800 border-amber-300 font-semibold',
+    'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold',
+    'bg-rose-100 text-rose-800 border-rose-300 font-semibold',
+    'bg-purple-100 text-purple-800 border-purple-300 font-semibold',
+    'bg-sky-100 text-sky-800 border-sky-300 font-semibold',
+    'bg-indigo-100 text-indigo-800 border-indigo-300 font-semibold',
+    'bg-teal-100 text-teal-800 border-teal-300 font-semibold'
+];
+
+const getProposalTagStyle = (status?: string | null) => {
+    if (!status) return 'bg-slate-100 text-slate-700 border-slate-200 font-normal';
+    const s = status.trim().toLowerCase();
+    if (s === 'need to check') return 'bg-amber-100 text-amber-800 border-amber-300 font-semibold';
+    if (s === 'approved') return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold';
+    if (s === 'rejected') return 'bg-rose-100 text-rose-800 border-rose-300 font-semibold';
+    if (s === 'in progress') return 'bg-blue-100 text-blue-800 border-blue-300 font-semibold';
+    if (s === 'completed') return 'bg-purple-100 text-purple-800 border-purple-300 font-semibold';
+    
+    let hash = 0;
+    for (let i = 0; i < status.length; i++) {
+        hash = status.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const paletteIdx = Math.abs(hash) % COLOR_PALETTES.length;
+    return COLOR_PALETTES[paletteIdx];
+};
 
 const formatCurrencyUSD = (val?: string | number | null): string => {
     if (val === undefined || val === null || val === '') return '$0';
@@ -60,7 +97,7 @@ const formatTimestampDetailed = (dateStr?: string | null): string => {
     }
 };
 
-const InfluencerProposal: React.FC = () => {
+const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposalTitle }) => {
     const [proposals, setProposals] = useState<Proposal[]>([]);
     const [allKols, setAllKols] = useState<KolData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -69,9 +106,40 @@ const InfluencerProposal: React.FC = () => {
     const [activeView, setActiveView] = useState<'list' | 'workspace'>('list');
     const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
 
-    // Modals state
-    const [showProposalModal, setShowProposalModal] = useState(false);
-    const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
+    // Proposal Status Tags persisted in localStorage
+    const [proposalTags, setProposalTags] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem('tp_proposal_status_tags');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch (e) {
+            console.error('Failed to load proposalTags:', e);
+        }
+        return DEFAULT_PROPOSAL_TAGS;
+    });
+
+    const updateProposalTagsState = (newTags: string[]) => {
+        setProposalTags(newTags);
+        try {
+            localStorage.setItem('tp_proposal_status_tags', JSON.stringify(newTags));
+        } catch (e) {}
+    };
+
+    // Tag Popover & Editing states
+    const [newCustomTagInput, setNewCustomTagInput] = useState('');
+    const [editingTagIdx, setEditingTagIdx] = useState<number | null>(null);
+    const [editingTagVal, setEditingTagVal] = useState('');
+
+    // Inline Proposal Title editing state
+    const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+    const [editingTitleVal, setEditingTitleVal] = useState('');
+
+    // Delete Confirmation Modal state
+    const [deleteConfirmProposal, setDeleteConfirmProposal] = useState<Proposal | null>(null);
+
+    // Add Creator Modal state
     const [showAddCreatorModal, setShowAddCreatorModal] = useState(false);
     const [ytChannelInput, setYtChannelInput] = useState('');
     const [fetchingYt, setFetchingYt] = useState(false);
@@ -79,22 +147,19 @@ const InfluencerProposal: React.FC = () => {
     // Lightbox image state
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
-    // Proposal Form states
-    const [title, setTitle] = useState('');
-    const [status, setStatus] = useState('Draft');
-    const [budget, setBudget] = useState('');
-    const [targetAudience, setTargetAudience] = useState('');
-    const [objective, setObjective] = useState('');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [description, setDescription] = useState('');
-    const [selectedKolIds, setSelectedKolIds] = useState<string[]>([]);
+    // Status Popover Anchor state
+    const [activeStatusPopover, setActiveStatusPopover] = useState<{
+        proposalId: string;
+        anchorRect?: DOMRect;
+    } | null>(null);
 
     // Filter & Search states
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
     const [sortField, setSortField] = useState<'created_at' | 'title' | 'budget' | 'creators'>('created_at');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+    const statusPopoverRef = useRef<HTMLDivElement>(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -113,8 +178,27 @@ const InfluencerProposal: React.FC = () => {
             if (proposalsRes.error) throw proposalsRes.error;
             if (kolsRes.error) throw kolsRes.error;
             
-            setProposals(proposalsRes.data as unknown as Proposal[]);
+            const rawProps = proposalsRes.data as unknown as Proposal[];
+            setProposals(rawProps);
             setAllKols(kolsRes.data as KolData[]);
+
+            // Sync db statuses into proposalTags if not explicitly saved
+            const dbStatuses = rawProps.map(p => p.status).filter(Boolean) as string[];
+            setProposalTags(prev => {
+                const saved = localStorage.getItem('tp_proposal_status_tags');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed)) return parsed;
+                    } catch {}
+                }
+                const merged = Array.from(new Set([...prev, ...dbStatuses]));
+                try {
+                    localStorage.setItem('tp_proposal_status_tags', JSON.stringify(merged));
+                } catch (e) {}
+                return merged;
+            });
+
         } catch (e) {
             console.error('Error fetching proposals:', e);
         } finally {
@@ -126,118 +210,174 @@ const InfluencerProposal: React.FC = () => {
         fetchData();
     }, []);
 
+    // Close status popover on click outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (statusPopoverRef.current && !statusPopoverRef.current.contains(e.target as Node)) {
+                setActiveStatusPopover(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
     const selectedProposal = proposals.find(p => p.id === selectedProposalId);
 
-    // Open Create Proposal Modal
-    const openCreateProposal = () => {
-        setEditingProposal(null);
-        setTitle('');
-        setStatus('Draft');
-        setBudget('');
-        setTargetAudience('');
-        setObjective('');
-        setStartDate('');
-        setEndDate('');
-        setDescription('');
-        setSelectedKolIds([]);
-        setShowProposalModal(true);
-    };
-
-    // Open Edit Proposal Modal
-    const openEditProposal = (p: Proposal, e?: React.MouseEvent) => {
-        if (e) e.stopPropagation();
-        setEditingProposal(p);
-        setTitle(p.title || '');
-        setStatus(p.status || 'Draft');
-        setBudget(p.budget || '');
-        setTargetAudience(p.target_audience || '');
-        setObjective(p.objective || '');
-        setStartDate(p.start_date || '');
-        setEndDate(p.end_date || '');
-        setDescription(p.description || '');
-        
-        const kols = p.proposal_kols?.map(pk => pk.kol_id) || [];
-        setSelectedKolIds(kols);
-        setShowProposalModal(true);
-    };
-
-    const handleDeleteProposal = async (proposalId: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!window.confirm('Are you sure you want to delete this proposal?')) return;
-        try {
-            await supabaseClient.from('proposal_kols').delete().eq('proposal_id', proposalId);
-            await supabaseClient.from('proposals').delete().eq('id', proposalId);
-            if (selectedProposalId === proposalId) {
-                setActiveView('list');
-                setSelectedProposalId(null);
+    // Notify parent workspace of current selected proposal title for Breadcrumbs
+    useEffect(() => {
+        if (onSelectProposalTitle) {
+            if (activeView === 'workspace' && selectedProposal) {
+                onSelectProposalTitle(selectedProposal.title);
+            } else {
+                onSelectProposalTitle(null);
             }
-            fetchData();
+        }
+    }, [activeView, selectedProposalId, selectedProposal, onSelectProposalTitle]);
+
+    // DIRECT PROPOSAL CREATION (No Popup Modal!)
+    const handleAddProposalDirectly = async () => {
+        const now = new Date();
+        const monthDay = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+        const defaultTitle = `Proposal ${monthDay}`;
+
+        try {
+            const { data: newProp, error } = await supabaseClient
+                .from('proposals')
+                .insert({
+                    title: defaultTitle,
+                    status: 'Need to check',
+                    budget: '$0',
+                    created_at: now.toISOString(),
+                    updated_at: now.toISOString()
+                })
+                .select('*, proposal_kols(*, kols(*))')
+                .single();
+
+            if (error) throw error;
+            
+            const newProposalObj = {
+                ...(newProp as unknown as Proposal),
+                proposal_kols: []
+            };
+
+            setProposals(prev => [newProposalObj, ...prev]);
+
+            // Start inline editing title immediately
+            setEditingTitleId(newProposalObj.id);
+            setEditingTitleVal(defaultTitle);
         } catch (err) {
-            console.error('Error deleting proposal:', err);
+            console.error('Failed to create proposal directly:', err);
+            alert('Failed to create new proposal.');
         }
     };
 
-    const handleSaveProposal = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            const proposalPayload = {
-                ...(editingProposal?.id ? { id: editingProposal.id } : {}),
-                title,
-                status,
-                budget,
-                target_audience: targetAudience,
-                objective,
-                start_date: startDate || null,
-                end_date: endDate || null,
-                description,
-                updated_at: new Date().toISOString()
-            };
-            
-            const { data: savedProposal, error: proposalError } = await supabaseClient
-                .from('proposals')
-                .upsert(proposalPayload)
-                .select()
-                .single();
-                
-            if (proposalError) throw proposalError;
-            
-            // Sync proposal_kols
-            if (editingProposal?.id) {
-                const existingPks = editingProposal.proposal_kols || [];
-                const existingKolIds = existingPks.map(pk => pk.kol_id);
-                
-                // Remove deselected ones
-                const toRemove = existingKolIds.filter(id => !selectedKolIds.includes(id));
-                if (toRemove.length > 0) {
-                    await supabaseClient.from('proposal_kols').delete().eq('proposal_id', savedProposal.id).in('kol_id', toRemove);
-                }
+    // Save inline edited title
+    const handleSaveInlineTitle = async (proposalId: string) => {
+        if (!editingTitleVal.trim()) return;
+        const newTitle = editingTitleVal.trim();
+        setEditingTitleId(null);
 
-                // Add new ones
-                const toAdd = selectedKolIds.filter(id => !existingKolIds.includes(id));
-                if (toAdd.length > 0) {
-                    const pkPayloads = toAdd.map(kolId => ({
-                        proposal_id: savedProposal.id,
-                        kol_id: kolId,
-                        deliverables: '• 1x YouTube Video'
-                    }));
-                    await supabaseClient.from('proposal_kols').insert(pkPayloads);
-                }
-            } else {
-                if (selectedKolIds.length > 0) {
-                    const pkPayloads = selectedKolIds.map(kolId => ({
-                        proposal_id: savedProposal.id,
-                        kol_id: kolId,
-                        deliverables: '• 1x YouTube Video'
-                    }));
-                    await supabaseClient.from('proposal_kols').insert(pkPayloads);
-                }
-            }
+        setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, title: newTitle } : p));
+
+        try {
+            await supabaseClient
+                .from('proposals')
+                .update({ title: newTitle, updated_at: new Date().toISOString() })
+                .eq('id', proposalId);
+        } catch (err) {
+            console.error('Failed to update title:', err);
+        }
+    };
+
+    // Update Proposal Status
+    const updateProposalStatus = async (proposalId: string, newStatus: string) => {
+        setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, status: newStatus } : p));
+        setActiveStatusPopover(null);
+
+        try {
+            await supabaseClient
+                .from('proposals')
+                .update({ status: newStatus, updated_at: new Date().toISOString() })
+                .eq('id', proposalId);
+        } catch (err) {
+            console.error('Failed to update status:', err);
+        }
+    };
+
+    // Add Custom Status Tag
+    const handleAddCustomTag = () => {
+        if (!newCustomTagInput.trim()) return;
+        const tag = newCustomTagInput.trim();
+        if (!proposalTags.includes(tag)) {
+            const nextTags = [...proposalTags, tag];
+            updateProposalTagsState(nextTags);
+        }
+        if (activeStatusPopover?.proposalId) {
+            updateProposalStatus(activeStatusPopover.proposalId, tag);
+        }
+        setNewCustomTagInput('');
+    };
+
+    // Rename Status Tag (Bulk updates proposals)
+    const handleSaveEditTag = async (idx: number) => {
+        if (!editingTagVal.trim()) return;
+        const oldTag = proposalTags[idx];
+        const newTag = editingTagVal.trim();
+
+        const nextTags = proposalTags.map((t, i) => i === idx ? newTag : t);
+        updateProposalTagsState(nextTags);
+        setEditingTagIdx(null);
+
+        try {
+            await supabaseClient
+                .from('proposals')
+                .update({ status: newTag, updated_at: new Date().toISOString() })
+                .eq('status', oldTag);
+
+            setProposals(prev => prev.map(p => p.status === oldTag ? { ...p, status: newTag } : p));
+        } catch (err) {
+            console.error('Failed to bulk update status tag:', err);
+        }
+    };
+
+    // Delete Status Tag (Bulk updates proposals to null so tag never resurrects)
+    const handleDeleteTag = async (idx: number) => {
+        const tagToDelete = proposalTags[idx];
+        const nextTags = proposalTags.filter((_, i) => i !== idx);
+        updateProposalTagsState(nextTags);
+
+        setProposals(prev => prev.map(p => p.status === tagToDelete ? { ...p, status: 'Need to check' } : p));
+
+        try {
+            await supabaseClient
+                .from('proposals')
+                .update({ status: 'Need to check', updated_at: new Date().toISOString() })
+                .eq('status', tagToDelete);
+        } catch (err) {
+            console.error('Failed to bulk delete status tag:', err);
+        }
+    };
+
+    // Confirmed Delete Proposal
+    const handleConfirmDeleteProposal = async () => {
+        if (!deleteConfirmProposal) return;
+        const pId = deleteConfirmProposal.id;
+        
+        try {
+            await supabaseClient.from('proposal_kols').delete().eq('proposal_id', pId);
+            await supabaseClient.from('proposals').delete().eq('id', pId);
             
-            setShowProposalModal(false);
-            fetchData();
-        } catch (e) {
-            console.error('Error saving proposal:', e);
-            alert('Failed to save proposal.');
+            setProposals(prev => prev.filter(p => p.id !== pId));
+            if (selectedProposalId === pId) {
+                setActiveView('list');
+                setSelectedProposalId(null);
+            }
+        } catch (err) {
+            console.error('Error deleting proposal:', err);
+        } finally {
+            setDeleteConfirmProposal(null);
         }
     };
 
@@ -382,15 +522,6 @@ const InfluencerProposal: React.FC = () => {
         updateProposalKolField(proposalId, kolId, 'audience_screenshots', updated);
     };
 
-    const getStatusStyle = (s: string) => {
-        const status = (s || '').toLowerCase();
-        if (status === 'approved') return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold';
-        if (status === 'rejected') return 'bg-rose-100 text-rose-800 border-rose-300 font-semibold';
-        if (status === 'in progress') return 'bg-blue-100 text-blue-800 border-blue-300 font-semibold';
-        if (status === 'completed') return 'bg-purple-100 text-purple-800 border-purple-300 font-semibold';
-        return 'bg-slate-100 text-slate-700 border-slate-200 font-normal';
-    };
-
     const handleSort = (field: 'created_at' | 'title' | 'budget' | 'creators') => {
         if (sortField === field) {
             setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -418,8 +549,13 @@ const InfluencerProposal: React.FC = () => {
                 valA = (a.title || '').toLowerCase();
                 valB = (b.title || '').toLowerCase();
             } else if (sortField === 'budget') {
-                valA = parseFloat(String(a.budget || '0').replace(/[^\d.]/g, '')) || 0;
-                valB = parseFloat(String(b.budget || '0').replace(/[^\d.]/g, '')) || 0;
+                const creatorsA = a.proposal_kols || [];
+                const ratesSumA = creatorsA.reduce((sum, pk) => sum + (parseFloat(String(pk.est_rate || '0')) || 0), 0);
+                valA = ratesSumA > 0 ? ratesSumA : parseFloat(String(a.budget || '0').replace(/[^\d.]/g, '')) || 0;
+
+                const creatorsB = b.proposal_kols || [];
+                const ratesSumB = creatorsB.reduce((sum, pk) => sum + (parseFloat(String(pk.est_rate || '0')) || 0), 0);
+                valB = ratesSumB > 0 ? ratesSumB : parseFloat(String(b.budget || '0').replace(/[^\d.]/g, '')) || 0;
             } else if (sortField === 'creators') {
                 valA = a.proposal_kols?.length || 0;
                 valB = b.proposal_kols?.length || 0;
@@ -449,8 +585,10 @@ const InfluencerProposal: React.FC = () => {
                                 Plan, pitch, and track influencer campaign budgets and targeted creator proposals.
                             </p>
                         </div>
+                        
+                        {/* DIRECT ADD PROPOSAL BUTTON (NO POPUP MODAL!) */}
                         <button 
-                            onClick={openCreateProposal}
+                            onClick={handleAddProposalDirectly}
                             className="bg-[var(--accent-color)] text-white px-5 py-2.5 rounded-full font-medium hover:bg-emerald-600 transition-colors shadow-xs text-sm flex items-center justify-center gap-1.5 w-fit shrink-0"
                         >
                             <Plus className="w-4 h-4" />
@@ -479,11 +617,9 @@ const InfluencerProposal: React.FC = () => {
                                 className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none font-medium text-slate-700"
                             >
                                 <option value="All">All Statuses</option>
-                                <option value="Draft">Draft</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="Approved">Approved</option>
-                                <option value="Rejected">Rejected</option>
-                                <option value="Completed">Completed</option>
+                                {proposalTags.map(t => (
+                                    <option key={t} value={t}>{t}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -517,23 +653,22 @@ const InfluencerProposal: React.FC = () => {
                                             <ArrowUpDown className="w-3 h-3 text-slate-400" />
                                         </div>
                                     </th>
-                                    <th className="px-4 py-3.5 min-w-[120px]">Status</th>
-                                    <th className="px-4 py-3.5 text-center min-w-[120px]">Action</th>
+                                    <th className="px-4 py-3.5 min-w-[150px]">Status</th>
+                                    <th className="px-4 py-3.5 text-center min-w-[100px]">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#bfdbfe]/30">
                                 {loading ? (
                                     <tr><td colSpan={6} className="text-center py-12 text-slate-400">Loading proposals...</td></tr>
                                 ) : processedProposals.length === 0 ? (
-                                    <tr><td colSpan={6} className="text-center py-12 text-slate-400">No proposals found. Click "+ Add New Proposal" to create one.</td></tr>
+                                    <tr><td colSpan={6} className="text-center py-12 text-slate-400">No proposals found. Click "+ Add New Proposal" to create one directly.</td></tr>
                                 ) : (
                                     processedProposals.map(p => {
                                         const creators = p.proposal_kols || [];
                                         
-                                        // Auto calculate total estimated rate / budget
-                                        let totalEstRateNum = parseFloat(String(p.budget || '0').replace(/[^\d.]/g, '')) || 0;
+                                        // Auto calculate total estimated rate from detailed creator rates
                                         const ratesSum = creators.reduce((sum, pk) => sum + (parseFloat(String(pk.est_rate || '0')) || 0), 0);
-                                        if (ratesSum > 0) totalEstRateNum = ratesSum;
+                                        const totalEstRateNum = ratesSum > 0 ? ratesSum : (parseFloat(String(p.budget || '0').replace(/[^\d.]/g, '')) || 0);
 
                                         return (
                                             <tr 
@@ -549,14 +684,34 @@ const InfluencerProposal: React.FC = () => {
                                                     {formatTimestampDetailed(p.created_at)}
                                                 </td>
 
-                                                {/* 2. Proposal Name */}
-                                                <td className="px-4 py-3 max-w-[240px]">
-                                                    <div className="font-medium text-slate-900 text-sm group-hover:text-[var(--accent-color)] transition-colors truncate" title={p.title}>
-                                                        {p.title}
-                                                    </div>
-                                                    {p.objective && (
-                                                        <div className="text-[11px] font-normal text-slate-400 truncate mt-0.5">
-                                                            Obj: {p.objective}
+                                                {/* 2. Proposal Name (Inline Editable) */}
+                                                <td className="px-4 py-3 max-w-[240px]" onClick={e => e.stopPropagation()}>
+                                                    {editingTitleId === p.id ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <input 
+                                                                type="text" 
+                                                                autoFocus
+                                                                value={editingTitleVal}
+                                                                onChange={e => setEditingTitleVal(e.target.value)}
+                                                                onKeyDown={e => { if (e.key === 'Enter') handleSaveInlineTitle(p.id); }}
+                                                                className="w-full text-sm font-medium p-1 border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white"
+                                                            />
+                                                            <button 
+                                                                onClick={() => handleSaveInlineTitle(p.id)}
+                                                                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0"
+                                                                title="Save name"
+                                                            >
+                                                                <Check className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div 
+                                                            onClick={() => { setEditingTitleId(p.id); setEditingTitleVal(p.title); }}
+                                                            className="font-medium text-slate-900 text-sm hover:text-[var(--accent-color)] transition-colors truncate flex items-center gap-1.5 group/t"
+                                                            title="Click to rename proposal"
+                                                        >
+                                                            <span className="truncate">{p.title}</span>
+                                                            <Edit2 className="w-3 h-3 text-slate-400 opacity-0 group-hover/t:opacity-100 transition-opacity shrink-0" />
                                                         </div>
                                                     )}
                                                 </td>
@@ -626,46 +781,35 @@ const InfluencerProposal: React.FC = () => {
                                                     </div>
                                                 </td>
 
-                                                {/* 4. Total Est. Rate / Budget */}
+                                                {/* 4. Total Est. Rate / Budget (Not auto filled, synced from creators rates) */}
                                                 <td className="px-4 py-3 text-right font-medium text-slate-800 whitespace-nowrap">
                                                     {formatCurrencyUSD(totalEstRateNum)}
                                                 </td>
 
-                                                {/* 5. Status Badge */}
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <span className={`px-3 py-1 rounded-full text-xs border inline-block ${getStatusStyle(p.status)}`}>
-                                                        {p.status || 'Draft'}
-                                                    </span>
+                                                {/* 5. Status Badge & Popover */}
+                                                <td className="px-4 py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={e => {
+                                                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                                            setEditingTagIdx(null);
+                                                            setActiveStatusPopover({ proposalId: p.id, anchorRect: rect });
+                                                        }}
+                                                        className={`px-3 py-1 rounded-full text-xs border transition-transform hover:scale-105 inline-block shadow-2xs ${getProposalTagStyle(p.status)}`}
+                                                        title="Click to update status tag"
+                                                    >
+                                                        <span>{p.status || 'Need to check'}</span>
+                                                    </button>
                                                 </td>
 
-                                                {/* 6. Action Buttons */}
+                                                {/* 6. Action Button (Trash Icon -> Confirmation Modal) */}
                                                 <td className="px-4 py-3 text-center whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                                                    <div className="flex items-center justify-center gap-1">
-                                                        <button 
-                                                            onClick={() => {
-                                                                setSelectedProposalId(p.id);
-                                                                setActiveView('workspace');
-                                                            }} 
-                                                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                                            title="View Creators Workspace"
-                                                        >
-                                                            <Eye className="w-4 h-4" />
-                                                        </button>
-                                                        <button 
-                                                            onClick={e => openEditProposal(p, e)} 
-                                                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                                                            title="Edit Proposal Details"
-                                                        >
-                                                            <Edit2 className="w-4 h-4" />
-                                                        </button>
-                                                        <button 
-                                                            onClick={e => handleDeleteProposal(p.id, e)} 
-                                                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                                            title="Delete Proposal"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
+                                                    <button 
+                                                        onClick={() => setDeleteConfirmProposal(p)} 
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-70 hover:opacity-100"
+                                                        title="Delete Proposal"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         );
@@ -699,7 +843,7 @@ const InfluencerProposal: React.FC = () => {
                                 <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
                                     {selectedProposal.title}
                                 </h2>
-                                <span className={`px-3 py-0.5 rounded-full text-xs border ${getStatusStyle(selectedProposal.status)}`}>
+                                <span className={`px-3 py-0.5 rounded-full text-xs border ${getProposalTagStyle(selectedProposal.status)}`}>
                                     {selectedProposal.status}
                                 </span>
                             </div>
@@ -717,7 +861,7 @@ const InfluencerProposal: React.FC = () => {
                                 <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Proposal Est. Rate</div>
                                 <div className="text-base font-semibold text-slate-900">
                                     {formatCurrencyUSD(
-                                        (selectedProposal.proposal_kols || []).reduce((sum, pk) => sum + (parseFloat(String(pk.est_rate || '0')) || 0), 0) || parseFloat(String(selectedProposal.budget || '0').replace(/[^\d.]/g, ''))
+                                        (selectedProposal.proposal_kols || []).reduce((sum, pk) => sum + (parseFloat(String(pk.est_rate || '0')) || 0), 0)
                                     )}
                                 </div>
                             </div>
@@ -765,7 +909,6 @@ const InfluencerProposal: React.FC = () => {
                                     selectedProposal.proposal_kols.map((pk, idx) => {
                                         const kol = pk.kols;
 
-                                        // Parse audience screenshots list
                                         let screenshotsList: string[] = [];
                                         if (pk.audience_screenshots) {
                                             if (Array.isArray(pk.audience_screenshots)) {
@@ -788,10 +931,9 @@ const InfluencerProposal: React.FC = () => {
                                                     <KOLCell kol={kol} />
                                                 </td>
 
-                                                {/* 2. Audience Insight Attachment (Upload / Drag-Drop / Paste) */}
+                                                {/* 2. Audience Insight Attachment */}
                                                 <td className="px-4 py-3">
                                                     <div className="space-y-2">
-                                                        {/* Thumbnail Preview Grid */}
                                                         {screenshotsList.length > 0 && (
                                                             <div className="flex flex-wrap gap-1.5 mb-1.5">
                                                                 {screenshotsList.map((imgUrl, i) => (
@@ -814,7 +956,6 @@ const InfluencerProposal: React.FC = () => {
                                                             </div>
                                                         )}
 
-                                                        {/* Dropzone & Upload Input */}
                                                         <label className="border border-dashed border-slate-300 hover:border-[var(--accent-color)] hover:bg-slate-50 p-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-xs text-slate-500 transition-colors">
                                                             <Upload className="w-3.5 h-3.5 text-slate-400" />
                                                             <span>Upload / Paste Screenshot</span>
@@ -915,173 +1056,130 @@ const InfluencerProposal: React.FC = () => {
                 </div>
             )}
 
-            {/* PORTAL MODAL 1: CREATE / EDIT PROPOSAL MODAL */}
-            {showProposalModal && createPortal(
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto font-sans">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
-                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
-                            <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
-                                <Plus className="w-5 h-5 text-[var(--accent-color)]" />
-                                <span>{editingProposal ? 'Edit Campaign Proposal' : 'Create Campaign Proposal'}</span>
-                            </h3>
-                            <button onClick={() => setShowProposalModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            {/* STICKY STATUS TAG POPOVER */}
+            {activeStatusPopover && activeStatusPopover.anchorRect && createPortal(
+                <div 
+                    ref={statusPopoverRef}
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                        position: 'fixed',
+                        top: `${Math.min(window.innerHeight - 320, activeStatusPopover.anchorRect.bottom + 4)}px`,
+                        left: `${Math.min(window.innerWidth - 300, Math.max(16, activeStatusPopover.anchorRect.left))}px`,
+                        zIndex: 99999
+                    }}
+                    className="bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-4 w-72 font-sans"
+                >
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Proposal Status Tag</span>
+                            <button onClick={() => setActiveStatusPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                         </div>
 
-                        <form onSubmit={handleSaveProposal} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                {/* Left Column: Basic Info */}
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                                            Proposal Title *
-                                        </label>
-                                        <input 
-                                            required 
-                                            type="text" 
-                                            value={title} 
-                                            onChange={e => setTitle(e.target.value)} 
-                                            placeholder="e.g. Q4 Black Friday Influencer Campaign"
-                                            className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-medium" 
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Status</label>
-                                            <select 
-                                                value={status} 
-                                                onChange={e => setStatus(e.target.value)} 
-                                                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs font-medium"
-                                            >
-                                                <option value="Draft">Draft</option>
-                                                <option value="In Progress">In Progress</option>
-                                                <option value="Approved">Approved</option>
-                                                <option value="Rejected">Rejected</option>
-                                                <option value="Completed">Completed</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Budget ($)</label>
+                        {/* Tag Options List */}
+                        <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                            {proposalTags.map((t, idx) => {
+                                if (editingTagIdx === idx) {
+                                    return (
+                                        <div key={idx} className="flex items-center gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-300">
                                             <input 
                                                 type="text" 
-                                                value={budget} 
-                                                onChange={e => setBudget(e.target.value)} 
-                                                placeholder="$10,000"
-                                                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-medium" 
+                                                autoFocus 
+                                                value={editingTagVal}
+                                                onChange={e => setEditingTagVal(e.target.value)}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') handleSaveEditTag(idx);
+                                                }}
+                                                className="w-full text-xs p-1 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-medium"
                                             />
+                                            <button 
+                                                onClick={() => handleSaveEditTag(idx)} 
+                                                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0"
+                                                title="Save name"
+                                            >
+                                                <Check className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div key={t} className="group/tag flex items-center justify-between p-1 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <button
+                                            onClick={() => updateProposalStatus(activeStatusPopover.proposalId, t)}
+                                            className={`flex-1 text-left px-3 py-1.5 rounded-lg text-xs border transition-colors ${getProposalTagStyle(t)}`}
+                                        >
+                                            <span>{t}</span>
+                                        </button>
+                                        <div className="opacity-0 group-hover/tag:opacity-100 flex items-center gap-0.5 ml-1 transition-opacity">
+                                            <button 
+                                                onClick={e => { e.stopPropagation(); setEditingTagIdx(idx); setEditingTagVal(t); }} 
+                                                className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 rounded-md"
+                                                title="Rename tag"
+                                            >
+                                                <Edit2 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button 
+                                                onClick={e => { e.stopPropagation(); handleDeleteTag(idx); }} 
+                                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md"
+                                                title="Delete tag option"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
                                         </div>
                                     </div>
+                                );
+                            })}
+                        </div>
 
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Objective</label>
-                                        <input 
-                                            type="text" 
-                                            value={objective} 
-                                            onChange={e => setObjective(e.target.value)} 
-                                            placeholder="e.g. Brand Awareness, 50k Sales"
-                                            className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal" 
-                                        />
-                                    </div>
+                        {/* Add Custom Tag Form */}
+                        <div className="pt-2 border-t border-slate-100 flex gap-1.5">
+                            <input 
+                                type="text" 
+                                value={newCustomTagInput} 
+                                onChange={e => setNewCustomTagInput(e.target.value)} 
+                                placeholder="Add custom status tag..." 
+                                className="w-full p-1.5 border border-slate-300 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[var(--accent-color)] font-normal"
+                                onKeyDown={e => { if (e.key === 'Enter') handleAddCustomTag(); }}
+                            />
+                            <button 
+                                onClick={handleAddCustomTag}
+                                className="px-3 py-1.5 text-xs font-medium text-white bg-slate-800 hover:bg-slate-900 rounded-xl shrink-0"
+                            >
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
 
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Target Audience</label>
-                                        <input 
-                                            type="text" 
-                                            value={targetAudience} 
-                                            onChange={e => setTargetAudience(e.target.value)} 
-                                            placeholder="e.g. US, Dropshippers, 18-35"
-                                            className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal" 
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Start Date</label>
-                                            <input 
-                                                type="date" 
-                                                value={startDate} 
-                                                onChange={e => setStartDate(e.target.value)} 
-                                                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-medium" 
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">End Date</label>
-                                            <input 
-                                                type="date" 
-                                                value={endDate} 
-                                                onChange={e => setEndDate(e.target.value)} 
-                                                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-medium" 
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Right Column: Description & Target Creators */}
-                                <div className="space-y-4 flex flex-col">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Campaign Details / Pitch</label>
-                                        <textarea 
-                                            value={description} 
-                                            onChange={e => setDescription(e.target.value)} 
-                                            rows={4} 
-                                            placeholder="Campaign strategy, core pitch message, deliverables..."
-                                            className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal resize-none"
-                                        />
-                                    </div>
-
-                                    <div className="flex-1 flex flex-col">
-                                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                                            Select Creators ({selectedKolIds.length} chosen)
-                                        </label>
-                                        <div className="border border-slate-200 rounded-2xl p-2 h-48 overflow-y-auto bg-slate-50/50 space-y-1">
-                                            {allKols.length === 0 ? (
-                                                <div className="text-xs text-slate-400 p-2">No creators found.</div>
-                                            ) : (
-                                                allKols.map(kol => {
-                                                    const isChecked = selectedKolIds.includes(kol.id!);
-                                                    return (
-                                                        <label key={kol.id} className="flex items-center justify-between p-2 hover:bg-white rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-200">
-                                                            <div className="flex items-center gap-2">
-                                                                <input 
-                                                                    type="checkbox" 
-                                                                    checked={isChecked}
-                                                                    onChange={() => {
-                                                                        if (isChecked) {
-                                                                            setSelectedKolIds(prev => prev.filter(id => id !== kol.id));
-                                                                        } else {
-                                                                            setSelectedKolIds(prev => [...prev, kol.id!]);
-                                                                        }
-                                                                    }}
-                                                                    className="h-4 w-4 text-[var(--accent-color)] border-slate-300 rounded focus:ring-[var(--accent-color)] shrink-0"
-                                                                />
-                                                                <KOLCell kol={kol} />
-                                                            </div>
-                                                        </label>
-                                                    );
-                                                })
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+            {/* PORTAL MODAL 1: DELETE CONFIRMATION POPUP MODAL */}
+            {deleteConfirmProposal && createPortal(
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[999999] flex items-center justify-center p-4 overflow-y-auto font-sans">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
+                        <div className="p-5 text-center space-y-3">
+                            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                                <Trash2 className="w-6 h-6" />
                             </div>
-
-                            {/* Modal Action Buttons */}
-                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                                <button 
-                                    type="button" 
-                                    onClick={() => setShowProposalModal(false)} 
-                                    className="px-5 py-2.5 rounded-full font-medium text-slate-600 hover:bg-slate-100 transition-colors text-sm"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    className="px-6 py-2.5 rounded-full font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 transition-colors shadow-xs text-sm"
-                                >
-                                    Save Proposal
-                                </button>
-                            </div>
-                        </form>
+                            <h3 className="text-base font-semibold text-slate-900">Delete Proposal</h3>
+                            <p className="text-xs text-slate-500">
+                                Are you sure you want to delete <strong className="text-slate-800">"{deleteConfirmProposal.title}"</strong>? This action cannot be undone.
+                            </p>
+                        </div>
+                        <div className="flex border-t border-slate-100 divide-x divide-slate-100 bg-slate-50">
+                            <button 
+                                onClick={() => setDeleteConfirmProposal(null)} 
+                                className="flex-1 py-3 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleConfirmDeleteProposal} 
+                                className="flex-1 py-3 text-xs font-semibold text-rose-600 hover:bg-rose-100/50 transition-colors"
+                            >
+                                Confirm Delete
+                            </button>
+                        </div>
                     </div>
                 </div>,
                 document.body
