@@ -35,12 +35,9 @@ interface CollaborationRow {
 
 const DEFAULT_PROGRESS_TAGS = [
     'All done',
-    'Pending/Canceled',
-    '1st Payment Done',
-    '2nd Payment Done',
     'Awaiting Content',
-    'Third content aired',
-    'Awaiting Payment'
+    'Need to check',
+    'In Progress'
 ];
 
 const COLOR_PALETTES = [
@@ -281,9 +278,10 @@ const InfluencerProgress: React.FC = () => {
     const [editingTagIdx, setEditingTagIdx] = useState<number | null>(null);
     const [editingTagVal, setEditingTagVal] = useState('');
 
-    // Video editing state
+    // Video editing & collapse state
     const [editingUrlIdx, setEditingUrlIdx] = useState<number | null>(null);
     const [editingUrlVal, setEditingUrlVal] = useState('');
+    const [expandedVideoRows, setExpandedVideoRows] = useState<Record<string, boolean>>({});
 
     // Agreement Documents editing state
     const [agreementUrlsList, setAgreementUrlsList] = useState<string[]>([]);
@@ -387,21 +385,15 @@ const InfluencerProgress: React.FC = () => {
             setCollaborations(collabsWithVideos);
             setAllKols(kolsRes.data as KolData[]);
 
-            // Sync database statuses if localStorage not explicitly populated
-            const dbStatuses = rawCollabs.map(c => c.progress_status).filter(Boolean) as string[];
             setTagOptions(prev => {
                 const saved = localStorage.getItem('tp_custom_progress_tags');
                 if (saved) {
                     try {
                         const parsed = JSON.parse(saved);
-                        if (Array.isArray(parsed)) return parsed;
+                        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
                     } catch {}
                 }
-                const merged = Array.from(new Set([...prev, ...dbStatuses]));
-                try {
-                    localStorage.setItem('tp_custom_progress_tags', JSON.stringify(merged));
-                } catch (e) {}
-                return merged;
+                return prev;
             });
 
         } catch (e) {
@@ -722,126 +714,114 @@ const InfluencerProgress: React.FC = () => {
 
     return (
         <div className="card p-6 space-y-6">
-            {/* Header & Main Toolbar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-xl font-semibold text-slate-800 tracking-tight flex items-center gap-2">
-                        <span>Influencer Progress Workspace</span>
-                        <span className="text-xs bg-emerald-100 text-emerald-800 font-medium px-2.5 py-0.5 rounded-full border border-emerald-200">
-                            Live System
-                        </span>
-                    </h2>
-                    <p className="text-sm text-slate-500 mt-1">
-                        Track partnership deals, inline progress statuses, actual budget spent, and social media videos.
-                    </p>
+            {/* Top Toolbar (Search, Filter & Add Deal) */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative min-w-[240px]">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                        <input 
+                            type="text"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Search KOL name..."
+                            className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none font-normal"
+                        />
+                    </div>
+
+                    {/* Multi-Select Status Filter Button & Dropdown */}
+                    {(() => {
+                        const allActiveStatuses = tagOptions;
+                        const isAllOrNone = selectedStatuses.length === 0 || selectedStatuses.length === allActiveStatuses.length;
+                        const statusBtnLabel = isAllOrNone 
+                            ? 'All Statuses' 
+                            : selectedStatuses.length === 1 
+                            ? `Status: ${selectedStatuses[0]}` 
+                            : `Status (${selectedStatuses.length} selected)`;
+
+                        return (
+                            <div className="relative" ref={statusFilterRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowStatusFilterPopover(!showStatusFilterPopover)}
+                                    className="flex items-center gap-2 px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors"
+                                >
+                                    <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span>{statusBtnLabel}</span>
+                                    <ChevronRight className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showStatusFilterPopover ? 'rotate-90' : ''}`} />
+                                </button>
+
+                                {showStatusFilterPopover && (
+                                    <div className="absolute top-full left-0 mt-1.5 bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-3 w-64 z-50 space-y-2">
+                                        <div className="flex justify-between items-center pb-2 border-b border-slate-100 text-xs font-semibold text-slate-800">
+                                            <span>Filter by Status</span>
+                                            <div className="flex items-center gap-2">
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setSelectedStatuses([...allActiveStatuses])} 
+                                                    className="text-[11px] font-medium text-emerald-600 hover:underline"
+                                                >
+                                                    Check all
+                                                </button>
+                                                <span className="text-slate-300">|</span>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setSelectedStatuses([])} 
+                                                    className="text-[11px] font-medium text-slate-500 hover:underline"
+                                                >
+                                                    Reset all
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                                            {allActiveStatuses.map(t => (
+                                                <label key={t} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700">
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={selectedStatuses.includes(t)}
+                                                        onChange={() => {
+                                                            if (selectedStatuses.includes(t)) {
+                                                                setSelectedStatuses(selectedStatuses.filter(s => s !== t));
+                                                            } else {
+                                                                setSelectedStatuses([...selectedStatuses, t]);
+                                                            }
+                                                        }}
+                                                        className="rounded text-[var(--accent-color)] focus:ring-[var(--accent-color)] h-3.5 w-3.5"
+                                                    />
+                                                    <span>{t}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
+
                 <button 
                     onClick={() => {
                         setShowAddModal(true);
                         setNewStartMonth(formatDateDisplay(new Date().toISOString()));
                     }}
-                    className="bg-[var(--accent-color)] text-white px-5 py-2.5 rounded-full font-medium hover:bg-emerald-600 transition-colors shadow-xs text-sm flex items-center justify-center gap-1.5 w-fit shrink-0"
+                    className="bg-[var(--accent-color)] text-white px-5 py-2 rounded-full font-medium hover:bg-emerald-600 transition-colors shadow-xs text-xs flex items-center justify-center gap-1.5 w-fit shrink-0"
                 >
                     <Plus className="w-4 h-4" />
                     <span>Add New Deal</span>
                 </button>
             </div>
 
-            {/* Clean Minimal Filter Bar (No outer gray box) */}
-            <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[240px]">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                    <input 
-                        type="text"
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        placeholder="Search KOL name..."
-                        className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none font-normal"
-                    />
-                </div>
-
-                {/* Multi-Select Status Filter Button & Dropdown */}
-                {(() => {
-                    const allActiveStatuses = tagOptions;
-                    const isAllOrNone = selectedStatuses.length === 0 || selectedStatuses.length === allActiveStatuses.length;
-                    const statusBtnLabel = isAllOrNone 
-                        ? 'All Statuses' 
-                        : selectedStatuses.length === 1 
-                        ? `Status: ${selectedStatuses[0]}` 
-                        : `Status (${selectedStatuses.length} selected)`;
-
-                    return (
-                        <div className="relative" ref={statusFilterRef}>
-                            <button
-                                type="button"
-                                onClick={() => setShowStatusFilterPopover(!showStatusFilterPopover)}
-                                className="flex items-center gap-2 px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors"
-                            >
-                                <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                <span>{statusBtnLabel}</span>
-                                <ChevronRight className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showStatusFilterPopover ? 'rotate-90' : ''}`} />
-                            </button>
-
-                            {showStatusFilterPopover && (
-                                <div className="absolute top-full left-0 mt-1.5 bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-3 w-64 z-50 space-y-2">
-                                    <div className="flex justify-between items-center pb-2 border-b border-slate-100 text-xs font-semibold text-slate-800">
-                                        <span>Filter by Status</span>
-                                        <div className="flex items-center gap-2">
-                                            <button 
-                                                type="button"
-                                                onClick={() => setSelectedStatuses([...allActiveStatuses])} 
-                                                className="text-[11px] font-medium text-emerald-600 hover:underline"
-                                            >
-                                                Check all
-                                            </button>
-                                            <span className="text-slate-300">|</span>
-                                            <button 
-                                                type="button"
-                                                onClick={() => setSelectedStatuses([])} 
-                                                className="text-[11px] font-medium text-slate-500 hover:underline"
-                                            >
-                                                Reset all
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-                                        {allActiveStatuses.map(t => (
-                                            <label key={t} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700">
-                                                <input 
-                                                    type="checkbox"
-                                                    checked={selectedStatuses.includes(t)}
-                                                    onChange={() => {
-                                                        if (selectedStatuses.includes(t)) {
-                                                            setSelectedStatuses(selectedStatuses.filter(s => s !== t));
-                                                        } else {
-                                                            setSelectedStatuses([...selectedStatuses, t]);
-                                                        }
-                                                    }}
-                                                    className="rounded text-[var(--accent-color)] focus:ring-[var(--accent-color)] h-3.5 w-3.5"
-                                                />
-                                                <span>{t}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })()}
-            </div>
-
-            {/* Table Area */}
-            <div ref={tableContainerRef} className="overflow-x-auto border border-[#bfdbfe]/50 rounded-2xl shadow-xs bg-white relative">
+            {/* Table Layout */}
+            <div ref={tableContainerRef} className="overflow-x-auto border border-[#bfdbfe]/50 rounded-2xl shadow-xs bg-white">
                 <table className="w-full text-sm text-left text-slate-600 border-collapse">
                     <thead className="text-xs text-[#2236ba] font-semibold uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
                         <tr>
-                            <th onClick={() => handleSort('start_month')} className="px-4 py-3.5 whitespace-nowrap min-w-[130px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                            <th onClick={() => handleSort('start_month')} className="px-4 py-3.5 min-w-[140px] cursor-pointer hover:bg-slate-100/80 transition-colors">
                                 <div className="flex items-center gap-1">
                                     <span>Collab Started</span>
                                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                                 </div>
                             </th>
-                            <th onClick={() => handleSort('kol_name')} className="px-4 py-3.5 min-w-[220px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                            <th onClick={() => handleSort('kol_name')} className="px-4 py-3.5 min-w-[200px] cursor-pointer hover:bg-slate-100/80 transition-colors">
                                 <div className="flex items-center gap-1">
                                     <span>KOL</span>
                                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
@@ -853,22 +833,22 @@ const InfluencerProgress: React.FC = () => {
                                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                                 </div>
                             </th>
-                            <th onClick={() => handleSort('payment_percent')} className="px-4 py-3.5 min-w-[160px] cursor-pointer hover:bg-slate-100/80 transition-colors">
-                                <div className="flex items-center gap-1">
-                                    <span>Payment Progress</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                                </div>
-                            </th>
                             <th onClick={() => handleSort('total_package')} className="px-4 py-3.5 text-right min-w-[110px] cursor-pointer hover:bg-slate-100/80 transition-colors">
                                 <div className="flex items-center justify-end gap-1">
                                     <span>Package ($)</span>
                                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                                 </div>
                             </th>
-                            <th className="px-4 py-3.5 min-w-[130px]">Content</th>
+                            <th onClick={() => handleSort('payment_percent')} className="px-4 py-3.5 min-w-[180px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                <div className="flex items-center gap-1">
+                                    <span>Payment Progress</span>
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                </div>
+                            </th>
+                            <th className="px-4 py-3.5 min-w-[130px]">Content Progress</th>
                             <th className="px-4 py-3.5 min-w-[240px]">Reported Videos</th>
                             <th className="px-4 py-3.5 min-w-[120px]">Released Date</th>
-                            <th className="px-4 py-3.5 min-w-[140px]">Agreement</th>
+                            <th className="px-4 py-3.5 min-w-[140px]">Contract</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[#bfdbfe]/30">
@@ -882,27 +862,29 @@ const InfluencerProgress: React.FC = () => {
                                 const actualSpent = c.actual_spent || 0;
                                 const paymentPercent = totalPkgNum > 0 ? Math.min(100, Math.round((actualSpent / totalPkgNum) * 100)) : 0;
 
+                                const isExpanded = !!expandedVideoRows[c.id];
+                                const allVids = c.videosList || [];
+                                const displayedVids = isExpanded ? allVids : allVids.slice(0, 4);
+
                                 return (
-                                    <tr key={c.id} className="hover:bg-emerald-50/20 transition-colors group">
-                                        
-                                        {/* 1. Collab Started (Single Mini Calendar Picker) */}
-                                        <td className="px-4 py-3 font-normal text-slate-800 whitespace-nowrap">
+                                    <tr key={c.id} className="hover:bg-slate-50/40 transition-colors align-top">
+                                        {/* 1. Collab Started */}
+                                        <td className="px-4 py-3 whitespace-nowrap text-xs font-normal text-slate-700">
                                             <button 
                                                 onClick={e => openPopover(e, c, 'date')}
-                                                className="hover:bg-slate-100 px-2.5 py-1 rounded-lg text-slate-700 font-normal transition-colors flex items-center gap-1.5 border border-transparent hover:border-slate-200"
-                                                title="Click to select partnership start date"
+                                                className="hover:bg-slate-100 px-2 py-1 rounded transition-colors text-left inline-block border border-transparent hover:border-slate-200"
+                                                title="Click to edit Collab Started date"
                                             >
-                                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                                <span>{c.start_month || 'Select Date'}</span>
+                                                <span>{formatDateDisplay(c.start_month)}</span>
                                             </button>
                                         </td>
 
-                                        {/* 2. KOL Universal Visual Identity */}
+                                        {/* 2. KOL Column */}
                                         <td className="px-4 py-3">
                                             <KOLCell kol={c.kols} />
                                         </td>
 
-                                        {/* 3. Status Tag Column */}
+                                        {/* 3. Progress Status Column */}
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <button
                                                 onClick={e => openPopover(e, c, 'progress')}
@@ -913,16 +895,27 @@ const InfluencerProgress: React.FC = () => {
                                             </button>
                                         </td>
 
-                                        {/* 4. Payment Progress Column */}
-                                        <td className="px-4 py-3">
+                                        {/* 4. Package Column (Moved to LEFT of Payment Progress) */}
+                                        <td className="px-4 py-3 text-right font-medium text-slate-800 whitespace-nowrap">
+                                            <button 
+                                                onClick={e => openPopover(e, c, 'package')}
+                                                className="hover:bg-slate-100 px-2 py-1 rounded transition-colors text-right inline-block text-slate-800 font-medium border border-transparent hover:border-slate-200"
+                                                title="Click to edit package amount"
+                                            >
+                                                {formatCurrencyUSD(c.total_package)}
+                                            </button>
+                                        </td>
+
+                                        {/* 5. Payment Progress Column ($AA/$BBB Paid) */}
+                                        <td className="px-4 py-3 min-w-[180px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'payment')}
                                                 className="cursor-pointer group/bar p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors border border-transparent hover:border-slate-200"
                                                 title="Click to update Actual Budget Spent"
                                             >
                                                 <div className="flex justify-between items-center text-xs mb-1 font-medium">
-                                                    <span className="text-slate-500 text-[11px]">
-                                                        Spent: <strong className="text-slate-700 font-medium">{formatCurrencyUSD(actualSpent)}</strong>
+                                                    <span className="text-slate-700 text-[11px] font-medium">
+                                                        {formatCurrencyUSD(actualSpent)}/{formatCurrencyUSD(c.total_package)} Paid
                                                     </span>
                                                     <span className={`${paymentPercent === 100 ? 'text-emerald-600' : 'text-blue-600'} font-semibold`}>
                                                         {paymentPercent}%
@@ -943,18 +936,7 @@ const InfluencerProgress: React.FC = () => {
                                             </div>
                                         </td>
 
-                                        {/* 5. Package Column */}
-                                        <td className="px-4 py-3 text-right font-medium text-slate-800 whitespace-nowrap">
-                                            <button 
-                                                onClick={e => openPopover(e, c, 'package')}
-                                                className="hover:bg-slate-100 px-2 py-1 rounded transition-colors text-right inline-block text-slate-800 font-medium border border-transparent hover:border-slate-200"
-                                                title="Click to edit package amount"
-                                            >
-                                                {formatCurrencyUSD(c.total_package)}
-                                            </button>
-                                        </td>
-
-                                        {/* 6. Content Column (Content Progress Bar & Agreed Count) */}
+                                        {/* 6. Content Progress Column */}
                                         <td className="px-4 py-3 min-w-[130px]">
                                             {(() => {
                                                 const recordedCount = c.videosList?.length || 0;
@@ -992,16 +974,16 @@ const InfluencerProgress: React.FC = () => {
                                             })()}
                                         </td>
 
-                                        {/* 7. Reported Videos (Auto-Sorted Oldest -> Newest, Platform Icons, NO ExternalLink Icon) */}
+                                        {/* 7. Reported Videos Column (Shrink to 4 links max + "+XX more ▼" toggle) */}
                                         <td className="px-4 py-3 max-w-[260px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'videos')}
-                                                className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px] flex flex-col justify-center"
+                                                className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px]"
                                                 title="Click to manage videos & links"
                                             >
-                                                {c.videosList && c.videosList.length > 0 ? (
+                                                {allVids.length > 0 ? (
                                                     <div className="space-y-1.5">
-                                                        {c.videosList.map((vid, idx) => {
+                                                        {displayedVids.map((vid, idx) => {
                                                             const displayTitle = vid.title || (vid.video_url ? vid.video_url.replace(/^https?:\/\/(www\.)?/, '') : `Video #${idx + 1}`);
                                                             return (
                                                                 <div key={idx} className="text-xs">
@@ -1019,6 +1001,19 @@ const InfluencerProgress: React.FC = () => {
                                                                 </div>
                                                             );
                                                         })}
+                                                        {allVids.length > 4 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={e => {
+                                                                    e.stopPropagation();
+                                                                    setExpandedVideoRows(prev => ({ ...prev, [c.id]: !prev[c.id] }));
+                                                                }}
+                                                                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1 pt-1 border-t border-slate-100"
+                                                            >
+                                                                <span>{isExpanded ? 'Show less' : `+${allVids.length - 4} more`}</span>
+                                                                <ChevronRight className={`w-3 h-3 transition-transform ${isExpanded ? '-rotate-90' : 'rotate-90'}`} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <span className="text-xs text-slate-400 italic flex items-center gap-1">
@@ -1031,20 +1026,25 @@ const InfluencerProgress: React.FC = () => {
 
                                         {/* 8. Released Date Column */}
                                         <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-700 font-normal">
-                                            {c.videosList && c.videosList.length > 0 ? (
+                                            {allVids.length > 0 ? (
                                                 <div className="space-y-1.5">
-                                                    {c.videosList.map((vid, idx) => (
+                                                    {displayedVids.map((vid, idx) => (
                                                         <div key={idx} className="py-0.5 truncate text-slate-700">
                                                             {vid.released_date ? formatDateDisplay(vid.released_date) : '—'}
                                                         </div>
                                                     ))}
+                                                    {allVids.length > 4 && (
+                                                        <div className="text-[11px] font-semibold text-transparent mt-1 pt-1 border-t border-transparent select-none">
+                                                            &nbsp;
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <span>{c.released_date ? formatDateDisplay(c.released_date) : '—'}</span>
                                             )}
                                         </td>
 
-                                        {/* 9. Agreement Link Column (Multi-Contract Manager, NO ExternalLink Icon) */}
+                                        {/* 9. Contract Column (No FileText icon) */}
                                         <td className="px-4 py-3 max-w-[200px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'agreement')}
@@ -1068,7 +1068,6 @@ const InfluencerProgress: React.FC = () => {
                                                                                 className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 truncate max-w-[180px] py-0.5"
                                                                                 title={url}
                                                                             >
-                                                                                <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                                                                 <span className="truncate">{title}</span>
                                                                             </a>
                                                                         </div>
@@ -1078,21 +1077,26 @@ const InfluencerProgress: React.FC = () => {
                                                         );
                                                     } else if (c.agreement_link && c.agreement_link.trim()) {
                                                         return (
-                                                            <span className="font-medium text-emerald-600 text-xs truncate max-w-[180px]">
-                                                                {c.agreement_link}
-                                                            </span>
+                                                            <a 
+                                                                href={c.agreement_link} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer" 
+                                                                onClick={e => e.stopPropagation()}
+                                                                className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 truncate max-w-[180px] text-xs py-0.5"
+                                                            >
+                                                                <span className="truncate">View Contract</span>
+                                                            </a>
                                                         );
                                                     }
                                                     return (
                                                         <span className="text-xs text-slate-400 italic flex items-center gap-1">
                                                             <Plus className="w-3.5 h-3.5" />
-                                                            <span>Add Contract</span>
+                                                            <span>Add Contract Link</span>
                                                         </span>
                                                     );
                                                 })()}
                                             </div>
                                         </td>
-
                                     </tr>
                                 );
                             })
