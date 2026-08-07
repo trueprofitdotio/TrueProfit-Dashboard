@@ -99,7 +99,8 @@ export const KOLCell: React.FC<KOLCellProps> = ({
                     <img 
                         src={avatarUrl} 
                         alt={name} 
-                        className="w-9 h-9 rounded-full object-cover border border-slate-200 shadow-xs"
+                        referrerPolicy="no-referrer"
+                        className="w-9 h-9 rounded-full object-cover border border-slate-200 shadow-xs shrink-0"
                         onError={(e) => {
                             (e.target as HTMLElement).style.display = 'none';
                             const fallbackEl = (e.target as HTMLElement).nextElementSibling;

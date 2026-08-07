@@ -14,6 +14,7 @@ interface ProposalKol {
     est_rate?: number | string | null;
     deliverables?: string | null;
     terms?: string | null;
+    contract_link?: string | null;
     audience_screenshots?: string | string[] | null;
     kols: KolData;
 }
@@ -73,7 +74,7 @@ const getProposalTagStyle = (status?: string | null) => {
 const formatCurrencyUSD = (val?: string | number | null): string => {
     if (val === undefined || val === null || val === '') return '$0';
     const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^\d.]/g, ''));
-    if (isNaN(num)) return String(val);
+    if (isNaN(num)) return '$0';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
 };
 
@@ -153,6 +154,20 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         anchorRect?: DOMRect;
     } | null>(null);
 
+    // Creator Cell Editing Popover State (For Est Rate, Deliverables, Terms, Contract Link)
+    const [activeCellPopover, setActiveCellPopover] = useState<{
+        proposalId: string;
+        kolId: string;
+        type: 'rate' | 'deliverables' | 'terms' | 'contract';
+        anchorRect?: DOMRect;
+    } | null>(null);
+
+    // Popover input temporary values
+    const [cellRateVal, setCellRateVal] = useState('');
+    const [cellDeliverablesVal, setCellDeliverablesVal] = useState('');
+    const [cellTermsVal, setCellTermsVal] = useState('');
+    const [cellContractVal, setCellContractVal] = useState('');
+
     // Filter & Search states
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
@@ -160,6 +175,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
     const statusPopoverRef = useRef<HTMLDivElement>(null);
+    const cellPopoverRef = useRef<HTMLDivElement>(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -210,11 +226,14 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         fetchData();
     }, []);
 
-    // Close status popover on click outside
+    // Close popovers on click outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (statusPopoverRef.current && !statusPopoverRef.current.contains(e.target as Node)) {
                 setActiveStatusPopover(null);
+            }
+            if (cellPopoverRef.current && !cellPopoverRef.current.contains(e.target as Node)) {
+                setActiveCellPopover(null);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -342,7 +361,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         }
     };
 
-    // Delete Status Tag (Bulk updates proposals to null so tag never resurrects)
+    // Delete Status Tag (Bulk updates proposals to Need to check so tag never resurrects)
     const handleDeleteTag = async (idx: number) => {
         const tagToDelete = proposalTags[idx];
         const nextTags = proposalTags.filter((_, i) => i !== idx);
@@ -425,7 +444,26 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         }
     };
 
-    // Update Creator row details (Est Rate, Deliverables, Terms) inside Detailed Creators Workspace
+    // Open Creator Cell Popover
+    const openCellPopover = (
+        e: React.MouseEvent,
+        proposalId: string,
+        kolId: string,
+        type: 'rate' | 'deliverables' | 'terms' | 'contract',
+        currentPk?: ProposalKol
+    ) => {
+        e.stopPropagation();
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        
+        if (type === 'rate') setCellRateVal(String(currentPk?.est_rate || ''));
+        if (type === 'deliverables') setCellDeliverablesVal(currentPk?.deliverables || '');
+        if (type === 'terms') setCellTermsVal(currentPk?.terms || '');
+        if (type === 'contract') setCellContractVal(currentPk?.contract_link || '');
+
+        setActiveCellPopover({ proposalId, kolId, type, anchorRect: rect });
+    };
+
+    // Update Creator row details in local state & Supabase
     const updateProposalKolField = async (proposalId: string, kolId: string, field: string, value: any) => {
         setProposals(prev => prev.map(p => {
             if (p.id !== proposalId) return p;
@@ -435,6 +473,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             });
             return { ...p, proposal_kols: updatedPks };
         }));
+        setActiveCellPopover(null);
 
         try {
             await supabaseClient
@@ -739,6 +778,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                                                 <img 
                                                                                     src={k.avatar_url} 
                                                                                     alt={k.name} 
+                                                                                    referrerPolicy="no-referrer"
                                                                                     className="w-8 h-8 rounded-full object-cover ring-2 ring-white shadow-xs"
                                                                                 />
                                                                             ) : (
@@ -751,7 +791,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/avatar:flex flex-col gap-1 p-2.5 bg-slate-900 text-white rounded-xl shadow-xl z-50 min-w-[180px] pointer-events-none animate-in fade-in zoom-in-95">
                                                                                 <div className="flex items-center gap-2">
                                                                                     {k.avatar_url ? (
-                                                                                        <img src={k.avatar_url} alt={k.name} className="w-6 h-6 rounded-full object-cover" />
+                                                                                        <img src={k.avatar_url} alt={k.name} referrerPolicy="no-referrer" className="w-6 h-6 rounded-full object-cover" />
                                                                                     ) : (
                                                                                         <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center">
                                                                                             {initials}
@@ -825,15 +865,15 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             {activeView === 'workspace' && selectedProposal && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                     
-                    {/* Workspace Navigation & Title Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                    {/* Workspace Header: Clean Title & Back Button (Duplicated top-right rate & button removed) */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                         <div>
                             <button 
                                 onClick={() => {
                                     setActiveView('list');
                                     setSelectedProposalId(null);
                                 }}
-                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors mb-2"
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors mb-1.5"
                             >
                                 <ArrowLeft className="w-3.5 h-3.5" />
                                 <span>Back to Proposals List</span>
@@ -847,32 +887,6 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                     {selectedProposal.status}
                                 </span>
                             </div>
-
-                            <p className="text-xs text-slate-500 mt-1 flex items-center gap-3">
-                                <span>Created: <strong>{formatTimestampDetailed(selectedProposal.created_at)}</strong></span>
-                                <span>•</span>
-                                <span>Objective: <strong>{selectedProposal.objective || 'N/A'}</strong></span>
-                            </p>
-                        </div>
-
-                        {/* Top Actions: Add Creator & Total Budget Summary */}
-                        <div className="flex items-center gap-3">
-                            <div className="text-right px-4 py-2 bg-slate-50 rounded-xl border border-slate-200">
-                                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Proposal Est. Rate</div>
-                                <div className="text-base font-semibold text-slate-900">
-                                    {formatCurrencyUSD(
-                                        (selectedProposal.proposal_kols || []).reduce((sum, pk) => sum + (parseFloat(String(pk.est_rate || '0')) || 0), 0)
-                                    )}
-                                </div>
-                            </div>
-
-                            <button 
-                                onClick={() => setShowAddCreatorModal(true)}
-                                className="bg-[var(--accent-color)] text-white px-4 py-2.5 rounded-xl font-medium hover:bg-emerald-600 transition-colors shadow-xs text-xs flex items-center justify-center gap-1.5"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span>Add Creator to Proposal</span>
-                            </button>
                         </div>
                     </div>
 
@@ -884,25 +898,17 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                     <th className="px-4 py-3.5 min-w-[220px]">KOL Channel</th>
                                     <th className="px-4 py-3.5 min-w-[240px]">Audience Insight Attachments</th>
                                     <th className="px-4 py-3.5 text-right min-w-[140px]">Est. Rate ($ USD)</th>
-                                    <th className="px-4 py-3.5 min-w-[260px]">Deliverables</th>
-                                    <th className="px-4 py-3.5 min-w-[220px]">Terms & Conditions</th>
-                                    <th className="px-4 py-3.5 text-center min-w-[90px]">Action</th>
+                                    <th className="px-4 py-3.5 min-w-[240px]">Deliverables</th>
+                                    <th className="px-4 py-3.5 min-w-[200px]">Terms & Conditions</th>
+                                    <th className="px-4 py-3.5 min-w-[160px]">Contract Link</th>
+                                    <th className="px-4 py-3.5 text-center min-w-[80px]">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#bfdbfe]/30">
                                 {(!selectedProposal.proposal_kols || selectedProposal.proposal_kols.length === 0) ? (
                                     <tr>
-                                        <td colSpan={6} className="text-center py-12">
-                                            <div className="space-y-3">
-                                                <p className="text-sm text-slate-400">No creators added to this proposal yet.</p>
-                                                <button 
-                                                    onClick={() => setShowAddCreatorModal(true)}
-                                                    className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-medium inline-flex items-center gap-1.5"
-                                                >
-                                                    <Plus className="w-3.5 h-3.5" />
-                                                    <span>Add Creator via YouTube URL</span>
-                                                </button>
-                                            </div>
+                                        <td colSpan={7} className="text-center py-12 text-slate-400">
+                                            No creators added to this proposal yet. Use the button below to add your first creator!
                                         </td>
                                     </tr>
                                 ) : (
@@ -972,71 +978,87 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </div>
                                                 </td>
 
-                                                {/* 3. Est. Rate ($ USD) */}
+                                                {/* 3. Est. Rate ($ USD) (Clean text by default, popover to edit) */}
                                                 <td className="px-4 py-3 text-right">
-                                                    <div className="relative">
-                                                        <span className="absolute left-2.5 top-2 text-xs font-semibold text-slate-400">$</span>
-                                                        <input 
-                                                            type="number"
-                                                            min="0"
-                                                            step="any"
-                                                            value={pk.est_rate !== undefined && pk.est_rate !== null ? pk.est_rate : ''}
-                                                            onChange={e => updateProposalKolField(selectedProposal.id, pk.kol_id, 'est_rate', parseFloat(e.target.value) || 0)}
-                                                            placeholder="0"
-                                                            className="w-full pl-6 pr-2 py-1 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 text-right outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white"
-                                                        />
+                                                    <button
+                                                        onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'rate', pk)}
+                                                        className="hover:bg-slate-100 px-2 py-1 rounded-lg text-slate-800 font-semibold text-xs transition-colors border border-transparent hover:border-slate-200 inline-block"
+                                                        title="Click to edit estimated rate"
+                                                    >
+                                                        {pk.est_rate !== undefined && pk.est_rate !== null && pk.est_rate !== 0 
+                                                            ? formatCurrencyUSD(pk.est_rate) 
+                                                            : <span className="text-slate-400 font-normal italic">+ Add Rate</span>}
+                                                    </button>
+                                                </td>
+
+                                                {/* 4. Deliverables (Bullet points text by default, popover to edit) */}
+                                                <td className="px-4 py-3">
+                                                    <div 
+                                                        onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'deliverables', pk)}
+                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px]"
+                                                        title="Click to edit deliverables"
+                                                    >
+                                                        {pk.deliverables && pk.deliverables.trim() ? (
+                                                            <div className="text-xs text-slate-800 whitespace-pre-line font-medium leading-relaxed">
+                                                                {pk.deliverables}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                                <Plus className="w-3.5 h-3.5" />
+                                                                <span>Add Deliverables</span>
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </td>
 
-                                                {/* 4. Deliverables (Bullet-formatted text) */}
+                                                {/* 5. Terms & Conditions (Clean text by default, popover to edit) */}
                                                 <td className="px-4 py-3">
-                                                    <div className="space-y-1.5">
-                                                        <textarea 
-                                                            rows={3}
-                                                            value={pk.deliverables || ''}
-                                                            onChange={e => updateProposalKolField(selectedProposal.id, pk.kol_id, 'deliverables', e.target.value)}
-                                                            placeholder="• 1x YouTube Video&#10;• 2x YouTube Shorts"
-                                                            className="w-full p-2 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white leading-relaxed resize-none"
-                                                        />
-                                                        <div className="flex gap-1">
-                                                            <button 
-                                                                type="button" 
-                                                                onClick={() => {
-                                                                    const current = pk.deliverables || '';
-                                                                    const next = current ? `${current}\n• 1x Dedicated Video` : '• 1x Dedicated Video';
-                                                                    updateProposalKolField(selectedProposal.id, pk.kol_id, 'deliverables', next);
-                                                                }}
-                                                                className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-medium"
-                                                            >
-                                                                + Dedicated
-                                                            </button>
-                                                            <button 
-                                                                type="button" 
-                                                                onClick={() => {
-                                                                    const current = pk.deliverables || '';
-                                                                    const next = current ? `${current}\n• 2x Shorts` : '• 2x Shorts';
-                                                                    updateProposalKolField(selectedProposal.id, pk.kol_id, 'deliverables', next);
-                                                                }}
-                                                                className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-medium"
-                                                            >
-                                                                + Shorts
-                                                            </button>
-                                                        </div>
+                                                    <div 
+                                                        onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'terms', pk)}
+                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px]"
+                                                        title="Click to edit terms"
+                                                    >
+                                                        {pk.terms && pk.terms.trim() ? (
+                                                            <div className="text-xs text-slate-700 font-normal leading-relaxed line-clamp-3">
+                                                                {pk.terms}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                                <Plus className="w-3.5 h-3.5" />
+                                                                <span>Add Terms</span>
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </td>
 
-                                                {/* 5. Terms (Long-text format) */}
+                                                {/* 6. Contract Link (Clean hyperlink text, popover to edit) */}
                                                 <td className="px-4 py-3">
-                                                    <textarea 
-                                                        rows={3}
-                                                        value={pk.terms || ''}
-                                                        onChange={e => updateProposalKolField(selectedProposal.id, pk.kol_id, 'terms', e.target.value)}
-                                                        placeholder="30-day usage rights, payment on pub date..."
-                                                        className="w-full p-2 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white leading-relaxed resize-none"
-                                                    />
+                                                    <div 
+                                                        onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'contract', pk)}
+                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px] flex items-center"
+                                                        title="Click to manage draft contract link"
+                                                    >
+                                                        {pk.contract_link && pk.contract_link.trim() ? (
+                                                            <a 
+                                                                href={pk.contract_link}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                onClick={e => e.stopPropagation()}
+                                                                className="text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 truncate max-w-[150px]"
+                                                            >
+                                                                <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                                <span>Draft Contract</span>
+                                                            </a>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                                <Plus className="w-3.5 h-3.5" />
+                                                                <span>Add Contract</span>
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
 
-                                                {/* 6. Actions */}
+                                                {/* 7. Actions */}
                                                 <td className="px-4 py-3 text-center">
                                                     <button 
                                                         onClick={() => handleRemoveCreatorFromProposal(selectedProposal.id, pk.kol_id)}
@@ -1052,6 +1074,17 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                 )}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* PRIMARY ADD CREATOR BUTTON — ALWAYS PROMINENT AT MID-BOTTOM OF TABLE */}
+                    <div className="flex justify-center pt-2">
+                        <button 
+                            onClick={() => setShowAddCreatorModal(true)}
+                            className="bg-[var(--accent-color)] text-white px-6 py-3 rounded-2xl font-medium hover:bg-emerald-600 transition-colors shadow-sm text-xs flex items-center justify-center gap-2"
+                        >
+                            <Youtube className="w-4 h-4 fill-white" />
+                            <span>+ Add Creator via YouTube URL</span>
+                        </button>
                     </div>
                 </div>
             )}
@@ -1149,6 +1182,167 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                             </button>
                         </div>
                     </div>
+                </div>,
+                document.body
+            )}
+
+            {/* STICKY CREATOR CELL EDITING POPOVER (Rate / Deliverables / Terms / Contract) */}
+            {activeCellPopover && activeCellPopover.anchorRect && createPortal(
+                <div 
+                    ref={cellPopoverRef}
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                        position: 'fixed',
+                        top: `${Math.min(window.innerHeight - 300, activeCellPopover.anchorRect.bottom + 4)}px`,
+                        left: `${Math.min(window.innerWidth - 320, Math.max(16, activeCellPopover.anchorRect.left))}px`,
+                        zIndex: 99999
+                    }}
+                    className="bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-4 w-80 font-sans"
+                >
+                    {/* 1. Rate Popover */}
+                    {activeCellPopover.type === 'rate' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Estimated Rate ($ USD)</span>
+                                <button onClick={() => setActiveCellPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            </div>
+                            <div className="relative">
+                                <span className="absolute left-3 top-2.5 text-xs font-semibold text-slate-400">$</span>
+                                <input 
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    autoFocus
+                                    value={cellRateVal}
+                                    onChange={e => setCellRateVal(e.target.value)}
+                                    placeholder="5000"
+                                    className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'est_rate', parseFloat(cellRateVal) || 0);
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button 
+                                    onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'est_rate', parseFloat(cellRateVal) || 0)}
+                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                >
+                                    Save Rate
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 2. Deliverables Popover */}
+                    {activeCellPopover.type === 'deliverables' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Deliverables</span>
+                                <button onClick={() => setActiveCellPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            </div>
+                            <textarea 
+                                rows={4}
+                                autoFocus
+                                value={cellDeliverablesVal}
+                                onChange={e => setCellDeliverablesVal(e.target.value)}
+                                placeholder="• 1x YouTube Video&#10;• 2x YouTube Shorts"
+                                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none"
+                            />
+                            <div className="flex gap-1.5">
+                                <button 
+                                    type="button" 
+                                    onClick={() => {
+                                        const next = cellDeliverablesVal ? `${cellDeliverablesVal}\n• 1x Dedicated Video` : '• 1x Dedicated Video';
+                                        setCellDeliverablesVal(next);
+                                    }}
+                                    className="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg font-medium"
+                                >
+                                    + Dedicated
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => {
+                                        const next = cellDeliverablesVal ? `${cellDeliverablesVal}\n• 2x Shorts` : '• 2x Shorts';
+                                        setCellDeliverablesVal(next);
+                                    }}
+                                    className="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg font-medium"
+                                >
+                                    + Shorts
+                                </button>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button 
+                                    onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'deliverables', cellDeliverablesVal)}
+                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                >
+                                    Save Deliverables
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 3. Terms Popover */}
+                    {activeCellPopover.type === 'terms' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Terms & Conditions</span>
+                                <button onClick={() => setActiveCellPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            </div>
+                            <textarea 
+                                rows={4}
+                                autoFocus
+                                value={cellTermsVal}
+                                onChange={e => setCellTermsVal(e.target.value)}
+                                placeholder="30-day usage rights, 60-day exclusivity, payment on pub date..."
+                                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none"
+                            />
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button 
+                                    onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'terms', cellTermsVal)}
+                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                >
+                                    Save Terms
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 4. Contract Link Popover */}
+                    {activeCellPopover.type === 'contract' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Draft Contract Link</span>
+                                <button onClick={() => setActiveCellPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            </div>
+                            <input 
+                                type="text"
+                                autoFocus
+                                value={cellContractVal}
+                                onChange={e => setCellContractVal(e.target.value)}
+                                placeholder="https://docs.google.com/..."
+                                className="w-full p-2 border border-slate-300 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'contract_link', cellContractVal.trim());
+                                    }
+                                }}
+                            />
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button 
+                                    onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'contract_link', cellContractVal.trim())}
+                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                >
+                                    Save Link
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>,
                 document.body
             )}

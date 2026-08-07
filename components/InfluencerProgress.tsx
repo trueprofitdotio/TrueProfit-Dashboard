@@ -1010,7 +1010,7 @@ const InfluencerProgress: React.FC = () => {
                                                                         target="_blank" 
                                                                         rel="noopener noreferrer" 
                                                                         onClick={e => e.stopPropagation()}
-                                                                        className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 truncate max-w-[240px] py-0.5"
+                                                                        className="font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 truncate max-w-[240px] py-0.5"
                                                                         title={vid.video_url}
                                                                     >
                                                                         {renderPlatformIcon(vid.video_url)}
