@@ -114,7 +114,7 @@ export const KOLCell: React.FC<KOLCellProps> = ({
 
             {/* KOL Name & Metadata */}
             <div className="min-w-0 flex-1">
-                <div className="font-bold text-slate-900 text-sm leading-snug truncate">
+                <div className="font-medium text-slate-900 text-sm leading-snug truncate">
                     {channelLink ? (
                         <a 
                             href={channelLink} 

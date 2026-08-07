@@ -710,74 +710,76 @@ const InfluencerProgress: React.FC = () => {
                 </div>
 
                 {/* Multi-Select Status Filter Button & Dropdown */}
-                <div className="relative" ref={statusFilterRef}>
-                    <button
-                        type="button"
-                        onClick={() => setShowStatusFilterPopover(!showStatusFilterPopover)}
-                        className="flex items-center gap-2 px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors"
-                    >
-                        <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>
-                            {selectedStatuses.length === 0 || selectedStatuses.includes('All')
-                                ? 'All Statuses'
-                                : selectedStatuses.length === 1
-                                ? `Status: ${selectedStatuses[0]}`
-                                : `Status (${selectedStatuses.length} selected)`}
-                        </span>
-                        <ChevronRight className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showStatusFilterPopover ? 'rotate-90' : ''}`} />
-                    </button>
+                {(() => {
+                    const allActiveStatuses = Array.from(new Set([
+                        ...tagOptions,
+                        ...collaborations.map(c => c.progress_status).filter(Boolean) as string[]
+                    ]));
+                    const isAllOrNone = selectedStatuses.length === 0 || selectedStatuses.length === allActiveStatuses.length;
+                    const statusBtnLabel = isAllOrNone 
+                        ? 'All Statuses' 
+                        : selectedStatuses.length === 1 
+                        ? `Status: ${selectedStatuses[0]}` 
+                        : `Status (${selectedStatuses.length} selected)`;
 
-                    {showStatusFilterPopover && (
-                        <div className="absolute top-full left-0 mt-1.5 bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-3 w-64 z-50 space-y-2">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100 text-xs font-semibold text-slate-800">
-                                <span>Filter by Status</span>
-                                <button 
-                                    onClick={() => setSelectedStatuses(['All'])} 
-                                    className="text-[11px] text-emerald-600 hover:underline"
-                                >
-                                    Reset All
-                                </button>
-                            </div>
-                            <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-                                <label className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700">
-                                    <input 
-                                        type="checkbox"
-                                        checked={selectedStatuses.includes('All') || selectedStatuses.length === 0}
-                                        onChange={() => {
-                                            if (selectedStatuses.includes('All')) {
-                                                setSelectedStatuses([]);
-                                            } else {
-                                                setSelectedStatuses(['All']);
-                                            }
-                                        }}
-                                        className="rounded text-[var(--accent-color)] focus:ring-[var(--accent-color)] h-3.5 w-3.5"
-                                    />
-                                    <span>All Statuses</span>
-                                </label>
-                                {tagOptions.map(t => (
-                                    <label key={t} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700">
-                                        <input 
-                                            type="checkbox"
-                                            checked={selectedStatuses.includes(t)}
-                                            onChange={() => {
-                                                if (selectedStatuses.includes('All')) {
-                                                    setSelectedStatuses([t]);
-                                                } else if (selectedStatuses.includes(t)) {
-                                                    const next = selectedStatuses.filter(s => s !== t);
-                                                    setSelectedStatuses(next.length === 0 ? ['All'] : next);
-                                                } else {
-                                                    setSelectedStatuses([...selectedStatuses, t]);
-                                                }
-                                            }}
-                                            className="rounded text-[var(--accent-color)] focus:ring-[var(--accent-color)] h-3.5 w-3.5"
-                                        />
-                                        <span>{t}</span>
-                                    </label>
-                                ))}
-                            </div>
+                    return (
+                        <div className="relative" ref={statusFilterRef}>
+                            <button
+                                type="button"
+                                onClick={() => setShowStatusFilterPopover(!showStatusFilterPopover)}
+                                className="flex items-center gap-2 px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors"
+                            >
+                                <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span>{statusBtnLabel}</span>
+                                <ChevronRight className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showStatusFilterPopover ? 'rotate-90' : ''}`} />
+                            </button>
+
+                            {showStatusFilterPopover && (
+                                <div className="absolute top-full left-0 mt-1.5 bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-3 w-64 z-50 space-y-2">
+                                    <div className="flex justify-between items-center pb-2 border-b border-slate-100 text-xs font-semibold text-slate-800">
+                                        <span>Filter by Status</span>
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                type="button"
+                                                onClick={() => setSelectedStatuses([...allActiveStatuses])} 
+                                                className="text-[11px] font-medium text-emerald-600 hover:underline"
+                                            >
+                                                Check all
+                                            </button>
+                                            <span className="text-slate-300">|</span>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setSelectedStatuses([])} 
+                                                className="text-[11px] font-medium text-slate-500 hover:underline"
+                                            >
+                                                Reset all
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                                        {allActiveStatuses.map(t => (
+                                            <label key={t} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700">
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={selectedStatuses.includes(t)}
+                                                    onChange={() => {
+                                                        if (selectedStatuses.includes(t)) {
+                                                            setSelectedStatuses(selectedStatuses.filter(s => s !== t));
+                                                        } else {
+                                                            setSelectedStatuses([...selectedStatuses, t]);
+                                                        }
+                                                    }}
+                                                    className="rounded text-[var(--accent-color)] focus:ring-[var(--accent-color)] h-3.5 w-3.5"
+                                                />
+                                                <span>{t}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    );
+                })()}
             </div>
 
             {/* Table Area */}
