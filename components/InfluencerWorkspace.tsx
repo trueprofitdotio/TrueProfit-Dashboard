@@ -6,31 +6,34 @@ import { ChevronRight, Home, Link as LinkIcon, Check } from 'lucide-react';
 
 type SubTab = 'dashboard' | 'progress' | 'proposal';
 
-const getInitialSubTab = (): SubTab => {
+const parseSubTabFromUrl = (): { subtab: SubTab; proposalId?: string } => {
     try {
-        const params = new URLSearchParams(window.location.search);
-        const subtab = params.get('subtab') as SubTab;
-        if (subtab && ['dashboard', 'progress', 'proposal'].includes(subtab)) return subtab;
+        const path = window.location.pathname;
+        const parts = path.split('/').filter(Boolean);
+        if (parts[0] === 'influencer') {
+            const sub = parts[1] as SubTab;
+            if (['dashboard', 'progress', 'proposal'].includes(sub)) {
+                return { subtab: sub, proposalId: parts[2] };
+            }
+        }
     } catch (e) {}
-    return 'dashboard';
+    return { subtab: 'dashboard' };
 };
 
 const InfluencerWorkspace: React.FC = () => {
-    const [activeTab, setActiveTabState] = useState<SubTab>(getInitialSubTab);
+    const initialRoute = parseSubTabFromUrl();
+    const [activeTab, setActiveTabState] = useState<SubTab>(initialRoute.subtab);
     const [selectedProposalTitle, setSelectedProposalTitle] = useState<string | null>(null);
     const [proposalResetSignal, setProposalResetSignal] = useState(0);
     const [copiedLink, setCopiedLink] = useState(false);
 
-    const updateUrlSubtab = (subtab: SubTab) => {
+    const updateUrlSubtab = (subtab: SubTab, proposalId?: string | null) => {
         try {
-            const params = new URLSearchParams(window.location.search);
-            params.set('tab', 'influencer');
-            params.set('subtab', subtab);
-            if (subtab !== 'proposal') {
-                params.delete('proposalId');
+            let newPath = `/influencer/${subtab}`;
+            if (subtab === 'proposal' && proposalId) {
+                newPath = `/influencer/proposal/${proposalId}`;
             }
-            const newUrl = `${window.location.pathname}?${params.toString()}`;
-            window.history.replaceState({}, '', newUrl);
+            window.history.pushState({}, '', newPath);
         } catch (e) {}
     };
 
@@ -53,11 +56,8 @@ const InfluencerWorkspace: React.FC = () => {
 
     useEffect(() => {
         const handlePopState = () => {
-            const params = new URLSearchParams(window.location.search);
-            const subtab = params.get('subtab') as SubTab;
-            if (subtab && ['dashboard', 'progress', 'proposal'].includes(subtab)) {
-                setActiveTabState(subtab);
-            }
+            const { subtab } = parseSubTabFromUrl();
+            setActiveTabState(subtab);
         };
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);

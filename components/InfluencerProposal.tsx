@@ -247,10 +247,15 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 return merged;
             });
 
-            // Check for initial proposalId in URL query params
+            // Check for initial proposalId in URL path or query params
             try {
-                const params = new URLSearchParams(window.location.search);
-                const urlPropId = params.get('proposalId');
+                const path = window.location.pathname;
+                const parts = path.split('/').filter(Boolean);
+                let urlPropId = parts[0] === 'influencer' && parts[1] === 'proposal' ? parts[2] : null;
+                if (!urlPropId) {
+                    const params = new URLSearchParams(window.location.search);
+                    urlPropId = params.get('proposalId');
+                }
                 if (urlPropId && rawProps.some(p => p.id === urlPropId)) {
                     setSelectedProposalId(urlPropId);
                     setActiveView('workspace');
@@ -286,7 +291,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
 
     const selectedProposal = proposals.find(p => p.id === selectedProposalId);
 
-    // Notify parent workspace of current selected proposal title for Breadcrumbs & sync URL
+    // Notify parent workspace of current selected proposal title for Breadcrumbs & sync URL path
     useEffect(() => {
         if (onSelectProposalTitle) {
             if (activeView === 'workspace' && selectedProposal) {
@@ -296,16 +301,11 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             }
         }
         try {
-            const params = new URLSearchParams(window.location.search);
+            let newPath = '/influencer/proposal';
             if (activeView === 'workspace' && selectedProposalId) {
-                params.set('tab', 'influencer');
-                params.set('subtab', 'proposal');
-                params.set('proposalId', selectedProposalId);
-            } else {
-                params.delete('proposalId');
+                newPath = `/influencer/proposal/${selectedProposalId}`;
             }
-            const newUrl = `${window.location.pathname}?${params.toString()}`;
-            window.history.replaceState({}, '', newUrl);
+            window.history.pushState({}, '', newPath);
         } catch (e) {}
     }, [activeView, selectedProposalId, selectedProposal, onSelectProposalTitle]);
 
@@ -977,17 +977,17 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                     {/* DETAILED CREATORS TABLE */}
                     <div className="overflow-x-auto border border-[#bfdbfe]/50 rounded-2xl shadow-xs bg-white">
                         <table className="w-full text-sm text-left text-slate-600 border-collapse">
-                            <thead className="text-xs text-[#2236ba] font-semibold uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
+                            <thead className="text-xs text-slate-500 font-normal uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
                                 <tr>
-                                    <th className="px-4 py-3.5 min-w-[200px]">KOL Channel</th>
-                                    <th className="px-4 py-3.5 min-w-[140px]">Status</th>
-                                    <th className="px-4 py-3.5 min-w-[220px]">Audience Insight Attachments</th>
-                                    <th className="px-4 py-3.5 text-right min-w-[130px]">Est. Rate ($ USD)</th>
-                                    <th className="px-4 py-3.5 min-w-[220px]">Deliverables</th>
-                                    <th className="px-4 py-3.5 min-w-[180px]">Terms & Conditions</th>
-                                    <th className="px-4 py-3.5 min-w-[140px]">Contract Link</th>
-                                    <th className="px-4 py-3.5 min-w-[220px]">Note</th>
-                                    <th className="px-4 py-3.5 text-center min-w-[80px]">Action</th>
+                                    <th className="px-4 py-3.5 min-w-[200px] font-normal">KOL Channel</th>
+                                    <th className="px-4 py-3.5 min-w-[140px] font-normal">Status</th>
+                                    <th className="px-4 py-3.5 min-w-[220px] font-normal">Audience Insight Attachments</th>
+                                    <th className="px-4 py-3.5 text-right min-w-[130px] font-normal">Est. Rate ($ USD)</th>
+                                    <th className="px-4 py-3.5 min-w-[220px] font-normal">Deliverables</th>
+                                    <th className="px-4 py-3.5 min-w-[180px] font-normal">Terms & Conditions</th>
+                                    <th className="px-4 py-3.5 min-w-[140px] font-normal">Contract Link</th>
+                                    <th className="px-4 py-3.5 min-w-[220px] font-normal">Note</th>
+                                    <th className="px-4 py-3.5 text-center min-w-[80px] font-normal">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#bfdbfe]/30">
@@ -1016,37 +1016,39 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                         }
 
                                         return (
-                                            <tr key={pk.kol_id || idx} className="hover:bg-slate-50/40 transition-colors align-top">
+                                            <tr key={pk.kol_id || idx} className="hover:bg-slate-50/40 transition-colors align-middle">
                                                 
                                                 {/* 1. KOL Channel Cell */}
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-3 align-middle">
                                                     <KOLCell kol={kol} />
                                                 </td>
 
                                                 {/* 2. Status Cell (Approved / Not Approved / Re-negotiate) */}
-                                                <td className="px-4 py-3">
-                                                    <button
-                                                        onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'status', pk)}
-                                                        className={`px-3 py-1.5 rounded-full text-xs border transition-colors flex items-center gap-1.5 shadow-2xs ${getCreatorStatusStyle(pk.status)}`}
-                                                        title="Click to change creator proposal status"
-                                                    >
-                                                        <span>{pk.status || 'Select Status'}</span>
-                                                        <ChevronRight className="w-3 h-3 rotate-90 shrink-0 opacity-60" />
-                                                    </button>
+                                                <td className="px-4 py-3 align-middle">
+                                                    <div className="flex items-center h-8">
+                                                        <button
+                                                            onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'status', pk)}
+                                                            className={`px-3 py-1 rounded-full text-xs border transition-colors flex items-center gap-1.5 shadow-2xs ${getCreatorStatusStyle(pk.status)}`}
+                                                            title="Click to change creator proposal status"
+                                                        >
+                                                            <span>{pk.status || 'Select Status'}</span>
+                                                            <ChevronRight className="w-3 h-3 rotate-90 shrink-0 opacity-60" />
+                                                        </button>
+                                                    </div>
                                                 </td>
 
                                                 {/* 3. Audience Insight Attachment */}
-                                                <td className="px-4 py-3">
-                                                    <div className="space-y-2">
+                                                <td className="px-4 py-3 align-middle">
+                                                    <div className="flex items-center gap-1.5 min-h-[36px]">
                                                         {screenshotsList.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                                            <div className="flex flex-wrap gap-1.5">
                                                                 {screenshotsList.map((imgUrl, i) => (
                                                                     <div key={i} className="relative group/img shrink-0">
                                                                         <img 
                                                                             src={imgUrl} 
                                                                             alt="Audience Insight" 
                                                                             onClick={() => setLightboxImage(imgUrl)}
-                                                                            className="w-12 h-12 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                                                            className="w-9 h-9 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
                                                                         />
                                                                         <button 
                                                                             onClick={() => handleRemoveScreenshot(selectedProposal.id, pk.kol_id, i)}
@@ -1060,9 +1062,9 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                             </div>
                                                         )}
 
-                                                        <label className="border border-dashed border-slate-300 hover:border-[var(--accent-color)] hover:bg-slate-50 p-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-xs text-slate-500 transition-colors">
+                                                        <label className="border border-dashed border-slate-300 hover:border-[var(--accent-color)] hover:bg-slate-50 px-2.5 py-1.5 rounded-xl flex items-center justify-center gap-1 cursor-pointer text-xs text-slate-500 transition-colors h-8">
                                                             <Upload className="w-3.5 h-3.5 text-slate-400" />
-                                                            <span>Upload / Paste Screenshot</span>
+                                                            <span>+ Add</span>
                                                             <input 
                                                                 type="file" 
                                                                 accept="image/*"
@@ -1077,23 +1079,25 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                 </td>
 
                                                 {/* 4. Est. Rate ($ USD) */}
-                                                <td className="px-4 py-3 text-right">
-                                                    <button
-                                                        onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'rate', pk)}
-                                                        className="hover:bg-slate-100 px-2 py-1 rounded-lg text-slate-800 font-semibold text-xs transition-colors border border-transparent hover:border-slate-200 inline-block"
-                                                        title="Click to edit estimated rate"
-                                                    >
-                                                        {pk.est_rate !== undefined && pk.est_rate !== null && pk.est_rate !== 0 
-                                                            ? formatCurrencyUSD(pk.est_rate) 
-                                                            : <span className="text-slate-400 font-normal italic">+ Add Rate</span>}
-                                                    </button>
+                                                <td className="px-4 py-3 text-right align-middle">
+                                                    <div className="flex items-center justify-end h-8">
+                                                        <button
+                                                            onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'rate', pk)}
+                                                            className="hover:bg-slate-100 px-2.5 py-1 rounded-lg text-slate-800 font-semibold text-xs transition-colors border border-transparent hover:border-slate-200 inline-flex items-center"
+                                                            title="Click to edit estimated rate"
+                                                        >
+                                                            {pk.est_rate !== undefined && pk.est_rate !== null && pk.est_rate !== 0 
+                                                                ? formatCurrencyUSD(pk.est_rate) 
+                                                                : <span className="text-slate-400 font-medium text-xs">+ Add</span>}
+                                                        </button>
+                                                    </div>
                                                 </td>
 
                                                 {/* 5. Deliverables */}
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-3 align-middle">
                                                     <div 
                                                         onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'deliverables', pk)}
-                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px]"
+                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[36px] flex items-center"
                                                         title="Click to edit deliverables"
                                                     >
                                                         {pk.deliverables && pk.deliverables.trim() ? (
@@ -1101,19 +1105,19 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                                 {pk.deliverables}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                            <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                                 <Plus className="w-3.5 h-3.5" />
-                                                                <span>Add Deliverables</span>
+                                                                <span>+ Add</span>
                                                             </span>
                                                         )}
                                                     </div>
                                                 </td>
 
                                                 {/* 6. Terms & Conditions */}
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-3 align-middle">
                                                     <div 
                                                         onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'terms', pk)}
-                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px]"
+                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[36px] flex items-center"
                                                         title="Click to edit terms"
                                                     >
                                                         {pk.terms && pk.terms.trim() ? (
@@ -1121,19 +1125,19 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                                 {pk.terms}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                            <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                                 <Plus className="w-3.5 h-3.5" />
-                                                                <span>Add Terms</span>
+                                                                <span>+ Add</span>
                                                             </span>
                                                         )}
                                                     </div>
                                                 </td>
 
                                                 {/* 7. Contract Link */}
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-3 align-middle">
                                                     <div 
                                                         onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'contract', pk)}
-                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px] flex items-center"
+                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[36px] flex items-center"
                                                         title="Click to manage draft contract link"
                                                     >
                                                         {pk.contract_link && pk.contract_link.trim() ? (
@@ -1148,19 +1152,19 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                                 <span>Draft Contract</span>
                                                             </a>
                                                         ) : (
-                                                            <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                            <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                                 <Plus className="w-3.5 h-3.5" />
-                                                                <span>Add Contract</span>
+                                                                <span>+ Add</span>
                                                             </span>
                                                         )}
                                                     </div>
                                                 </td>
 
                                                 {/* 8. Note Cell (Long text format) */}
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-3 align-middle">
                                                     <div 
                                                         onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'note', pk)}
-                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px] max-w-[260px]"
+                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[36px] max-w-[260px] flex items-center"
                                                         title="Click to view or edit creator note"
                                                     >
                                                         {pk.note && pk.note.trim() ? (
@@ -1168,19 +1172,19 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                                 {pk.note}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                            <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                                 <Plus className="w-3.5 h-3.5" />
-                                                                <span>Add Note</span>
+                                                                <span>+ Add</span>
                                                             </span>
                                                         )}
                                                     </div>
                                                 </td>
 
                                                 {/* 9. Actions */}
-                                                <td className="px-4 py-3 text-center">
+                                                <td className="px-4 py-3 text-center align-middle">
                                                     <button 
                                                         onClick={() => handleRemoveCreatorFromProposal(selectedProposal.id, pk.kol_id)}
-                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-flex items-center justify-center"
                                                         title="Remove creator from proposal"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
@@ -1200,7 +1204,6 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                             onClick={() => setShowAddCreatorModal(true)}
                             className="bg-[var(--accent-color)] text-white px-6 py-3 rounded-2xl font-medium hover:bg-emerald-600 transition-colors shadow-sm text-xs flex items-center justify-center gap-2"
                         >
-                            <Youtube className="w-4 h-4 fill-white" />
                             <span>+ Add Creator via YouTube URL</span>
                         </button>
                     </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabaseClient } from '../services/supabaseClient';
 import KOLCell, { KolData } from './KOLCell';
-import { fetchYouTubeChannelDetails } from '../services/youtubeService';
+import { fetchYouTubeChannelDetails, getYouTubeVideoId, fetchYouTubeVideoDetails } from '../services/youtubeService';
 import { 
     Calendar, Filter, Search, ArrowUpDown, Plus, Trash2, Edit2, Check,
     Play, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Youtube, FileText
@@ -289,13 +289,15 @@ const InfluencerProgress: React.FC = () => {
     const [editingAgreementIdx, setEditingAgreementIdx] = useState<number | null>(null);
     const [editingAgreementVal, setEditingAgreementVal] = useState('');
 
-    // Filters & Sorting state
+    // Filter & Search states
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['All']);
+    const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
     const [showStatusFilterPopover, setShowStatusFilterPopover] = useState(false);
-
-    const [sortField, setSortField] = useState<keyof CollaborationRow | 'kol_name' | 'payment_percent'>('start_month');
+    const [sortField, setSortField] = useState<'start_month' | 'kol_name' | 'progress_status' | 'total_package' | 'payment_percent'>('start_month');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+    // Delete deal confirmation modal state
+    const [deleteConfirmCollab, setDeleteConfirmCollab] = useState<CollaborationRow | null>(null);
 
     // Sticky Popover states: anchored to specific row and cell type
     const [activePopover, setActivePopover] = useState<{
@@ -356,7 +358,13 @@ const InfluencerProgress: React.FC = () => {
                 const foundUrls = reportLinks.match(/(https?:\/\/[^\s,]+)/g) || [];
                 
                 const matchedVids: VideoRecord[] = foundUrls.map(url => {
-                    const found = videosData.find(v => v.video_url === url || (v.video_url && url.includes(v.video_url)));
+                    const ytId = getYouTubeVideoId(url);
+                    const found = videosData.find(v => {
+                        if (v.video_url === url) return true;
+                        if (ytId && v.video_url && getYouTubeVideoId(v.video_url) === ytId) return true;
+                        if (ytId && v.id === `yt_${ytId}`) return true;
+                        return false;
+                    });
                     return {
                         id: found?.id || url,
                         video_url: url,
@@ -375,8 +383,24 @@ const InfluencerProgress: React.FC = () => {
 
                 const latestRelDate = matchedVids.map(v => v.released_date).filter(Boolean)[0] || c.released_date;
 
+                // Auto-evaluate system-defined status tags
+                const totalPkgNum = parsePackageNumber(c.total_package);
+                const actualSpent = c.actual_spent || 0;
+                const paymentPercent = totalPkgNum > 0 ? Math.min(100, Math.round((actualSpent / totalPkgNum) * 100)) : 0;
+                const agreedCount = c.content_count || 1;
+                const recordedCount = matchedVids.length;
+                const contentPercent = Math.min(100, Math.round((recordedCount / agreedCount) * 100));
+
+                let computedStatus = c.progress_status;
+                if (paymentPercent === 100 && contentPercent === 100) {
+                    computedStatus = 'All done';
+                } else if (recordedCount === 0 && actualSpent === 0) {
+                    computedStatus = 'Not started';
+                }
+
                 return {
                     ...c,
+                    progress_status: computedStatus,
                     released_date: latestRelDate,
                     videosList: matchedVids
                 };
@@ -384,6 +408,40 @@ const InfluencerProgress: React.FC = () => {
 
             setCollaborations(collabsWithVideos);
             setAllKols(kolsRes.data as KolData[]);
+
+            // Async background title fetcher for missing YouTube titles (e.g. youtu.be links)
+            const missingTitleVids = collabsWithVideos.flatMap(c => c.videosList || []).filter(v => !v.title && getYouTubeVideoId(v.video_url));
+            if (missingTitleVids.length > 0) {
+                (async () => {
+                    for (const vid of missingTitleVids) {
+                        const ytId = getYouTubeVideoId(vid.video_url);
+                        if (!ytId) continue;
+                        try {
+                            const details = await fetchYouTubeVideoDetails(vid.video_url);
+                            if (details && details.title) {
+                                setCollaborations(prev => prev.map(c => ({
+                                    ...c,
+                                    videosList: (c.videosList || []).map(v => {
+                                        if (v.video_url === vid.video_url || getYouTubeVideoId(v.video_url) === ytId) {
+                                            return { ...v, title: details.title, released_date: v.released_date || details.publishedAt };
+                                        }
+                                        return v;
+                                    })
+                                })));
+                                await supabaseClient.from('videos').upsert({
+                                    new_id: `yt_${ytId}`,
+                                    video_url: vid.video_url,
+                                    title: details.title,
+                                    released_date: details.publishedAt || null,
+                                    status: 'HEALTHY'
+                                }, { onConflict: 'new_id' });
+                            }
+                        } catch (e) {
+                            console.error('Error fetching YouTube video details:', e);
+                        }
+                    }
+                })();
+            }
 
             setTagOptions(prev => {
                 const saved = localStorage.getItem('tp_custom_progress_tags');
@@ -813,49 +871,50 @@ const InfluencerProgress: React.FC = () => {
             {/* Table Layout */}
             <div ref={tableContainerRef} className="overflow-x-auto border border-[#bfdbfe]/50 rounded-2xl shadow-xs bg-white">
                 <table className="w-full text-sm text-left text-slate-600 border-collapse">
-                    <thead className="text-xs text-[#2236ba] font-semibold uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
+                    <thead className="text-xs text-slate-500 font-normal uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
                         <tr>
-                            <th onClick={() => handleSort('start_month')} className="px-4 py-3.5 min-w-[140px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                            <th onClick={() => handleSort('start_month')} className="px-4 py-3.5 min-w-[140px] cursor-pointer hover:bg-slate-100/80 transition-colors font-normal group">
                                 <div className="flex items-center gap-1">
                                     <span>Collab Started</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                                 </div>
                             </th>
-                            <th onClick={() => handleSort('kol_name')} className="px-4 py-3.5 min-w-[200px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                            <th onClick={() => handleSort('kol_name')} className="px-4 py-3.5 min-w-[200px] cursor-pointer hover:bg-slate-100/80 transition-colors font-normal group">
                                 <div className="flex items-center gap-1">
                                     <span>KOL</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                                 </div>
                             </th>
-                            <th onClick={() => handleSort('progress_status')} className="px-4 py-3.5 min-w-[160px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                            <th onClick={() => handleSort('progress_status')} className="px-4 py-3.5 min-w-[160px] cursor-pointer hover:bg-slate-100/80 transition-colors font-normal group">
                                 <div className="flex items-center gap-1">
                                     <span>Status</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                                 </div>
                             </th>
-                            <th onClick={() => handleSort('total_package')} className="px-4 py-3.5 text-right min-w-[110px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                            <th onClick={() => handleSort('total_package')} className="px-4 py-3.5 text-right min-w-[110px] cursor-pointer hover:bg-slate-100/80 transition-colors font-normal group">
                                 <div className="flex items-center justify-end gap-1">
                                     <span>Package ($)</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                                 </div>
                             </th>
-                            <th onClick={() => handleSort('payment_percent')} className="px-4 py-3.5 min-w-[180px] cursor-pointer hover:bg-slate-100/80 transition-colors">
+                            <th onClick={() => handleSort('payment_percent')} className="px-4 py-3.5 min-w-[180px] cursor-pointer hover:bg-slate-100/80 transition-colors font-normal group">
                                 <div className="flex items-center gap-1">
                                     <span>Payment Progress</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                                 </div>
                             </th>
-                            <th className="px-4 py-3.5 min-w-[130px]">Content Progress</th>
-                            <th className="px-4 py-3.5 min-w-[240px]">Reported Videos</th>
-                            <th className="px-4 py-3.5 min-w-[120px]">Released Date</th>
-                            <th className="px-4 py-3.5 min-w-[140px]">Contract</th>
+                            <th className="px-4 py-3.5 min-w-[130px] font-normal">Content Progress</th>
+                            <th className="px-4 py-3.5 min-w-[240px] font-normal">Reported Videos</th>
+                            <th className="px-4 py-3.5 min-w-[120px] font-normal">Released Date</th>
+                            <th className="px-4 py-3.5 min-w-[140px] font-normal">Contract</th>
+                            <th className="px-4 py-3.5 min-w-[80px] text-center font-normal">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[#bfdbfe]/30">
                         {loading ? (
-                            <tr><td colSpan={9} className="text-center py-12 text-slate-400">Loading progress workspace...</td></tr>
+                            <tr><td colSpan={10} className="text-center py-12 text-slate-400">Loading progress workspace...</td></tr>
                         ) : processedCollaborations.length === 0 ? (
-                            <tr><td colSpan={9} className="text-center py-12 text-slate-400">No matching deals found.</td></tr>
+                            <tr><td colSpan={10} className="text-center py-12 text-slate-400">No matching deals found.</td></tr>
                         ) : (
                             processedCollaborations.map(c => {
                                 const totalPkgNum = parsePackageNumber(c.total_package);
@@ -986,13 +1045,13 @@ const InfluencerProgress: React.FC = () => {
                                                         {displayedVids.map((vid, idx) => {
                                                             const displayTitle = vid.title || (vid.video_url ? vid.video_url.replace(/^https?:\/\/(www\.)?/, '') : `Video #${idx + 1}`);
                                                             return (
-                                                                <div key={idx} className="text-xs">
+                                                                <div key={idx} className="h-6 flex items-center text-xs">
                                                                     <a 
                                                                         href={vid.video_url} 
                                                                         target="_blank" 
                                                                         rel="noopener noreferrer" 
                                                                         onClick={e => e.stopPropagation()}
-                                                                        className="font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 truncate max-w-[240px] py-0.5"
+                                                                        className="font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 truncate max-w-[240px]"
                                                                         title={vid.video_url}
                                                                     >
                                                                         {renderPlatformIcon(vid.video_url)}
@@ -1016,32 +1075,34 @@ const InfluencerProgress: React.FC = () => {
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                    <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                         <Plus className="w-3.5 h-3.5" />
-                                                        <span>Add Video Links</span>
+                                                        <span>+ Add</span>
                                                     </span>
                                                 )}
                                             </div>
                                         </td>
 
-                                        {/* 8. Released Date Column */}
+                                        {/* 8. Released Date Column (Exact 1:1 Horizontal Alignment with Reported Videos) */}
                                         <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-700 font-normal">
-                                            {allVids.length > 0 ? (
-                                                <div className="space-y-1.5">
-                                                    {displayedVids.map((vid, idx) => (
-                                                        <div key={idx} className="py-0.5 truncate text-slate-700">
-                                                            {vid.released_date ? formatDateDisplay(vid.released_date) : '—'}
-                                                        </div>
-                                                    ))}
-                                                    {allVids.length > 4 && (
-                                                        <div className="text-[11px] font-semibold text-transparent mt-1 pt-1 border-t border-transparent select-none">
-                                                            &nbsp;
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <span>{c.released_date ? formatDateDisplay(c.released_date) : '—'}</span>
-                                            )}
+                                            <div className="p-2 border border-transparent min-h-[42px] flex flex-col justify-center">
+                                                {allVids.length > 0 ? (
+                                                    <div className="space-y-1.5">
+                                                        {displayedVids.map((vid, idx) => (
+                                                            <div key={idx} className="h-6 flex items-center truncate text-slate-700">
+                                                                {vid.released_date ? formatDateDisplay(vid.released_date) : '—'}
+                                                            </div>
+                                                        ))}
+                                                        {allVids.length > 4 && (
+                                                            <div className="text-[11px] font-semibold text-transparent mt-1 pt-1 border-t border-transparent select-none">
+                                                                &nbsp;
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-6 flex items-center">{c.released_date ? formatDateDisplay(c.released_date) : '—'}</div>
+                                                )}
+                                            </div>
                                         </td>
 
                                         {/* 9. Contract Column (No FileText icon) */}
@@ -1089,13 +1150,27 @@ const InfluencerProgress: React.FC = () => {
                                                         );
                                                     }
                                                     return (
-                                                        <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                        <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                             <Plus className="w-3.5 h-3.5" />
-                                                            <span>Add Contract Link</span>
+                                                            <span>+ Add</span>
                                                         </span>
                                                     );
                                                 })()}
                                             </div>
+                                        </td>
+
+                                        {/* 10. Action Column (Delete deal record) */}
+                                        <td className="px-4 py-3 text-center whitespace-nowrap align-middle">
+                                            <button
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    setDeleteConfirmCollab(c);
+                                                }}
+                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                                                title="Remove deal record"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </td>
                                     </tr>
                                 );
@@ -1674,6 +1749,36 @@ const InfluencerProgress: React.FC = () => {
                     </div>
                 </div>,
                 document.body
+            )}
+            {/* DELETE DEAL CONFIRMATION MODAL */}
+            {deleteConfirmCollab && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4">
+                        <div className="flex items-center gap-3 text-amber-600">
+                            <div className="p-3 bg-amber-50 rounded-2xl">
+                                <Trash2 className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900">Remove Deal Record</h3>
+                        </div>
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                            Are you sure you want to remove this deal record for <strong className="text-slate-900">{deleteConfirmCollab.kols?.name || 'this influencer'}</strong>? This action cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                onClick={() => setDeleteConfirmCollab(null)}
+                                className="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleDeleteCollaboration(deleteConfirmCollab.id)}
+                                className="px-5 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-sm"
+                            >
+                                Yes, Remove Deal
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

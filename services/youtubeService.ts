@@ -1,5 +1,3 @@
-import { extractVideoId } from '../utils/timeHelper';
-
 const YT_API_KEY = "AIzaSyA30cT-T7yF6o-To4nAQzfg8mG750ihhgI";
 
 export interface YouTubeVideoInfo {
@@ -20,12 +18,14 @@ export interface YouTubeChannelInfo {
 }
 
 /**
- * Extract YouTube video ID from URL
+ * Extract YouTube video ID from URL (supports youtu.be, watch?v=, shorts/, embed/, with query parameters like ?t=49)
  */
 export const getYouTubeVideoId = (url: string): string | null => {
     if (!url || typeof url !== 'string') return null;
-    const match = url.match(/(?:v=|\/|embed\/|youtu\.be\/)([\w-]{11})(?=&|\?|$)/);
-    return match ? match[1] : null;
+    const cleanUrl = url.trim();
+    const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/#]{11})/;
+    const match = cleanUrl.match(regExp);
+    return match && match[1] ? match[1] : null;
 };
 
 /**

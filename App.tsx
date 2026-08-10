@@ -61,6 +61,9 @@ export interface KpiData {
 
 const getInitialTab = (): Tab => {
     try {
+        const path = window.location.pathname;
+        if (path.startsWith('/influencer')) return 'influencer';
+        if (path.startsWith('/kpi')) return 'kpi';
         const params = new URLSearchParams(window.location.search);
         const tab = params.get('tab') as Tab;
         if (tab && ['affiliate', 'influencer', 'kpi'].includes(tab)) return tab;
@@ -74,23 +77,23 @@ const App: React.FC = () => {
   const handleSetActiveTab = (tab: Tab) => {
       setActiveTabState(tab);
       try {
-          const params = new URLSearchParams(window.location.search);
-          params.set('tab', tab);
-          if (tab !== 'influencer') {
-              params.delete('subtab');
-              params.delete('proposalId');
+          let newPath = `/${tab}`;
+          if (tab === 'influencer') {
+              newPath = '/influencer/dashboard';
           }
-          const newUrl = `${window.location.pathname}?${params.toString()}`;
-          window.history.replaceState({}, '', newUrl);
+          window.history.pushState({}, '', newPath);
       } catch (e) {}
   };
 
   useEffect(() => {
       const handlePopState = () => {
-          const params = new URLSearchParams(window.location.search);
-          const tab = params.get('tab') as Tab;
-          if (tab && ['affiliate', 'influencer', 'kpi'].includes(tab)) {
-              setActiveTabState(tab);
+          const path = window.location.pathname;
+          if (path.startsWith('/influencer')) {
+              setActiveTabState('influencer');
+          } else if (path.startsWith('/kpi')) {
+              setActiveTabState('kpi');
+          } else {
+              setActiveTabState('affiliate');
           }
       };
       window.addEventListener('popstate', handlePopState);
