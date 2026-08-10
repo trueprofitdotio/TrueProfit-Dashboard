@@ -16,6 +16,8 @@ interface ProposalKol {
     terms?: string | null;
     contract_link?: string | null;
     audience_screenshots?: string | string[] | null;
+    status?: string | null;
+    note?: string | null;
     kols: KolData;
 }
 
@@ -36,7 +38,23 @@ interface Proposal {
 
 interface InfluencerProposalProps {
     onSelectProposalTitle?: (title: string | null) => void;
+    resetViewSignal?: number;
 }
+
+const CREATOR_STATUS_OPTIONS = [
+    'Approved',
+    'Not Approved',
+    'Re-negotiate'
+] as const;
+
+const getCreatorStatusStyle = (status?: string | null) => {
+    if (!status) return 'bg-slate-100 text-slate-500 border-slate-200 font-normal';
+    const s = status.trim().toLowerCase();
+    if (s === 'approved') return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold';
+    if (s === 'not approved' || s === 'rejected') return 'bg-rose-100 text-rose-800 border-rose-300 font-semibold';
+    if (s === 're-negotiate' || s === 'renegotiate' || s === 'need to check') return 'bg-amber-100 text-amber-800 border-amber-300 font-semibold';
+    return 'bg-blue-100 text-blue-800 border-blue-300 font-semibold';
+};
 
 const DEFAULT_PROPOSAL_TAGS = [
     'Need to check',
@@ -98,7 +116,7 @@ const formatTimestampDetailed = (dateStr?: string | null): string => {
     }
 };
 
-const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposalTitle }) => {
+const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposalTitle, resetViewSignal }) => {
     const [proposals, setProposals] = useState<Proposal[]>([]);
     const [allKols, setAllKols] = useState<KolData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -106,6 +124,14 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     // Active View state: 'list' (Main Table) or 'workspace' (Detailed Creators Workspace)
     const [activeView, setActiveView] = useState<'list' | 'workspace'>('list');
     const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+
+    // Handle breadcrumb back-navigation to list view
+    useEffect(() => {
+        if (resetViewSignal && resetViewSignal > 0) {
+            setActiveView('list');
+            setSelectedProposalId(null);
+        }
+    }, [resetViewSignal]);
 
     // Proposal Status Tags persisted in localStorage
     const [proposalTags, setProposalTags] = useState<string[]>(() => {
@@ -154,11 +180,11 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         anchorRect?: DOMRect;
     } | null>(null);
 
-    // Creator Cell Editing Popover State (For Est Rate, Deliverables, Terms, Contract Link)
+    // Creator Cell Editing Popover State (For Est Rate, Deliverables, Terms, Contract Link, Status, Note)
     const [activeCellPopover, setActiveCellPopover] = useState<{
         proposalId: string;
         kolId: string;
-        type: 'rate' | 'deliverables' | 'terms' | 'contract';
+        type: 'rate' | 'deliverables' | 'terms' | 'contract' | 'status' | 'note';
         anchorRect?: DOMRect;
     } | null>(null);
 
@@ -167,6 +193,12 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     const [cellDeliverablesVal, setCellDeliverablesVal] = useState('');
     const [cellTermsVal, setCellTermsVal] = useState('');
     const [cellContractVal, setCellContractVal] = useState('');
+    const [cellNoteVal, setCellNoteVal] = useState('');
+
+    // Deliverables preset quantity states
+    const [qty90s, setQty90s] = useState(0);
+    const [qtyTiktok, setQtyTiktok] = useState(0);
+    const [qtyPostX, setQtyPostX] = useState(0);
 
     // Filter & Search states
     const [searchQuery, setSearchQuery] = useState('');
@@ -215,6 +247,16 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 return merged;
             });
 
+            // Check for initial proposalId in URL query params
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const urlPropId = params.get('proposalId');
+                if (urlPropId && rawProps.some(p => p.id === urlPropId)) {
+                    setSelectedProposalId(urlPropId);
+                    setActiveView('workspace');
+                }
+            } catch (e) {}
+
         } catch (e) {
             console.error('Error fetching proposals:', e);
         } finally {
@@ -244,7 +286,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
 
     const selectedProposal = proposals.find(p => p.id === selectedProposalId);
 
-    // Notify parent workspace of current selected proposal title for Breadcrumbs
+    // Notify parent workspace of current selected proposal title for Breadcrumbs & sync URL
     useEffect(() => {
         if (onSelectProposalTitle) {
             if (activeView === 'workspace' && selectedProposal) {
@@ -253,6 +295,18 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 onSelectProposalTitle(null);
             }
         }
+        try {
+            const params = new URLSearchParams(window.location.search);
+            if (activeView === 'workspace' && selectedProposalId) {
+                params.set('tab', 'influencer');
+                params.set('subtab', 'proposal');
+                params.set('proposalId', selectedProposalId);
+            } else {
+                params.delete('proposalId');
+            }
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            window.history.replaceState({}, '', newUrl);
+        } catch (e) {}
     }, [activeView, selectedProposalId, selectedProposal, onSelectProposalTitle]);
 
     // DIRECT PROPOSAL CREATION (No Popup Modal!)
@@ -449,18 +503,54 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         e: React.MouseEvent,
         proposalId: string,
         kolId: string,
-        type: 'rate' | 'deliverables' | 'terms' | 'contract',
+        type: 'rate' | 'deliverables' | 'terms' | 'contract' | 'status' | 'note',
         currentPk?: ProposalKol
     ) => {
         e.stopPropagation();
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         
         if (type === 'rate') setCellRateVal(String(currentPk?.est_rate || ''));
-        if (type === 'deliverables') setCellDeliverablesVal(currentPk?.deliverables || '');
+        if (type === 'deliverables') {
+            const text = currentPk?.deliverables || '';
+            setCellDeliverablesVal(text);
+            const m90s = text.match(/(\d+)\s*x?\s*90s/i);
+            setQty90s(m90s ? parseInt(m90s[1], 10) : 0);
+            const mTiktok = text.match(/(\d+)\s*x?\s*tiktok/i);
+            setQtyTiktok(mTiktok ? parseInt(mTiktok[1], 10) : 0);
+            const mPostX = text.match(/(\d+)\s*x?\s*(post on x|x post)/i);
+            setQtyPostX(mPostX ? parseInt(mPostX[1], 10) : 0);
+        }
         if (type === 'terms') setCellTermsVal(currentPk?.terms || '');
         if (type === 'contract') setCellContractVal(currentPk?.contract_link || '');
+        if (type === 'note') setCellNoteVal(currentPk?.note || '');
 
         setActiveCellPopover({ proposalId, kolId, type, anchorRect: rect });
+    };
+
+    const updatePresetQuantity = (preset: '90s' | 'tiktok' | 'postX', delta: number) => {
+        let new90s = qty90s;
+        let newTiktok = qtyTiktok;
+        let newPostX = qtyPostX;
+
+        if (preset === '90s') { new90s = Math.max(0, qty90s + delta); setQty90s(new90s); }
+        if (preset === 'tiktok') { newTiktok = Math.max(0, qtyTiktok + delta); setQtyTiktok(newTiktok); }
+        if (preset === 'postX') { newPostX = Math.max(0, qtyPostX + delta); setQtyPostX(newPostX); }
+
+        const presetLines: string[] = [];
+        if (new90s > 0) presetLines.push(`• ${new90s}x 90s integration`);
+        if (newTiktok > 0) presetLines.push(`• ${newTiktok}x TikTok video`);
+        if (newPostX > 0) presetLines.push(`• ${newPostX}x Post on X`);
+
+        const customLines = cellDeliverablesVal
+            .split('\n')
+            .filter(line => {
+                const l = line.toLowerCase();
+                return !l.includes('90s integration') && !l.includes('tiktok video') && !l.includes('post on x');
+            })
+            .filter(line => line.trim().length > 0);
+
+        const merged = [...presetLines, ...customLines].join('\n');
+        setCellDeliverablesVal(merged);
     };
 
     // Update Creator row details in local state & Supabase
@@ -889,19 +979,21 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                         <table className="w-full text-sm text-left text-slate-600 border-collapse">
                             <thead className="text-xs text-[#2236ba] font-semibold uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
                                 <tr>
-                                    <th className="px-4 py-3.5 min-w-[220px]">KOL Channel</th>
-                                    <th className="px-4 py-3.5 min-w-[240px]">Audience Insight Attachments</th>
-                                    <th className="px-4 py-3.5 text-right min-w-[140px]">Est. Rate ($ USD)</th>
-                                    <th className="px-4 py-3.5 min-w-[240px]">Deliverables</th>
-                                    <th className="px-4 py-3.5 min-w-[200px]">Terms & Conditions</th>
-                                    <th className="px-4 py-3.5 min-w-[160px]">Contract Link</th>
+                                    <th className="px-4 py-3.5 min-w-[200px]">KOL Channel</th>
+                                    <th className="px-4 py-3.5 min-w-[140px]">Status</th>
+                                    <th className="px-4 py-3.5 min-w-[220px]">Audience Insight Attachments</th>
+                                    <th className="px-4 py-3.5 text-right min-w-[130px]">Est. Rate ($ USD)</th>
+                                    <th className="px-4 py-3.5 min-w-[220px]">Deliverables</th>
+                                    <th className="px-4 py-3.5 min-w-[180px]">Terms & Conditions</th>
+                                    <th className="px-4 py-3.5 min-w-[140px]">Contract Link</th>
+                                    <th className="px-4 py-3.5 min-w-[220px]">Note</th>
                                     <th className="px-4 py-3.5 text-center min-w-[80px]">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#bfdbfe]/30">
                                 {(!selectedProposal.proposal_kols || selectedProposal.proposal_kols.length === 0) ? (
                                     <tr>
-                                        <td colSpan={7} className="text-center py-12 text-slate-400">
+                                        <td colSpan={9} className="text-center py-12 text-slate-400">
                                             No creators added to this proposal yet. Use the button below to add your first creator!
                                         </td>
                                     </tr>
@@ -931,7 +1023,19 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     <KOLCell kol={kol} />
                                                 </td>
 
-                                                {/* 2. Audience Insight Attachment */}
+                                                {/* 2. Status Cell (Approved / Not Approved / Re-negotiate) */}
+                                                <td className="px-4 py-3">
+                                                    <button
+                                                        onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'status', pk)}
+                                                        className={`px-3 py-1.5 rounded-full text-xs border transition-colors flex items-center gap-1.5 shadow-2xs ${getCreatorStatusStyle(pk.status)}`}
+                                                        title="Click to change creator proposal status"
+                                                    >
+                                                        <span>{pk.status || 'Select Status'}</span>
+                                                        <ChevronRight className="w-3 h-3 rotate-90 shrink-0 opacity-60" />
+                                                    </button>
+                                                </td>
+
+                                                {/* 3. Audience Insight Attachment */}
                                                 <td className="px-4 py-3">
                                                     <div className="space-y-2">
                                                         {screenshotsList.length > 0 && (
@@ -972,7 +1076,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </div>
                                                 </td>
 
-                                                {/* 3. Est. Rate ($ USD) (Clean text by default, popover to edit) */}
+                                                {/* 4. Est. Rate ($ USD) */}
                                                 <td className="px-4 py-3 text-right">
                                                     <button
                                                         onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'rate', pk)}
@@ -985,7 +1089,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </button>
                                                 </td>
 
-                                                {/* 4. Deliverables (Bullet points text by default, popover to edit) */}
+                                                {/* 5. Deliverables */}
                                                 <td className="px-4 py-3">
                                                     <div 
                                                         onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'deliverables', pk)}
@@ -1005,7 +1109,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </div>
                                                 </td>
 
-                                                {/* 5. Terms & Conditions (Clean text by default, popover to edit) */}
+                                                {/* 6. Terms & Conditions */}
                                                 <td className="px-4 py-3">
                                                     <div 
                                                         onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'terms', pk)}
@@ -1025,7 +1129,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </div>
                                                 </td>
 
-                                                {/* 6. Contract Link (Clean hyperlink text, popover to edit) */}
+                                                {/* 7. Contract Link */}
                                                 <td className="px-4 py-3">
                                                     <div 
                                                         onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'contract', pk)}
@@ -1052,7 +1156,27 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </div>
                                                 </td>
 
-                                                {/* 7. Actions */}
+                                                {/* 8. Note Cell (Long text format) */}
+                                                <td className="px-4 py-3">
+                                                    <div 
+                                                        onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'note', pk)}
+                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px] max-w-[260px]"
+                                                        title="Click to view or edit creator note"
+                                                    >
+                                                        {pk.note && pk.note.trim() ? (
+                                                            <div className="text-xs text-slate-800 font-normal leading-relaxed whitespace-pre-line line-clamp-3">
+                                                                {pk.note}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                                <Plus className="w-3.5 h-3.5" />
+                                                                <span>Add Note</span>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* 9. Actions */}
                                                 <td className="px-4 py-3 text-center">
                                                     <button 
                                                         onClick={() => handleRemoveCreatorFromProposal(selectedProposal.id, pk.kol_id)}
@@ -1237,36 +1361,78 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                 <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Deliverables</span>
                                 <button onClick={() => setActiveCellPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
-                            <textarea 
-                                rows={4}
-                                autoFocus
-                                value={cellDeliverablesVal}
-                                onChange={e => setCellDeliverablesVal(e.target.value)}
-                                placeholder="• 1x YouTube Video&#10;• 2x YouTube Shorts"
-                                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none"
-                            />
-                            <div className="flex gap-1.5">
-                                <button 
-                                    type="button" 
-                                    onClick={() => {
-                                        const next = cellDeliverablesVal ? `${cellDeliverablesVal}\n• 1x Dedicated Video` : '• 1x Dedicated Video';
-                                        setCellDeliverablesVal(next);
-                                    }}
-                                    className="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg font-medium"
-                                >
-                                    + Dedicated
-                                </button>
-                                <button 
-                                    type="button" 
-                                    onClick={() => {
-                                        const next = cellDeliverablesVal ? `${cellDeliverablesVal}\n• 2x Shorts` : '• 2x Shorts';
-                                        setCellDeliverablesVal(next);
-                                    }}
-                                    className="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg font-medium"
-                                >
-                                    + Shorts
-                                </button>
+
+                            {/* Preset Options with Quantity Selectors */}
+                            <div className="space-y-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Set Option Quantities:</span>
+                                
+                                {/* Option 1: 90s integration */}
+                                <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+                                    <span className="font-medium text-slate-800">90s integration</span>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => updatePresetQuantity('90s', -1)} 
+                                            className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-sm transition-colors"
+                                        >-</button>
+                                        <span className="w-5 text-center font-bold text-slate-900">{qty90s}</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => updatePresetQuantity('90s', 1)} 
+                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] font-bold flex items-center justify-center text-sm transition-colors"
+                                        >+</button>
+                                    </div>
+                                </div>
+
+                                {/* Option 2: TikTok video */}
+                                <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+                                    <span className="font-medium text-slate-800">TikTok video</span>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => updatePresetQuantity('tiktok', -1)} 
+                                            className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-sm transition-colors"
+                                        >-</button>
+                                        <span className="w-5 text-center font-bold text-slate-900">{qtyTiktok}</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => updatePresetQuantity('tiktok', 1)} 
+                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] font-bold flex items-center justify-center text-sm transition-colors"
+                                        >+</button>
+                                    </div>
+                                </div>
+
+                                {/* Option 3: Post on X */}
+                                <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+                                    <span className="font-medium text-slate-800">Post on X</span>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => updatePresetQuantity('postX', -1)} 
+                                            className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-sm transition-colors"
+                                        >-</button>
+                                        <span className="w-5 text-center font-bold text-slate-900">{qtyPostX}</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => updatePresetQuantity('postX', 1)} 
+                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] font-bold flex items-center justify-center text-sm transition-colors"
+                                        >+</button>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Generated / Editable Textarea */}
+                            <div>
+                                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Deliverables Text Summary:</label>
+                                <textarea 
+                                    rows={3}
+                                    value={cellDeliverablesVal}
+                                    onChange={e => setCellDeliverablesVal(e.target.value)}
+                                    placeholder="• 1x 90s integration&#10;• 2x TikTok video..."
+                                    className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none"
+                                />
+                            </div>
+
                             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                                 <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                                 <button 
@@ -1334,6 +1500,74 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                 >
                                     Save Link
                                 </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 5. Creator Status Popover */}
+                    {activeCellPopover.type === 'status' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Creator Proposal Status</span>
+                                <button onClick={() => setActiveCellPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            </div>
+                            <div className="space-y-2">
+                                {CREATOR_STATUS_OPTIONS.map((opt) => (
+                                    <button
+                                        key={opt}
+                                        onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'status', opt)}
+                                        className={`w-full text-left px-3 py-2 rounded-xl text-xs border transition-colors flex items-center justify-between ${getCreatorStatusStyle(opt)}`}
+                                    >
+                                        <span>{opt}</span>
+                                        {selectedProposal?.proposal_kols?.find(pk => pk.kol_id === activeCellPopover.kolId)?.status === opt && (
+                                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                        )}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'status', null)}
+                                    className="w-full text-left px-3 py-1.5 rounded-xl text-xs text-slate-500 hover:bg-slate-100 transition-colors"
+                                >
+                                    Clear status
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 6. Creator Note Popover */}
+                    {activeCellPopover.type === 'note' && (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Creator Note</span>
+                                <button onClick={() => setActiveCellPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            </div>
+                            <textarea 
+                                rows={5}
+                                autoFocus
+                                value={cellNoteVal}
+                                onChange={e => setCellNoteVal(e.target.value)}
+                                placeholder="Add internal notes, negotiation details, special terms for this creator..."
+                                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none"
+                            />
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                                {cellNoteVal ? (
+                                    <button 
+                                        onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'note', null)}
+                                        className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span>Delete Note</span>
+                                    </button>
+                                ) : <div />}
+                                <div className="flex gap-2">
+                                    <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                    <button 
+                                        onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'note', cellNoteVal)}
+                                        className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                    >
+                                        Save Note
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}

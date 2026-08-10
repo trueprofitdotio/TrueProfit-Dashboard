@@ -59,8 +59,44 @@ export interface KpiData {
     pastQuartersProgress: Record<string, { signups: number; clicks: number; viewcount: number; }>;
 }
 
+const getInitialTab = (): Tab => {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab') as Tab;
+        if (tab && ['affiliate', 'influencer', 'kpi'].includes(tab)) return tab;
+    } catch (e) {}
+    return 'affiliate';
+};
+
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('affiliate');
+  const [activeTab, setActiveTabState] = useState<Tab>(getInitialTab);
+
+  const handleSetActiveTab = (tab: Tab) => {
+      setActiveTabState(tab);
+      try {
+          const params = new URLSearchParams(window.location.search);
+          params.set('tab', tab);
+          if (tab !== 'influencer') {
+              params.delete('subtab');
+              params.delete('proposalId');
+          }
+          const newUrl = `${window.location.pathname}?${params.toString()}`;
+          window.history.replaceState({}, '', newUrl);
+      } catch (e) {}
+  };
+
+  useEffect(() => {
+      const handlePopState = () => {
+          const params = new URLSearchParams(window.location.search);
+          const tab = params.get('tab') as Tab;
+          if (tab && ['affiliate', 'influencer', 'kpi'].includes(tab)) {
+              setActiveTabState(tab);
+          }
+      };
+      window.addEventListener('popstate', handlePopState);
+      return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [kpiLoading, setKpiLoading] = useState(true);
   const [kpiError, setKpiError] = useState<string | null>(null);
@@ -190,7 +226,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#F8F9FA] text-slate-800 overflow-x-hidden">
       <div className="max-w-[1800px] mx-auto px-4 md:px-8 lg:px-12">
         <Header />
-        <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Tabs activeTab={activeTab} setActiveTab={handleSetActiveTab} />
         <main key={activeTab} className="tab-content-active">{renderContent()}</main>
       </div>
     </div>

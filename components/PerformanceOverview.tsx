@@ -154,6 +154,7 @@ const PerformanceOverview: React.FC = () => {
     const [topAffiliates, setTopAffiliates] = useState<TopAffiliateData[]>([]);
     const [breakdownExpanded, setBreakdownExpanded] = useState(false);
     const [vsDateRangeText, setVsDateRangeText] = useState('');
+    const [dailyData, setDailyData] = useState<DailyData[]>([]);
     const [sortConfig, setSortConfig] = useState<{ key: keyof TopAffiliateData | null; direction: 'descending' | 'ascending' }>({ key: 'clicks', direction: 'descending' });
     const [showAllTopAffiliates, setShowAllTopAffiliates] = useState(false);
     const [merchantMetrics, setMerchantMetrics] = useState<any | null>(null);
@@ -260,16 +261,47 @@ const PerformanceOverview: React.FC = () => {
 
             const processPeriodData = (signups: Affiliate[], clicks: ClickReportRow[], conversions: ConversionReportRow[]): { byAffiliate: Map<string, ProcessedMetrics>, daily: Map<string, ProcessedMetrics> } => {
                 const byAffiliate = new Map<string, ProcessedMetrics>(); 
+                const daily = new Map<string, ProcessedMetrics>();
                 const initialMetrics = (): ProcessedMetrics => ({ signups: 0, clicks: 0, installs: 0, revenue: 0, payouts: 0 });
                 const ensureAffiliate = (id: string) => { if (!byAffiliate.has(id)) byAffiliate.set(id, initialMetrics()); return byAffiliate.get(id)!; };
                 const ensureDaily = (date: string) => { if (!daily.has(date)) daily.set(date, initialMetrics()); return daily.get(date)!; };
-                signups.forEach(signup => { if (validAffiliateIds && !validAffiliateIds.has(signup.publicId)) return; const date = getGmt7DateString(signup.registeredAt!); ensureAffiliate(signup.publicId).signups++; });
-                clicks.forEach(click => { const publicId = click.source?.publicId; if (!publicId || (validAffiliateIds && !validAffiliateIds.has(publicId))) return; const date = getGmt7DateString(click.createdAt); ensureAffiliate(publicId).clicks++; });
-                conversions.forEach(conv => { const publicId = conv.source?.publicId; if (!publicId || (validAffiliateIds && !validAffiliateIds.has(publicId))) return; const date = getGmt7DateString(conv.createdAt); const affiliateData = ensureAffiliate(publicId); if (conv.conversionType.name.toLowerCase() === 'install') { affiliateData.installs++; } affiliateData.revenue += parseFloat(conv.revenue.value || '0'); affiliateData.payouts += parseFloat(conv.cost.value || '0'); });
-                return { byAffiliate };
+                signups.forEach(signup => { 
+                    if (validAffiliateIds && !validAffiliateIds.has(signup.publicId)) return; 
+                    ensureAffiliate(signup.publicId).signups++; 
+                    if (signup.registeredAt) ensureDaily(getGmt7DateString(signup.registeredAt)).signups++;
+                });
+                clicks.forEach(click => { 
+                    const publicId = click.source?.publicId; 
+                    if (!publicId || (validAffiliateIds && !validAffiliateIds.has(publicId))) return; 
+                    ensureAffiliate(publicId).clicks++; 
+                    if (click.createdAt) ensureDaily(getGmt7DateString(click.createdAt)).clicks++;
+                });
+                conversions.forEach(conv => { 
+                    const publicId = conv.source?.publicId; 
+                    if (!publicId || (validAffiliateIds && !validAffiliateIds.has(publicId))) return; 
+                    const affiliateData = ensureAffiliate(publicId); 
+                    const isInstall = conv.conversionType.name.toLowerCase() === 'install';
+                    const revVal = parseFloat(conv.revenue.value || '0');
+                    const costVal = parseFloat(conv.cost.value || '0');
+                    if (isInstall) affiliateData.installs++; 
+                    affiliateData.revenue += revVal; 
+                    affiliateData.payouts += costVal;
+                    if (conv.createdAt) {
+                        const dObj = ensureDaily(getGmt7DateString(conv.createdAt));
+                        if (isInstall) dObj.installs++;
+                        dObj.revenue += revVal;
+                        dObj.payouts += costVal;
+                    }
+                });
+                return { byAffiliate, daily };
             };
             const currentProcessed = processPeriodData(currentSignupsList, currentClicks.rows, currentConversionsRows);
             const prevProcessed = processPeriodData(prevSignupsList, prevClicks.rows, prevConversionsRows);
+            
+            const dailyList: DailyData[] = Array.from(currentProcessed.daily.entries())
+                .map(([date, metrics]) => ({ date, ...metrics }))
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            setDailyData(dailyList);
             
             const finalMetrics: SummaryData = { signups: 0, clicks: 0, installs: 0, revenue: 0, payouts: 0, signupsPrev: 0, clicksPrev: 0, installsPrev: 0, revenuePrev: 0, payoutsPrev: 0, vsDateRange: prevDateRange, byTier: { KOL: { signups: 0, clicks: 0, installs: 0, revenue: 0, payouts: 0, prev: { signups: 0, clicks: 0, installs: 0, revenue: 0, payouts: 0 } }, NonKOL: { signups: 0, clicks: 0, installs: 0, revenue: 0, payouts: 0, prev: { signups: 0, clicks: 0, installs: 0, revenue: 0, payouts: 0 } } } };
             currentProcessed.byAffiliate.forEach((data, publicId) => { finalMetrics.signups += data.signups; finalMetrics.clicks += data.clicks; finalMetrics.installs += data.installs; finalMetrics.revenue += data.revenue; finalMetrics.payouts += data.payouts; const tierName = affiliateMap.get(publicId)?.normalizedTier as 'KOL' | 'NonKOL' | undefined; if (tierName && finalMetrics.byTier[tierName]) { (Object.keys(data) as (keyof ProcessedMetrics)[]).forEach(key => finalMetrics.byTier[tierName][key] += data[key]); } });
@@ -479,6 +511,13 @@ const PerformanceOverview: React.FC = () => {
                         <SummaryOverview data={summaryData} isExpanded={breakdownExpanded} setIsExpanded={setBreakdownExpanded} vsDateRangeText={vsDateRangeText} />
                     </div>
 
+                    {/* Daily Performance Chart - Top Section */}
+                    {dailyData.length > 0 && (
+                        <div className="card p-6">
+                            <PerformanceChart dailyData={dailyData} />
+                        </div>
+                    )}
+
                     {/* Section: Merchants Details - Placed immediately under Overview */}
                     {merchantMetrics && (
                         <MerchantsDetailsSection metrics={merchantMetrics} vsDateRangeText={vsDateRangeText} />
@@ -486,17 +525,11 @@ const PerformanceOverview: React.FC = () => {
 
                     {/* Charts & Tables Section */}
                     <div className="card p-6 space-y-8">
-                        <PerformanceChart dailyData={dailyData || []} />
-                        
                         {/* Section: Top Performing Affiliate Mixed Chart */}
-                        <hr className="border-[#bfdbfe]/30" />
                         <TopPerformingAffiliatesChart data={topAffiliates} />
                         
                         <hr className="border-[#bfdbfe]/30" />
                         <TopAffiliatesTable data={sortedTopAffiliates} requestSort={requestSort} sortConfig={sortConfig} showAll={showAllTopAffiliates} onToggleShowAll={() => setShowAllTopAffiliates(!showAllTopAffiliates)} />
-                        
-                        <hr className="border-[#bfdbfe]/30" />
-                        <DailyPerformanceTable data={dailyData} isVisible={showDailyTable} onShowReport={() => setShowDailyTable(true)} />
                     </div>
                 </div>
             )}
@@ -536,11 +569,7 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                         itemStyle: { color: PALETTE.signups }, 
                         areaStyle: { 
                             color: {
-                                type: 'linear',
-                                x: 0,
-                                y: 0,
-                                x2: 0,
-                                y2: 1,
+                                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                                 colorStops: [
                                     { offset: 0, color: hexToRgba(PALETTE.signups, 1.0) },
                                     { offset: 1, color: hexToRgba(PALETTE.signups, 0.3) }
@@ -553,11 +582,7 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                         name: 'Installs', 
                         type: 'bar', 
                         stack: 'clicks_installs',
-                        itemStyle: { 
-                            color: PALETTE.installs,
-                            borderColor: '#be123c',
-                            borderWidth: 1
-                        }, 
+                        itemStyle: { color: PALETTE.installs, borderColor: '#be123c', borderWidth: 1 }, 
                         data: sortedDailyData.map(d => d.installs) 
                     }, 
                     { 
@@ -566,18 +591,13 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                         stack: 'clicks_installs',
                         itemStyle: { 
                             color: {
-                                type: 'linear',
-                                x: 0,
-                                y: 0,
-                                x2: 0,
-                                y2: 1,
+                                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                                 colorStops: [
                                     { offset: 0, color: hexToRgba(PALETTE.clicks, 1.0) },
                                     { offset: 1, color: hexToRgba(PALETTE.clicks, 0.6) }
                                 ]
                             },
-                            borderColor: '#10714f',
-                            borderWidth: 1
+                            borderColor: '#10714f', borderWidth: 1
                         }, 
                         data: sortedDailyData.map(d => d.clicks) 
                     }, 
@@ -589,11 +609,7 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                         itemStyle: { color: PALETTE.revenue }, 
                         areaStyle: { 
                             color: {
-                                type: 'linear',
-                                x: 0,
-                                y: 0,
-                                x2: 0,
-                                y2: 1,
+                                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                                 colorStops: [
                                     { offset: 0, color: hexToRgba(PALETTE.revenue, 1.0) },
                                     { offset: 1, color: hexToRgba(PALETTE.revenue, 0.3) }
@@ -610,11 +626,7 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                         itemStyle: { color: PALETTE.payouts }, 
                         areaStyle: { 
                             color: {
-                                type: 'linear',
-                                x: 0,
-                                y: 0,
-                                x2: 0,
-                                y2: 1,
+                                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                                 colorStops: [
                                     { offset: 0, color: hexToRgba(PALETTE.payouts, 1.0) },
                                     { offset: 1, color: hexToRgba(PALETTE.payouts, 0.3) }
@@ -631,8 +643,9 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
         }
         const resizeHandler = () => chart?.resize(); window.addEventListener('resize', resizeHandler); return () => { chart.dispose(); window.removeEventListener('resize', resizeHandler); }; 
     }, [dailyData]);
-    return (<div><h3 className="text-lg font-semibold text-slate-800 mb-4">Performance Trend</h3><div ref={chartRef} style={{ width: '100%', height: '400px' }}></div></div>);
+    return (<div><h3 className="text-lg font-semibold text-slate-800 mb-4">Daily Performance Trend</h3><div ref={chartRef} style={{ width: '100%', height: '360px' }}></div></div>);
 };
+
 
 const getTierColor = (tierName: string) => {
     const name = tierName.toLowerCase();
