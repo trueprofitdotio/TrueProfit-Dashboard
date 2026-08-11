@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabaseClient } from '../services/supabaseClient';
 import KOLCell, { KolData } from './KOLCell';
+import DiscussionSidebar from './DiscussionSidebar';
 import { fetchYouTubeChannelDetails } from '../services/youtubeService';
 import { 
     Plus, Search, Edit2, Trash2, X, Calendar, DollarSign, Filter, ArrowUpDown, Check, 
-    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight
+    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight, MessageCircle, RefreshCw
 } from 'lucide-react';
 
 interface ProposalKol {
@@ -17,7 +18,6 @@ interface ProposalKol {
     contract_link?: string | null;
     audience_screenshots?: string | string[] | null;
     status?: string | null;
-    note?: string | null;
     kols: KolData;
 }
 
@@ -180,12 +180,19 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         anchorRect?: DOMRect;
     } | null>(null);
 
-    // Creator Cell Editing Popover State (For Est Rate, Deliverables, Terms, Contract Link, Status, Note)
+    // Creator Cell Editing Popover State (For Est Rate, Deliverables, Terms, Contract Link)
     const [activeCellPopover, setActiveCellPopover] = useState<{
         proposalId: string;
         kolId: string;
-        type: 'rate' | 'deliverables' | 'terms' | 'contract' | 'status' | 'note';
+        type: 'rate' | 'deliverables' | 'terms' | 'contract';
         anchorRect?: DOMRect;
+    } | null>(null);
+
+    // Discussion Sidebar state
+    const [activeDiscussion, setActiveDiscussion] = useState<{
+        proposalId: string;
+        kolId: string;
+        kolName: string;
     } | null>(null);
 
     // Popover input temporary values
@@ -193,7 +200,6 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     const [cellDeliverablesVal, setCellDeliverablesVal] = useState('');
     const [cellTermsVal, setCellTermsVal] = useState('');
     const [cellContractVal, setCellContractVal] = useState('');
-    const [cellNoteVal, setCellNoteVal] = useState('');
 
     // Deliverables preset quantity states
     const [qty90s, setQty90s] = useState(0);
@@ -503,7 +509,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         e: React.MouseEvent,
         proposalId: string,
         kolId: string,
-        type: 'rate' | 'deliverables' | 'terms' | 'contract' | 'status' | 'note',
+        type: 'rate' | 'deliverables' | 'terms' | 'contract',
         currentPk?: ProposalKol
     ) => {
         e.stopPropagation();
@@ -522,9 +528,33 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         }
         if (type === 'terms') setCellTermsVal(currentPk?.terms || '');
         if (type === 'contract') setCellContractVal(currentPk?.contract_link || '');
-        if (type === 'note') setCellNoteVal(currentPk?.note || '');
 
         setActiveCellPopover({ proposalId, kolId, type, anchorRect: rect });
+    };
+
+    const updateCreatorStatus = async (proposalId: string, kolId: string, newStatus: string) => {
+        setProposals(prev => prev.map(p => {
+            if (p.id !== proposalId) return p;
+            const updatedPks = (p.proposal_kols || []).map(pk => {
+                if (pk.kol_id !== kolId) return pk;
+                return { ...pk, status: newStatus };
+            });
+            return { ...p, proposal_kols: updatedPks };
+        }));
+
+        try {
+            const { error } = await supabaseClient.rpc('update_proposal_kol_status', {
+                p_proposal_id: proposalId,
+                p_kol_id: kolId,
+                p_new_status: newStatus,
+                p_actor: 'Dashboard User',
+                p_source: 'UI Action'
+            });
+            if (error) throw error;
+        } catch (err) {
+            console.error('Failed to update creator status via RPC:', err);
+            fetchData();
+        }
     };
 
     const updatePresetQuantity = (preset: '90s' | 'tiktok' | 'postX', delta: number) => {
@@ -947,9 +977,9 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
 
             {/* VIEW 2: DETAILED CREATORS PROPOSAL WORKSPACE VIEW */}
             {activeView === 'workspace' && selectedProposal && (
-                <div className="space-y-6 animate-in fade-in duration-200">
+                <div className={`space-y-6 animate-in fade-in duration-200 transition-all ${activeDiscussion ? 'mr-[460px]' : ''}`}>
                     
-                    {/* Workspace Header: Clean Title & Back Button (Duplicated top-right rate & button removed) */}
+                    {/* Workspace Header: Clean Title & Back Button */}
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                         <div>
                             <button 
@@ -980,14 +1010,14 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                             <thead className="text-xs text-slate-500 font-normal uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
                                 <tr>
                                     <th className="px-4 py-3.5 min-w-[200px] font-normal">KOL Channel</th>
-                                    <th className="px-4 py-3.5 min-w-[140px] font-normal">Status</th>
+                                    <th className="px-4 py-3.5 min-w-[110px] font-normal">Status</th>
                                     <th className="px-4 py-3.5 min-w-[220px] font-normal">Audience Insight Attachments</th>
                                     <th className="px-4 py-3.5 text-right min-w-[130px] font-normal">Est. Rate ($ USD)</th>
                                     <th className="px-4 py-3.5 min-w-[220px] font-normal">Deliverables</th>
-                                    <th className="px-4 py-3.5 min-w-[180px] font-normal">Terms & Conditions</th>
+                                    <th className="px-4 py-3.5 min-w-[200px] font-normal">Terms & Conditions</th>
                                     <th className="px-4 py-3.5 min-w-[140px] font-normal">Contract Link</th>
-                                    <th className="px-4 py-3.5 min-w-[220px] font-normal">Note</th>
-                                    <th className="px-4 py-3.5 text-center min-w-[80px] font-normal">Action</th>
+                                    <th className="px-4 py-3.5 min-w-[150px] font-normal">Discussion</th>
+                                    <th className="px-4 py-3.5 text-center min-w-[160px] font-normal">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#bfdbfe]/30">
@@ -1023,17 +1053,14 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     <KOLCell kol={kol} />
                                                 </td>
 
-                                                {/* 2. Status Cell (Approved / Not Approved / Re-negotiate) */}
+                                                {/* 2. Read-Only Status Cell */}
                                                 <td className="px-4 py-3 align-middle">
                                                     <div className="flex items-center h-8">
-                                                        <button
-                                                            onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'status', pk)}
-                                                            className={`px-3 py-1 rounded-full text-xs border transition-colors flex items-center gap-1.5 shadow-2xs ${getCreatorStatusStyle(pk.status)}`}
-                                                            title="Click to change creator proposal status"
+                                                        <span
+                                                            className={`px-3 py-1 rounded-full text-xs border inline-block shadow-2xs ${getCreatorStatusStyle(pk.status)}`}
                                                         >
-                                                            <span>{pk.status || 'Select Status'}</span>
-                                                            <ChevronRight className="w-3 h-3 rotate-90 shrink-0 opacity-60" />
-                                                        </button>
+                                                            {pk.status || 'Active'}
+                                                        </span>
                                                     </div>
                                                 </td>
 
@@ -1064,7 +1091,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
 
                                                         <label className="border border-dashed border-slate-300 hover:border-[var(--accent-color)] hover:bg-slate-50 px-2.5 py-1.5 rounded-xl flex items-center justify-center gap-1 cursor-pointer text-xs text-slate-500 transition-colors h-8">
                                                             <Upload className="w-3.5 h-3.5 text-slate-400" />
-                                                            <span>+ Add</span>
+                                                            <span>Add</span>
                                                             <input 
                                                                 type="file" 
                                                                 accept="image/*"
@@ -1088,7 +1115,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                         >
                                                             {pk.est_rate !== undefined && pk.est_rate !== null && pk.est_rate !== 0 
                                                                 ? formatCurrencyUSD(pk.est_rate) 
-                                                                : <span className="text-slate-400 font-medium text-xs">+ Add</span>}
+                                                                : <span className="text-slate-400 font-medium text-xs">Add</span>}
                                                         </button>
                                                     </div>
                                                 </td>
@@ -1107,7 +1134,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                         ) : (
                                                             <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                                 <Plus className="w-3.5 h-3.5" />
-                                                                <span>+ Add</span>
+                                                                <span>Add</span>
                                                             </span>
                                                         )}
                                                     </div>
@@ -1121,13 +1148,13 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                         title="Click to edit terms"
                                                     >
                                                         {pk.terms && pk.terms.trim() ? (
-                                                            <div className="text-xs text-slate-700 font-normal leading-relaxed line-clamp-3">
+                                                            <div className="text-xs text-slate-700 font-normal leading-relaxed whitespace-pre-line line-clamp-3">
                                                                 {pk.terms}
                                                             </div>
                                                         ) : (
                                                             <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                                 <Plus className="w-3.5 h-3.5" />
-                                                                <span>+ Add</span>
+                                                                <span>Add</span>
                                                             </span>
                                                         )}
                                                     </div>
@@ -1154,41 +1181,59 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                         ) : (
                                                             <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                                 <Plus className="w-3.5 h-3.5" />
-                                                                <span>+ Add</span>
+                                                                <span>Add</span>
                                                             </span>
                                                         )}
                                                     </div>
                                                 </td>
 
-                                                {/* 8. Note Cell (Long text format) */}
+                                                {/* 8. Discussion Column */}
                                                 <td className="px-4 py-3 align-middle">
-                                                    <div 
-                                                        onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'note', pk)}
-                                                        className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[36px] max-w-[260px] flex items-center"
-                                                        title="Click to view or edit creator note"
+                                                    <button
+                                                        onClick={() => setActiveDiscussion({
+                                                            proposalId: selectedProposal.id,
+                                                            kolId: pk.kol_id,
+                                                            kolName: kol?.name || 'Creator'
+                                                        })}
+                                                        className="px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
                                                     >
-                                                        {pk.note && pk.note.trim() ? (
-                                                            <div className="text-xs text-slate-800 font-normal leading-relaxed whitespace-pre-line line-clamp-3">
-                                                                {pk.note}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
-                                                                <Plus className="w-3.5 h-3.5" />
-                                                                <span>+ Add</span>
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                        <MessageCircle className="w-3.5 h-3.5" />
+                                                        <span>See discussion</span>
+                                                    </button>
                                                 </td>
 
-                                                {/* 9. Actions */}
+                                                {/* 9. Actions Column (Approve, Reject, Re-negotiate, Remove) */}
                                                 <td className="px-4 py-3 text-center align-middle">
-                                                    <button 
-                                                        onClick={() => handleRemoveCreatorFromProposal(selectedProposal.id, pk.kol_id)}
-                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-flex items-center justify-center"
-                                                        title="Remove creator from proposal"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <button
+                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Approved')}
+                                                            className={`p-1.5 rounded-lg border transition-colors ${pk.status === 'Approved' ? 'bg-emerald-600 text-white border-emerald-600' : 'text-emerald-600 hover:bg-emerald-50 border-emerald-200'}`}
+                                                            title="Approve Creator Proposal"
+                                                        >
+                                                            <Check className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Rejected')}
+                                                            className={`p-1.5 rounded-lg border transition-colors ${pk.status === 'Rejected' ? 'bg-rose-600 text-white border-rose-600' : 'text-rose-600 hover:bg-rose-50 border-rose-200'}`}
+                                                            title="Reject Creator Proposal"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Re-negotiate')}
+                                                            className={`p-1.5 rounded-lg border transition-colors ${pk.status === 'Re-negotiate' ? 'bg-amber-500 text-white border-amber-500' : 'text-amber-600 hover:bg-amber-50 border-amber-200'}`}
+                                                            title="Re-negotiate Creator Proposal"
+                                                        >
+                                                            <RefreshCw className="w-4 h-4" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleRemoveCreatorFromProposal(selectedProposal.id, pk.kol_id)}
+                                                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors ml-1"
+                                                            title="Remove Creator"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -1455,13 +1500,22 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                 <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Terms & Conditions</span>
                                 <button onClick={() => setActiveCellPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
+
+                            {/* Formatting Options Bar */}
+                            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 select-none">
+                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' **bold**')} className="px-2 py-1 hover:bg-white rounded-lg transition-colors font-bold" title="Bold">B</button>
+                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' *italic*')} className="px-2 py-1 hover:bg-white rounded-lg transition-colors italic" title="Italic">I</button>
+                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' <u>underline</u>')} className="px-2 py-1 hover:bg-white rounded-lg transition-colors underline" title="Underline">U</button>
+                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' [link label](https://)')} className="px-2 py-1 hover:bg-white rounded-lg transition-colors text-blue-600" title="Hyperlink">🔗 Link</button>
+                            </div>
+
                             <textarea 
                                 rows={4}
                                 autoFocus
                                 value={cellTermsVal}
                                 onChange={e => setCellTermsVal(e.target.value)}
                                 placeholder="30-day usage rights, 60-day exclusivity, payment on pub date..."
-                                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none"
+                                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none whitespace-pre-line"
                             />
                             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                                 <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
@@ -1503,74 +1557,6 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                 >
                                     Save Link
                                 </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 5. Creator Status Popover */}
-                    {activeCellPopover.type === 'status' && (
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Creator Proposal Status</span>
-                                <button onClick={() => setActiveCellPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
-                            </div>
-                            <div className="space-y-2">
-                                {CREATOR_STATUS_OPTIONS.map((opt) => (
-                                    <button
-                                        key={opt}
-                                        onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'status', opt)}
-                                        className={`w-full text-left px-3 py-2 rounded-xl text-xs border transition-colors flex items-center justify-between ${getCreatorStatusStyle(opt)}`}
-                                    >
-                                        <span>{opt}</span>
-                                        {selectedProposal?.proposal_kols?.find(pk => pk.kol_id === activeCellPopover.kolId)?.status === opt && (
-                                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                        )}
-                                    </button>
-                                ))}
-                                <button
-                                    onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'status', null)}
-                                    className="w-full text-left px-3 py-1.5 rounded-xl text-xs text-slate-500 hover:bg-slate-100 transition-colors"
-                                >
-                                    Clear status
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 6. Creator Note Popover */}
-                    {activeCellPopover.type === 'note' && (
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Creator Note</span>
-                                <button onClick={() => setActiveCellPopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
-                            </div>
-                            <textarea 
-                                rows={5}
-                                autoFocus
-                                value={cellNoteVal}
-                                onChange={e => setCellNoteVal(e.target.value)}
-                                placeholder="Add internal notes, negotiation details, special terms for this creator..."
-                                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-normal text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none"
-                            />
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                                {cellNoteVal ? (
-                                    <button 
-                                        onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'note', null)}
-                                        className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                        <span>Delete Note</span>
-                                    </button>
-                                ) : <div />}
-                                <div className="flex gap-2">
-                                    <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                                    <button 
-                                        onClick={() => updateProposalKolField(activeCellPopover.proposalId, activeCellPopover.kolId, 'note', cellNoteVal)}
-                                        className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
-                                    >
-                                        Save Note
-                                    </button>
-                                </div>
                             </div>
                         </div>
                     )}
@@ -1687,6 +1673,25 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 </div>,
                 document.body
             )}
+
+            {/* DISCUSSION SIDEBAR DRAWER */}
+            <DiscussionSidebar
+                isOpen={activeDiscussion !== null}
+                onClose={() => setActiveDiscussion(null)}
+                proposalId={activeDiscussion?.proposalId || null}
+                kolId={activeDiscussion?.kolId || null}
+                kolName={activeDiscussion?.kolName || ''}
+                onStatusChange={(pId, kId, newStatus) => {
+                    setProposals(prev => prev.map(p => {
+                        if (p.id !== pId) return p;
+                        const updatedPks = (p.proposal_kols || []).map(pk => {
+                            if (pk.kol_id !== kId) return pk;
+                            return { ...pk, status: newStatus };
+                        });
+                        return { ...p, proposal_kols: updatedPks };
+                    }));
+                }}
+            />
 
         </div>
     );

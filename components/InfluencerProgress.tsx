@@ -635,6 +635,22 @@ const InfluencerProgress: React.FC = () => {
         }
     };
 
+    const handleDeleteCollaboration = async (collabId: string) => {
+        setCollaborations(prev => prev.filter(c => c.id !== collabId));
+        setDeleteConfirmCollab(null);
+
+        try {
+            const { error } = await supabaseClient
+                .from('collaborations')
+                .delete()
+                .eq('id', collabId);
+            if (error) throw error;
+        } catch (err) {
+            console.error('Failed to delete deal record:', err);
+            fetchData();
+        }
+    };
+
     // Fetch YouTube Channel Details for Add Modal
     const handleFetchYtChannel = async () => {
         if (!ytChannelUrlInput.trim()) return;
@@ -1077,7 +1093,7 @@ const InfluencerProgress: React.FC = () => {
                                                 ) : (
                                                     <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                         <Plus className="w-3.5 h-3.5" />
-                                                        <span>+ Add</span>
+                                                        <span>Add</span>
                                                     </span>
                                                 )}
                                             </div>
@@ -1152,7 +1168,7 @@ const InfluencerProgress: React.FC = () => {
                                                     return (
                                                         <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                             <Plus className="w-3.5 h-3.5" />
-                                                            <span>+ Add</span>
+                                                            <span>Add</span>
                                                         </span>
                                                     );
                                                 })()}

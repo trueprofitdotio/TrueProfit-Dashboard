@@ -159,10 +159,12 @@ const PerformanceOverview: React.FC = () => {
     const [showAllTopAffiliates, setShowAllTopAffiliates] = useState(false);
     const [merchantMetrics, setMerchantMetrics] = useState<any | null>(null);
 
+    const requestIdRef = useRef(0);
 
-     useEffect(() => { const fetchInitialData = async () => { try { const { affiliates } = await fetchAffiliates(); setAllAffiliates(affiliates.sort((a,b) => a.name.localeCompare(b.name))); } catch { setError('Failed to fetch affiliate list.'); } }; fetchInitialData(); }, []);
+    useEffect(() => { const fetchInitialData = async () => { try { const { affiliates } = await fetchAffiliates(); setAllAffiliates(affiliates.sort((a,b) => a.name.localeCompare(b.name))); } catch { setError('Failed to fetch affiliate list.'); } }; fetchInitialData(); }, []);
     
     const handleGetMetrics = useCallback(async () => {
+        const requestId = ++requestIdRef.current;
         setLoading(true); setError(null); setMerchantMetrics(null);
         try {
             let currentAffiliates = allAffiliates;
@@ -447,9 +449,11 @@ const PerformanceOverview: React.FC = () => {
                 merchantOverview.payoutGtThreeCountPrev = prevMetrics.payoutGtThreeCount;
             }
 
+            if (requestId !== requestIdRef.current) return;
             setMerchantMetrics(merchantOverview);
 
         } catch (err: unknown) { 
+            if (requestId !== requestIdRef.current) return;
             if (err instanceof Error) {
                 setError(err.message);
             } else {

@@ -23,32 +23,33 @@ export const RenderCountryFlag: React.FC<{ country?: string | null }> = ({ count
     if (!country) return <span className="text-xs">🌐</span>;
     const c = country.trim().toUpperCase();
 
+    const wrapperClass = "w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle overflow-hidden flex items-center justify-center";
     if (c === 'UNITED STATES' || c === 'US' || c === 'USA') {
-        return <US title="United States" className="w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle" />;
+        return <span className={wrapperClass}><US /></span>;
     }
     if (c === 'FRANCE' || c === 'FR') {
-        return <FR title="France" className="w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle" />;
+        return <span className={wrapperClass}><FR /></span>;
     }
     if (c === 'GERMANY' || c === 'DE') {
-        return <DE title="Germany" className="w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle" />;
+        return <span className={wrapperClass}><DE /></span>;
     }
     if (c === 'UNITED KINGDOM' || c === 'UK' || c === 'GB') {
-        return <GB title="United Kingdom" className="w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle" />;
+        return <span className={wrapperClass}><GB /></span>;
     }
     if (c === 'CANADA' || c === 'CA' || c === 'CAD') {
-        return <CA title="Canada" className="w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle" />;
+        return <span className={wrapperClass}><CA /></span>;
     }
     if (c === 'TURKEY' || c === 'TR') {
-        return <TR title="Turkey" className="w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle" />;
+        return <span className={wrapperClass}><TR /></span>;
     }
     if (c === 'SINGAPORE' || c === 'SG') {
-        return <SG title="Singapore" className="w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle" />;
+        return <span className={wrapperClass}><SG /></span>;
     }
     if (c === 'SPAIN' || c === 'ES') {
-        return <ES title="Spain" className="w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle" />;
+        return <span className={wrapperClass}><ES /></span>;
     }
     if (c === 'VIETNAM' || c === 'VN') {
-        return <VN title="Vietnam" className="w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle" />;
+        return <span className={wrapperClass}><VN /></span>;
     }
     return <span className="text-xs">🌐</span>;
 };
