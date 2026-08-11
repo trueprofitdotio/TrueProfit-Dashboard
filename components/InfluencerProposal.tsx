@@ -125,14 +125,33 @@ const renderRichText = (text?: string | null) => {
     );
 };
 
+const parseInitialProposalFromUrl = (): string | null => {
+    try {
+        const savedPropId = sessionStorage.getItem('tp_oauth_return_proposal_id');
+        if (savedPropId) return savedPropId;
+        const path = window.location.pathname;
+        const parts = path.split('/').filter(Boolean);
+        let urlPropId = parts[0] === 'influencer' && parts[1] === 'proposal' ? parts[2] : null;
+        if (!urlPropId) {
+            const params = new URLSearchParams(window.location.search);
+            urlPropId = params.get('proposalId');
+        }
+        return urlPropId;
+    } catch (e) {
+        return null;
+    }
+};
+
 const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposalTitle, resetViewSignal }) => {
     const [proposals, setProposals] = useState<Proposal[]>([]);
     const [allKols, setAllKols] = useState<KolData[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const initialPropId = parseInitialProposalFromUrl();
+
     // Active View state: 'list' (Main Table) or 'workspace' (Detailed Creators Workspace)
-    const [activeView, setActiveView] = useState<'list' | 'workspace'>('list');
-    const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+    const [activeView, setActiveView] = useState<'list' | 'workspace'>(initialPropId ? 'workspace' : 'list');
+    const [selectedProposalId, setSelectedProposalId] = useState<string | null>(initialPropId);
 
     const [copiedLink, setCopiedLink] = useState(false);
 
@@ -295,18 +314,11 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                     sessionStorage.removeItem('tp_oauth_return_proposal_id');
                     sessionStorage.removeItem('tp_oauth_return_kol_id');
                     sessionStorage.removeItem('tp_oauth_return_kol_name');
+                } else if (selectedProposalId && rawProps.some(p => p.id === selectedProposalId)) {
+                    setActiveView('workspace');
                 } else {
-                    const path = window.location.pathname;
-                    const parts = path.split('/').filter(Boolean);
-                    let urlPropId = parts[0] === 'influencer' && parts[1] === 'proposal' ? parts[2] : null;
-                    if (!urlPropId) {
-                        const params = new URLSearchParams(window.location.search);
-                        urlPropId = params.get('proposalId');
-                    }
-                    if (urlPropId && rawProps.some(p => p.id === urlPropId)) {
-                        setSelectedProposalId(urlPropId);
-                        setActiveView('workspace');
-                    }
+                    setSelectedProposalId(null);
+                    setActiveView('list');
                 }
             } catch (e) {}
 
@@ -348,14 +360,17 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 onSelectProposalTitle(null);
             }
         }
+        if (loading) return;
         try {
             let newPath = '/influencer/proposal';
             if (activeView === 'workspace' && selectedProposalId) {
                 newPath = `/influencer/proposal/${selectedProposalId}`;
             }
-            window.history.pushState({}, '', newPath);
+            if (window.location.pathname !== newPath) {
+                window.history.pushState({}, '', newPath);
+            }
         } catch (e) {}
-    }, [activeView, selectedProposalId, selectedProposal, onSelectProposalTitle]);
+    }, [activeView, selectedProposalId, selectedProposal, onSelectProposalTitle, loading]);
 
     // DIRECT PROPOSAL CREATION (No Popup Modal!)
     const handleAddProposalDirectly = async () => {
