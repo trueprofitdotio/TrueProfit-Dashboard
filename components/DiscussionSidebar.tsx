@@ -267,19 +267,41 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
 
         const actorName = user.user_metadata?.full_name || user.email || 'Team Member';
 
+        const tempId = `temp_${Date.now()}`;
+        const tempMsg: Message = {
+            id: tempId,
+            thread_id: threadId,
+            body: msgText,
+            actor: actorName,
+            type: 'user',
+            created_at: new Date().toISOString()
+        };
+
+        // Optimistic UI update: immediately render message in local state
+        setMessages(prev => [...prev, tempMsg]);
+        scrollToBottom();
+
         try {
-            const { error } = await supabaseClient
+            const { data, error } = await supabaseClient
                 .from('proposal_discussion_messages')
                 .insert({
                     thread_id: threadId,
                     body: msgText,
                     actor: actorName,
                     type: 'user'
-                });
+                })
+                .select()
+                .single();
 
             if (error) throw error;
+
+            if (data) {
+                setMessages(prev => prev.map(m => m.id === tempId ? (data as Message) : m));
+            }
+            fetchMessages(threadId);
         } catch (err) {
             console.error('Error sending message:', err);
+            setMessages(prev => prev.filter(m => m.id !== tempId));
             setNewMessage(msgText);
         }
     };
@@ -304,8 +326,12 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
             if (onStatusChange) {
                 onStatusChange(proposalId, kolId, action);
             }
+
+            if (threadId) {
+                fetchMessages(threadId);
+            }
         } catch (err) {
-            console.error(`Error executing action ${action} from chat:`, err);
+            console.error('Error updating creator status from discussion:', err);
         }
     };
 

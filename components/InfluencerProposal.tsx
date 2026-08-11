@@ -262,18 +262,38 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 return merged;
             });
 
-            // Check for initial proposalId in URL path or query params
+            // Check for OAuth return state or initial proposalId in URL path or query params
             try {
-                const path = window.location.pathname;
-                const parts = path.split('/').filter(Boolean);
-                let urlPropId = parts[0] === 'influencer' && parts[1] === 'proposal' ? parts[2] : null;
-                if (!urlPropId) {
-                    const params = new URLSearchParams(window.location.search);
-                    urlPropId = params.get('proposalId');
-                }
-                if (urlPropId && rawProps.some(p => p.id === urlPropId)) {
-                    setSelectedProposalId(urlPropId);
+                const savedPropId = sessionStorage.getItem('tp_oauth_return_proposal_id');
+                const savedKolId = sessionStorage.getItem('tp_oauth_return_kol_id');
+                const savedKolName = sessionStorage.getItem('tp_oauth_return_kol_name') || 'Creator';
+
+                if (savedPropId && rawProps.some(p => p.id === savedPropId)) {
+                    setSelectedProposalId(savedPropId);
                     setActiveView('workspace');
+                    if (savedKolId) {
+                        setActiveDiscussion({
+                            proposalId: savedPropId,
+                            kolId: savedKolId,
+                            kolName: savedKolName
+                        });
+                    }
+                    sessionStorage.removeItem('tp_oauth_return_tab');
+                    sessionStorage.removeItem('tp_oauth_return_proposal_id');
+                    sessionStorage.removeItem('tp_oauth_return_kol_id');
+                    sessionStorage.removeItem('tp_oauth_return_kol_name');
+                } else {
+                    const path = window.location.pathname;
+                    const parts = path.split('/').filter(Boolean);
+                    let urlPropId = parts[0] === 'influencer' && parts[1] === 'proposal' ? parts[2] : null;
+                    if (!urlPropId) {
+                        const params = new URLSearchParams(window.location.search);
+                        urlPropId = params.get('proposalId');
+                    }
+                    if (urlPropId && rawProps.some(p => p.id === urlPropId)) {
+                        setSelectedProposalId(urlPropId);
+                        setActiveView('workspace');
+                    }
                 }
             } catch (e) {}
 

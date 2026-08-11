@@ -61,6 +61,10 @@ export interface KpiData {
 
 const getInitialTab = (): Tab => {
     try {
+        const returnTab = sessionStorage.getItem('tp_oauth_return_tab') as Tab;
+        if (returnTab && ['affiliate', 'influencer', 'kpi'].includes(returnTab)) {
+            return returnTab;
+        }
         const path = window.location.pathname;
         if (path.startsWith('/influencer')) return 'influencer';
         if (path.startsWith('/kpi')) return 'kpi';

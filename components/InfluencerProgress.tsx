@@ -5,7 +5,7 @@ import KOLCell, { KolData } from './KOLCell';
 import { fetchYouTubeChannelDetails, getYouTubeVideoId, fetchYouTubeVideoDetails } from '../services/youtubeService';
 import { 
     Calendar, Filter, Search, ArrowUpDown, Plus, Trash2, Edit2, Check,
-    Play, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Youtube, FileText
+    Play, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Youtube, FileText, RotateCcw
 } from 'lucide-react';
 
 interface VideoRecord {
