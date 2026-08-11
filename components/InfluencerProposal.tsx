@@ -105,6 +105,26 @@ const formatTimestampDetailed = (dateStr?: string | null): string => {
     }
 };
 
+const renderRichText = (text?: string | null) => {
+    if (!text || !text.trim()) return null;
+
+    const formatted = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/&lt;u&gt;(.*?)&lt;\/u&gt;/gi, '<u>$1</u>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-medium">$1</a>');
+
+    return (
+        <div 
+            className="text-xs text-slate-700 font-normal leading-relaxed whitespace-pre-line"
+            dangerouslySetInnerHTML={{ __html: formatted }}
+        />
+    );
+};
+
 const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposalTitle, resetViewSignal }) => {
     const [proposals, setProposals] = useState<Proposal[]>([]);
     const [allKols, setAllKols] = useState<KolData[]>([]);
@@ -125,7 +145,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     // Proposal Status Tags persisted in localStorage
     const [proposalTags, setProposalTags] = useState<string[]>(() => {
         try {
-            const saved = localStorage.getItem('tp_proposal_status_tags');
+            const saved = localStorage.getItem('tp_proposal_status_tags_v2');
             if (saved) {
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -139,7 +159,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     const updateProposalTagsState = (newTags: string[]) => {
         setProposalTags(newTags);
         try {
-            localStorage.setItem('tp_proposal_status_tags', JSON.stringify(newTags));
+            localStorage.setItem('tp_proposal_status_tags_v2', JSON.stringify(newTags));
         } catch (e) {}
     };
 
@@ -228,7 +248,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             // Sync db statuses into proposalTags if not explicitly saved
             const dbStatuses = rawProps.map(p => p.status).filter(Boolean) as string[];
             setProposalTags(prev => {
-                const saved = localStorage.getItem('tp_proposal_status_tags');
+                const saved = localStorage.getItem('tp_proposal_status_tags_v2');
                 if (saved) {
                     try {
                         const parsed = JSON.parse(saved);
@@ -237,7 +257,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 }
                 const merged = Array.from(new Set([...prev, ...dbStatuses]));
                 try {
-                    localStorage.setItem('tp_proposal_status_tags', JSON.stringify(merged));
+                    localStorage.setItem('tp_proposal_status_tags_v2', JSON.stringify(merged));
                 } catch (e) {}
                 return merged;
             });
@@ -932,7 +952,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                         className={`px-3 py-1 rounded-full text-xs border transition-transform hover:scale-105 inline-block shadow-2xs ${getProposalTagStyle(p.status)}`}
                                                         title="Click to update status tag"
                                                     >
-                                                        <span>{p.status || 'Need to check'}</span>
+                                                        <span>{p.status || 'Active'}</span>
                                                     </button>
                                                 </td>
 

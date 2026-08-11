@@ -35,9 +35,8 @@ interface CollaborationRow {
 
 const DEFAULT_PROGRESS_TAGS = [
     'All done',
-    'Awaiting Content',
-    'Need to check',
-    'In Progress'
+    'In Progress',
+    'Not started'
 ];
 
 const COLOR_PALETTES = [
@@ -57,6 +56,8 @@ const getProgressTagStyle = (status?: string | null) => {
     if (!status) return 'bg-slate-100 text-slate-700 border-slate-200 font-normal';
     const s = status.trim().toLowerCase();
     if (s === 'all done') return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold';
+    if (s === 'in progress') return 'bg-blue-100 text-blue-800 border-blue-300 font-semibold';
+    if (s === 'not started') return 'bg-slate-100 text-slate-700 border-slate-300 font-medium';
     if (s === 'pending/canceled' || s === 'canceled' || s === 'cancelled') return 'bg-rose-100 text-rose-800 border-rose-300 font-semibold';
     if (s.includes('1st payment') || s.includes('2nd payment')) return 'bg-amber-100 text-amber-800 border-amber-300 font-semibold';
     if (s.includes('awaiting content') || s.includes('third content')) return 'bg-purple-100 text-purple-800 border-purple-300 font-semibold';
@@ -255,7 +256,7 @@ const InfluencerProgress: React.FC = () => {
     // Custom Tag Options list persisted in localStorage
     const [tagOptions, setTagOptions] = useState<string[]>(() => {
         try {
-            const saved = localStorage.getItem('tp_custom_progress_tags');
+            const saved = localStorage.getItem('tp_custom_progress_tags_v2');
             if (saved) {
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -269,7 +270,7 @@ const InfluencerProgress: React.FC = () => {
     const updateTagOptionsState = (newTags: string[]) => {
         setTagOptions(newTags);
         try {
-            localStorage.setItem('tp_custom_progress_tags', JSON.stringify(newTags));
+            localStorage.setItem('tp_custom_progress_tags_v2', JSON.stringify(newTags));
         } catch (e) {
             console.error('Failed to save tagOptions to localStorage:', e);
         }
@@ -391,10 +392,10 @@ const InfluencerProgress: React.FC = () => {
                 const recordedCount = matchedVids.length;
                 const contentPercent = Math.min(100, Math.round((recordedCount / agreedCount) * 100));
 
-                let systemStatus = 'Awaiting Content';
+                let systemStatus = 'Not started';
                 if (paymentPercent === 100 && contentPercent === 100) {
                     systemStatus = 'All done';
-                } else if (paymentPercent > 0 || contentPercent > 0) {
+                } else if (paymentPercent > 0 || contentPercent > 0 || recordedCount > 0 || actualSpent > 0) {
                     systemStatus = 'In Progress';
                 }
 
