@@ -6,7 +6,7 @@ import DiscussionSidebar from './DiscussionSidebar';
 import { fetchYouTubeChannelDetails } from '../services/youtubeService';
 import { 
     Plus, Search, Edit2, Trash2, X, Calendar, DollarSign, Filter, ArrowUpDown, Check, 
-    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight, MessageCircle, RefreshCw, RotateCcw
+    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight, MessageCircle, RefreshCw, RotateCcw, Link as LinkIcon
 } from 'lucide-react';
 
 interface ProposalKol {
@@ -133,6 +133,19 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     // Active View state: 'list' (Main Table) or 'workspace' (Detailed Creators Workspace)
     const [activeView, setActiveView] = useState<'list' | 'workspace'>('list');
     const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+
+    const [copiedLink, setCopiedLink] = useState(false);
+
+    const handleCopyShareableLink = () => {
+        try {
+            const currentUrl = window.location.href;
+            navigator.clipboard.writeText(currentUrl);
+            setCopiedLink(true);
+            setTimeout(() => setCopiedLink(false), 2500);
+        } catch (e) {
+            console.error('Failed to copy link', e);
+        }
+    };
 
     // Handle breadcrumb back-navigation to list view
     useEffect(() => {
@@ -1032,6 +1045,25 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                 <span className={`px-3 py-0.5 rounded-full text-xs border ${getProposalTagStyle(selectedProposal.status)}`}>
                                     {selectedProposal.status}
                                 </span>
+
+                                {/* Shareable Link Button */}
+                                <button
+                                    onClick={handleCopyShareableLink}
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-[#bfdbfe]/60 bg-white text-slate-700 hover:bg-emerald-50/60 hover:border-[var(--accent-color)]/50 transition-all shadow-2xs group ml-2"
+                                    title="Copy shareable URL link for internal team members"
+                                >
+                                    {copiedLink ? (
+                                        <>
+                                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                            <span className="text-emerald-700 font-bold">Link Copied!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <LinkIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-[var(--accent-color)] transition-colors shrink-0" />
+                                            <span>Share this proposal</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>

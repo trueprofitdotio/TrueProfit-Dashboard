@@ -133,7 +133,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     const handleGoogleLogin = async () => {
         setAuthError(null);
         try {
-            const redirectUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : undefined;
+            const redirectUrl = typeof window !== 'undefined' ? window.location.href : undefined;
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {

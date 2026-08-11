@@ -100,7 +100,7 @@ const InfluencerWorkspace: React.FC = () => {
 
     return (
         <div className="space-y-4 font-sans">
-            {/* Interactive Breadcrumb Path & Shareable Link Button Showcase */}
+            {/* Interactive Breadcrumb Path */}
             <div className="flex items-center justify-between px-1 select-none flex-wrap gap-2">
                 <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
                     <button 
@@ -131,25 +131,6 @@ const InfluencerWorkspace: React.FC = () => {
                         </>
                     )}
                 </div>
-
-                {/* Shareable Link Button */}
-                <button
-                    onClick={handleCopyShareableLink}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-[#bfdbfe]/60 bg-white text-slate-700 hover:bg-emerald-50/60 hover:border-[var(--accent-color)]/50 transition-all shadow-2xs group"
-                    title="Copy shareable URL link for internal team members"
-                >
-                    {copiedLink ? (
-                        <>
-                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span className="text-emerald-700 font-bold">Link Copied!</span>
-                        </>
-                    ) : (
-                        <>
-                            <LinkIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-[var(--accent-color)] transition-colors shrink-0" />
-                            <span>Share Dashboard Link</span>
-                        </>
-                    )}
-                </button>
             </div>
 
             {/* Subtabs Selection Header */}
