@@ -356,10 +356,10 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="fixed top-0 right-0 h-screen w-[450px] max-w-[90vw] bg-white shadow-2xl z-[999999] flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-300 font-sans pointer-events-auto">
+        <div className="discussion-sidebar fixed top-0 right-0 h-screen w-[450px] max-w-[90vw] bg-white z-[999999] flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-200 font-sans pointer-events-auto">
             
             {/* Header */}
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90">
+            <div className="discussion-sidebar-header px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <div className="flex flex-col">
                     <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                         <span>Deal Discussion</span>
@@ -392,7 +392,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                 </div>
             ) : !user ? (
-                <div className="flex-1 p-6 flex flex-col items-center justify-center text-center space-y-4 bg-slate-50/50">
+                <div className="discussion-auth flex-1 p-6 flex flex-col items-center justify-center text-center space-y-4">
                     <div className="w-14 h-14 bg-emerald-100 text-[var(--accent-color)] rounded-full flex items-center justify-center shadow-xs">
                         <LogIn className="w-7 h-7" />
                     </div>
@@ -429,7 +429,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                 onClick={handleDevLogin}
                                 className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-[var(--accent-color)] font-semibold text-xs rounded-xl transition-all border border-emerald-200 flex items-center justify-center gap-1.5"
                             >
-                                <span>🛠️ Dev Test Sign-In (test.team@firegroup.io)</span>
+                                <span>Dev test sign-in</span>
                             </button>
                         )}
                     </div>
@@ -437,7 +437,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
             ) : (
                 <>
                     {/* Messages Feed */}
-                    <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50">
+                    <div className="discussion-message-feed flex-1 overflow-y-auto p-5 space-y-4">
                         {loading ? (
                             <div className="flex justify-center items-center h-full">
                                 <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
@@ -465,10 +465,10 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                 </div>
                                             ) : (
                                                 <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} mb-3`}>
-                                                    <div className={`max-w-[88%] rounded-2xl px-4 py-2.5 shadow-xs text-sm ${
+                                                    <div className={`max-w-[88%] rounded-lg px-4 py-2.5 shadow-xs text-sm ${
                                                         isUser 
                                                             ? 'bg-[var(--accent-color)] text-white rounded-tr-xs' 
-                                                            : 'bg-white border border-emerald-200 text-slate-800 rounded-tl-xs shadow-sm'
+                                                            : 'bg-white border border-slate-200 text-slate-800 rounded-tl-xs shadow-sm'
                                                     }`}>
                                                         {isUser && (
                                                             <div className="flex items-center justify-end gap-1 mb-1 text-[10px] font-bold text-emerald-100 uppercase tracking-wider opacity-80">
@@ -498,7 +498,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                                         className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
                                                                     >
                                                                         <Check className="w-3.5 h-3.5" />
-                                                                        <span>✨ Suggested Action: Approve deal</span>
+                                                                        <span>Suggested action: Approve deal</span>
                                                                     </button>
                                                                 )}
                                                                 {intent === 'Rejected' && (
@@ -507,7 +507,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                                         className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
                                                                     >
                                                                         <X className="w-3.5 h-3.5" />
-                                                                        <span>✨ Suggested Action: Reject deal</span>
+                                                                        <span>Suggested action: Reject deal</span>
                                                                     </button>
                                                                 )}
                                                                 {intent === 'Re-negotiate' && (
@@ -516,7 +516,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                                         className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
                                                                     >
                                                                         <RefreshCw className="w-3.5 h-3.5" />
-                                                                        <span>✨ Suggested Action: Re-negotiate deal</span>
+                                                                        <span>Suggested action: Re-negotiate deal</span>
                                                                     </button>
                                                                 )}
                                                             </div>
@@ -532,7 +532,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                         </div>
 
                         {/* Chat Input & Action Bar */}
-                        <div className="p-4 border-t border-slate-100 bg-white">
+                        <div className="discussion-composer p-4 border-t border-slate-100">
                             <div className="flex items-end gap-2">
                                 <textarea
                                     value={newMessage}
@@ -544,7 +544,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                         }
                                     }}
                                     placeholder="Type a note or message..."
-                                    className="w-full max-h-32 min-h-[44px] bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--accent-color)] resize-none"
+                                    className="w-full max-h-32 min-h-[44px] bg-white border border-slate-200 rounded-md px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--accent-color)] resize-none"
                                     rows={1}
                                 />
                                 <button

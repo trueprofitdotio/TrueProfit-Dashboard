@@ -7,34 +7,12 @@
     <title>TrueProfit Affiliate Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts-liquidfill@3.1.0/dist/echarts-liquidfill.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-      :root {
-        --accent-color: #23C48C;
-        --header-blue: #2236ba;
-        --shadow-color: rgba(100, 116, 139, 0.1);
-        --border-color-light: #f1f5f9; /* slate-100 */
-      }
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #F8F9FA;
-      }
-      .card {
-         background-color: white;
-         border: 1px solid rgba(191, 219, 254, 0.5);
-         border-radius: 0.5rem;
-      }
-      .primary-btn {
-        transition: background-color 0.2s ease-out;
-      }
-      /* Eliminate browser-default focus outlines globally (e.g. for canvas, focused divs, etc. to prevent black border flash) */
-      *:focus, input:focus, select:focus, button:focus, canvas:focus, div:focus {
-        outline: none !important;
-        box-shadow: none !important;
-      }
+      :root { color-scheme: light; }
       .marquee-container {
         overflow: hidden;
         white-space: nowrap;
@@ -54,20 +32,6 @@
         100% { transform: translateX(-100%); }
       }
 
-      /* Premium smooth transition animation for active tab content */
-      @keyframes fadeInSlideUp {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      .tab-content-active {
-        animation: fadeInSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
     </style>
   <script type="importmap">
 {
@@ -81,6 +45,7 @@
 <link rel="stylesheet" href="/index.css">
 </head>
   <body>
+  <!-- THESIS: A quiet operating sheet for affiliate work, refusing card-heavy dashboard chrome. OWN-WORLD: Open off-white canvas, charcoal type, one restrained green signal, and hairline control affordances. STORY: Teams scan, compare, and manage performance without decorative interruption. FIRST VIEWPORT: Product name and three text-led workspace routes frame the active operational view. FORM: Whitespace-led operating canvas, seed 26caffd8. FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md. -->
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   <!-- impeccable-live-start -->

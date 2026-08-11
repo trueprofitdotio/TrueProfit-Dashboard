@@ -1,1 +1,258 @@
 @import "tailwindcss";
+
+:root {
+  --accent-color: #176b5e;
+  --header-blue: #1c2826;
+  --tp-canvas: #fbfbf8;
+  --tp-surface: #ffffff;
+  --tp-ink: #1c2826;
+  --tp-muted: #687572;
+  --tp-rule: #e5eae7;
+  --tp-hover: #f1f5f3;
+}
+
+* { box-shadow: none !important; }
+
+html { min-width: 320px; background: var(--tp-canvas); }
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: var(--tp-canvas);
+  color: var(--tp-ink);
+  font-family: Manrope, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea { font: inherit; }
+
+button, a, input, select, textarea {
+  transition: color 160ms cubic-bezier(0.16, 1, 0.3, 1), background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), border-color 160ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms cubic-bezier(0.16, 1, 0.3, 1), transform 160ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+:focus-visible { outline: 2px solid var(--accent-color) !important; outline-offset: 3px; }
+
+[class*="backdrop-blur"] { backdrop-filter: none !important; }
+
+.app-shell { min-height: 100vh; overflow-x: clip; }
+
+.app-frame { width: min(100% - 40px, 1560px); margin: 0 auto; padding: 28px 0 64px; }
+
+.app-header { display: flex; justify-content: center; padding: 16px 0 34px; text-align: center; }
+.app-header-brand { max-width: min(100%, 42rem); }
+.app-header h1 { margin: 0; color: var(--tp-ink); font-size: 30px; font-weight: 700; letter-spacing: 0; line-height: 1.15; }
+.app-header p { margin: 8px 0 0; color: var(--tp-muted); font-size: 14px; font-weight: 500; }
+
+.app-navigation { margin-bottom: 44px; }
+.app-navigation-list, .workspace-tabs { display: flex; align-items: center; gap: 24px; width: fit-content; }
+
+.app-navigation-item, .workspace-tab {
+  position: relative;
+  padding: 0 0 7px;
+  color: var(--tp-muted);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.app-navigation-item:hover, .workspace-tab:hover { color: var(--tp-ink); }
+
+.app-navigation-item::after, .workspace-tab::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: transparent;
+  content: "";
+  transform: scaleX(0.4);
+  transform-origin: center;
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), background-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-navigation-item.is-active, .workspace-tab.is-active { color: var(--tp-ink); }
+.app-navigation-item.is-active::after, .workspace-tab.is-active::after { background: var(--accent-color); transform: scaleX(1); }
+.app-navigation-item:focus-visible, .workspace-tab:focus-visible { outline: 0 !important; }
+.app-navigation-item:focus-visible::after, .workspace-tab:focus-visible::after { background: var(--accent-color); transform: scaleX(1); }
+
+.workspace-page { animation: workspace-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.workspace-context { display: flex; align-items: center; min-height: 20px; margin-bottom: 24px; }
+.workspace-crumbs { display: flex; align-items: center; gap: 8px; color: var(--tp-muted); font-size: 13px; font-weight: 500; }
+.workspace-root-link:hover, .workspace-current-link:hover { color: var(--accent-color); }
+.workspace-current-link.is-current, .workspace-current-title { color: var(--tp-ink); font-weight: 650; }
+.workspace-current-title { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-slash { color: #a1adaa; }
+.workspace-tabs { margin-bottom: 36px; }
+.workspace-view { animation: workspace-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.workspace-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+
+.workspace-heading h2, .workspace-page h2 {
+  color: var(--tp-ink) !important;
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+.workspace-page h3 { color: var(--tp-ink) !important; font-weight: 650 !important; letter-spacing: 0 !important; }
+
+/* Sections stay open. Whitespace and type do the work that cards once did. */
+main .card,
+main .kpi-gauge,
+main [class*="bg-white"][class*="rounded"]:not([class*="absolute"]):not([class*="fixed"]),
+main [class*="bg-[#F8F9FA]"][class*="rounded"]:not([class*="absolute"]):not([class*="fixed"]) {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+main .card, main .kpi-gauge { padding-right: 0 !important; padding-left: 0 !important; }
+.kpi-gauge { min-width: 0; }
+
+main [class*="overflow-x-auto"] { border: 0 !important; border-radius: 0 !important; background: transparent !important; }
+main table { width: 100%; border-collapse: separate !important; border-spacing: 0 5px; }
+main table thead, main table thead tr, main table tbody, main table tbody tr, main table tbody td, main table tbody th { border: 0 !important; background: transparent !important; }
+main table thead th { padding-top: 0.4rem !important; padding-bottom: 0.6rem !important; color: var(--tp-muted) !important; font-size: 11px !important; font-weight: 650 !important; letter-spacing: 0 !important; text-transform: none !important; }
+main table tbody td { padding-top: 0.9rem !important; padding-bottom: 0.9rem !important; }
+main table tbody tr:hover > td { background: var(--tp-hover) !important; }
+
+main input:not([type="checkbox"]):not([type="radio"]), main select, main textarea {
+  border: 1px solid var(--tp-rule) !important;
+  border-radius: 5px !important;
+  background: var(--tp-surface) !important;
+  color: var(--tp-ink) !important;
+  box-shadow: none !important;
+}
+
+main input::placeholder, main textarea::placeholder { color: #72807c !important; opacity: 1; }
+main input:not([type="checkbox"]):not([type="radio"]):focus, main select:focus, main textarea:focus { border-color: var(--accent-color) !important; }
+main button[class*="rounded-full"], main button[class*="rounded-xl"], main button[class*="rounded-2xl"] { border-radius: 5px !important; }
+
+main button[class*="bg-white"][class*="rounded"] {
+  border: 0 !important;
+  border-bottom: 1px solid var(--tp-rule) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+main button[class*="bg-white"][class*="rounded"]:hover {
+  border-bottom-color: var(--accent-color) !important;
+}
+
+/* Filters keep an explicit affordance without turning the page into a card layout. */
+main .affiliate-filters .relative > button.filter-control[aria-expanded],
+main .influencer-filters .relative > button.filter-control[aria-expanded],
+main .influencer-filters .relative > select.filter-select[data-filter-select] {
+  min-height: 44px;
+  border: 1px solid #c9d4cf !important;
+  border-radius: 6px !important;
+  background: var(--tp-surface) !important;
+  padding-right: 14px !important;
+  padding-left: 14px !important;
+}
+
+main .affiliate-filters .relative > button.filter-control[aria-expanded]:hover,
+main .affiliate-filters .relative > button.filter-control[aria-expanded="true"],
+main .influencer-filters .relative > button.filter-control[aria-expanded]:hover,
+main .influencer-filters .relative > button.filter-control[aria-expanded="true"],
+main .influencer-filters .relative > select.filter-select[data-filter-select]:hover,
+main .influencer-filters .relative > select.filter-select[data-filter-select]:focus {
+  border-color: #b9c8c2 !important;
+}
+
+main .affiliate-filters .relative > button.filter-control[aria-expanded="true"],
+main .influencer-filters .relative > button.filter-control[aria-expanded="true"],
+main .influencer-filters .relative > select.filter-select[data-filter-select]:focus {
+  border-color: var(--accent-color) !important;
+}
+
+main .affiliate-filters .filter-menu,
+main .influencer-filters .filter-menu {
+  z-index: 40;
+  margin-top: 6px;
+  border: 1px solid #c9d4cf !important;
+  border-radius: 8px !important;
+  background: var(--tp-surface) !important;
+  box-shadow: none !important;
+}
+
+main .affiliate-filters .filter-menu input,
+main .influencer-filters .filter-menu input {
+  border-radius: 5px !important;
+}
+
+main button[class*="bg-[var(--accent-color)]"], main .primary-btn, main button[class*="bg-slate-900"] {
+  border: 0 !important;
+  background: var(--tp-ink) !important;
+  color: #ffffff !important;
+}
+
+main button[class*="bg-[var(--accent-color)]"]:hover, main .primary-btn:hover, main button[class*="bg-slate-900"]:hover { background: #2b3b38 !important; transform: translateY(-1px); }
+main [class*="absolute"][class*="bg-white"], main [class*="fixed"][class*="bg-white"] { border: 1px solid var(--tp-rule) !important; border-radius: 6px !important; box-shadow: none !important; }
+main [class*="border-dashed"] { border: 0 !important; }
+
+/* Portaled menus and dialogs sit outside <main>; give them the same quiet functional surface. */
+.app-popover,
+body > div[style*="position: fixed"][class*="bg-white"],
+body > div[class*="fixed"][class*="bg-white"],
+body > div[class*="fixed"] > [class*="bg-white"] {
+  border: 1px solid var(--tp-rule) !important;
+  border-radius: 8px !important;
+  background: var(--tp-surface) !important;
+  box-shadow: none !important;
+}
+
+.app-dialog { border-radius: 8px !important; }
+
+.trendline-sidebar,
+.discussion-sidebar {
+  border-color: var(--tp-rule) !important;
+  border-radius: 0 !important;
+  background: var(--tp-surface) !important;
+  box-shadow: none !important;
+}
+
+body > div.trendline-sidebar,
+body > div.discussion-sidebar { border-radius: 0 !important; }
+
+.trendline-sidebar-header,
+.discussion-sidebar-header,
+.trendline-growth-row,
+.discussion-auth,
+.discussion-message-feed,
+.discussion-composer {
+  background: transparent !important;
+}
+
+.trendline-sidebar-header { border-bottom: 1px solid var(--tp-rule); }
+.discussion-message-feed { background: #f7f9f8 !important; }
+.discussion-composer { border-top-color: var(--tp-rule) !important; }
+.trendline-backdrop { backdrop-filter: none !important; }
+
+.influencer-performance .space-y-8, .influencer-performance .space-y-12, .influencer-progress, .influencer-proposal, .kpi-runrate { row-gap: 2.5rem; }
+.influencer-performance [class*="bg-emerald-50"], .influencer-performance [class*="bg-slate-50"] { background: transparent !important; }
+.influencer-performance [class*="border-l"] { box-shadow: none !important; }
+body > div[style] [class*="fixed"][class*="right-0"] { border-left: 1px solid var(--tp-rule) !important; background: var(--tp-surface) !important; box-shadow: none !important; }
+.tab-content-active { animation: workspace-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both !important; }
+
+@keyframes workspace-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 700px) {
+  .app-frame { width: min(100% - 28px, 1560px); padding-top: 20px; }
+  .app-header { padding-bottom: 28px; }
+  .app-header h1 { font-size: 24px; }
+  .app-header p { font-size: 13px; }
+  .app-navigation { margin-bottom: 32px; }
+  .app-navigation-list, .workspace-tabs { gap: 18px; max-width: 100%; overflow-x: auto; }
+  .workspace-context { margin-bottom: 20px; }
+  .workspace-tabs { margin-bottom: 28px; }
+  .workspace-heading { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .workspace-page h2, .workspace-heading h2 { font-size: 21px !important; }
+  main table { border-spacing: 0 3px; }
+  main table tbody td { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
+}

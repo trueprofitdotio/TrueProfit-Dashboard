@@ -96,7 +96,7 @@ const KpiGauge: React.FC<KpiGaugeProps> = ({ title, progress, predicted, kpi, ac
     }, [progress, isSmall]);
 
     return (
-        <div className="card p-6 text-center relative">
+        <div className="kpi-gauge p-6 text-center relative">
             <div className={`font-semibold text-slate-800 ${isSmall ? 'text-base' : 'text-lg'}`}>{title}</div>
             <div ref={chartRef} className="relative mx-auto" style={{ width: '100%', height: isSmall ? '150px' : '250px' }}></div>
             <div className="text-slate-500 text-sm mt-2 space-y-1">
@@ -163,8 +163,8 @@ const KpiRunrate: React.FC<KpiRunrateProps> = ({ loading, error, data, onSave })
     const viewcountPredicted = timePassedPercent > 0.001 ? (viewcountProgress / timePassedPercent) * 100 : 0;
 
     return (
-        <div className="space-y-8">
-            <div className="flex justify-between items-center">
+        <div className="workspace-page kpi-runrate">
+            <div className="workspace-heading">
                 <h2 className="text-2xl font-bold text-slate-800">Q{quarter} {year} KPI Runrate</h2>
                 <button onClick={() => setIsModalOpen(true)} className="px-6 py-2 bg-[var(--accent-color)] text-white rounded-full hover:bg-[#1ea072] transition-all duration-200 text-sm font-semibold">Setup KPIs</button>
             </div>

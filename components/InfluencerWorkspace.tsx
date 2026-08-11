@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import InfluencerPerformance from './InfluencerPerformance';
 import InfluencerProgress from './InfluencerProgress';
 import InfluencerProposal from './InfluencerProposal';
-import { ChevronRight, Home, Link as LinkIcon, Check } from 'lucide-react';
 
 type SubTab = 'dashboard' | 'progress' | 'proposal';
 
@@ -99,24 +98,20 @@ const InfluencerWorkspace: React.FC = () => {
     };
 
     return (
-        <div className="space-y-4 font-sans">
-            {/* Interactive Breadcrumb Path */}
-            <div className="flex items-center justify-between px-1 select-none flex-wrap gap-2">
-                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+        <div className="workspace-page influencer-workspace">
+            <div className="workspace-context select-none">
+                <div className="workspace-crumbs">
                     <button 
                         onClick={() => handleSelectTab('dashboard')} 
-                        className="hover:text-[var(--accent-color)] hover:underline transition-colors flex items-center gap-1"
+                        className="workspace-root-link"
                     >
-                        <Home className="w-3.5 h-3.5 text-slate-400" />
                         <span>Influencer</span>
                     </button>
-
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-
+                    <span className="workspace-slash">/</span>
                     <button 
                         onClick={handleProposalBreadcrumbClick} 
-                        className={`hover:text-[var(--accent-color)] transition-colors capitalize ${
-                            !selectedProposalTitle ? 'font-semibold text-slate-900' : 'hover:underline'
+                        className={`workspace-current-link ${
+                            !selectedProposalTitle ? 'is-current' : ''
                         }`}
                     >
                         {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'progress' ? 'Progress' : 'Proposal'}
@@ -124,8 +119,8 @@ const InfluencerWorkspace: React.FC = () => {
 
                     {activeTab === 'proposal' && selectedProposalTitle && (
                         <>
-                            <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span className="font-semibold text-slate-900 truncate max-w-[200px]">
+                            <span className="workspace-slash">/</span>
+                            <span className="workspace-current-title">
                                 {selectedProposalTitle}
                             </span>
                         </>
@@ -133,27 +128,23 @@ const InfluencerWorkspace: React.FC = () => {
                 </div>
             </div>
 
-            {/* Subtabs Selection Header */}
-            <div className="flex border-b border-[#bfdbfe]/50 mb-6 w-fit mx-auto">
+            <div className="workspace-tabs" role="tablist" aria-label="Influencer views">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => handleSelectTab(tab.id)}
-                        className={`px-6 py-3 font-semibold text-sm transition-all relative ${
+                        className={`workspace-tab ${
                             activeTab === tab.id
-                                ? 'text-[var(--accent-color)]'
-                                : 'text-slate-500 hover:text-slate-800'
+                                ? 'is-active'
+                                : ''
                         }`}
                     >
                         {tab.label}
-                        {activeTab === tab.id && (
-                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--accent-color)]" />
-                        )}
                     </button>
                 ))}
             </div>
             
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="workspace-view">
                 {renderContent()}
             </div>
         </div>

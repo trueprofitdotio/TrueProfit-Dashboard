@@ -848,7 +848,7 @@ const InfluencerProgress: React.FC = () => {
     const selectedExistingKol = allKols.find(k => k.id === newKolId);
 
     return (
-        <div className="card p-6 space-y-6">
+        <div className="workspace-page influencer-progress">
             {/* Top Toolbar (Search, Filter & Add Deal) */}
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">

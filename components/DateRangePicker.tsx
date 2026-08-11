@@ -155,13 +155,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, onChange, onPr
 
     return (
         <div className="relative w-full" ref={containerRef}>
-            <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5">
+            <button type="button" onClick={() => setIsOpen(!isOpen)} aria-expanded={isOpen} className="filter-control w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5">
                 <span className="text-slate-800">{formattedRange}</span>
                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             </button>
 
             {isOpen && (
-                <div className="absolute z-20 mt-1 bg-white border border-[#bfdbfe]/50 p-4 rounded-2xl overflow-hidden" onMouseLeave={() => setHoverDate(null)}>
+                <div className="filter-menu absolute z-20 mt-1 bg-white border border-[#bfdbfe]/50 p-4 rounded-2xl overflow-hidden" onMouseLeave={() => setHoverDate(null)}>
                     <div className="flex">
                         {renderMonth(leftMonthGrid, formatMonthYear(viewDate))}
                         <div className="border-l border-[#bfdbfe]/30 mx-2"></div>

@@ -310,7 +310,7 @@ const Filters: React.FC<FiltersProps> = ({
     const handleRangeChange = (range: { from: Date; to: Date }) => setDateRange({ from: range.from, to: range.to});
 
     return (
-        <div className="card p-6 space-y-6">
+        <div className="influencer-filters card p-6 space-y-6">
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="md:col-span-2 lg:col-span-2">
                     <label className="block text-sm font-medium text-slate-700 mb-1">Time Range</label>
@@ -322,7 +322,8 @@ const Filters: React.FC<FiltersProps> = ({
                         <select
                             value={selectedKolId}
                             onChange={(e) => setSelectedKolId(e.target.value)}
-                            className="w-full h-[42px] px-5 py-2 bg-white border border-[#bfdbfe]/50 rounded-full text-sm font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] transition-all appearance-none"
+                            data-filter-select
+                            className="filter-select w-full h-[42px] px-5 py-2 bg-white border border-[#bfdbfe]/50 rounded-full text-sm font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] transition-all appearance-none"
                         >
                             <option value="">All KOLs</option>
                             {kolsList.map((kol) => (
@@ -664,14 +665,15 @@ const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; is
             const option = {
                 tooltip: { 
                     trigger: 'axis',
-                    backgroundColor: '#0f172a',
-                    borderColor: 'transparent',
-                    borderWidth: 0,
-                    padding: [10, 14],
-                    textStyle: { color: '#f1f5f9', fontSize: 12 },
+                    backgroundColor: '#ffffff',
+                    borderColor: '#e5eae7',
+                    borderWidth: 1,
+                    padding: [10, 12],
+                    textStyle: { color: '#1c2826', fontSize: 12 },
+                    extraCssText: 'border-radius: 6px; box-shadow: none;',
                     formatter: (params: any[]) => {
                         const point = params[0];
-                        return `<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${point.axisValueLabel}</div><div style="font-weight:700;font-size:14px;color:#fff">${formatNumber(point.value)} views</div>`;
+                        return `<div style="font-size:11px;color:#687572;margin-bottom:4px">${point.axisValueLabel}</div><div style="font-weight:700;font-size:14px;color:#1c2826">${formatNumber(point.value)} views</div>`;
                     }
                 },
                 xAxis: { 
@@ -679,13 +681,13 @@ const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; is
                     data: data.points.map(p => formatDisplayDateGmt7(utcInputStringToDate(p.date))),
                     axisLine: { show: false },
                     axisTick: { show: false },
-                    axisLabel: { color: '#94a3b8', fontSize: 10, interval: 'auto' },
+                    axisLabel: { color: '#687572', fontSize: 10, interval: 'auto' },
                     boundaryGap: false,
                 },
                 yAxis: { 
                     type: 'value',
-                    axisLabel: { color: '#94a3b8', fontSize: 10, formatter: (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}` },
-                    splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
+                    axisLabel: { color: '#687572', fontSize: 10, formatter: (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}` },
+                    splitLine: { lineStyle: { color: '#e5eae7', type: 'dashed' } },
                     axisLine: { show: false },
                     axisTick: { show: false },
                 },
@@ -695,14 +697,8 @@ const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; is
                     type: 'line', 
                     smooth: true, 
                     showSymbol: false,
-                    lineStyle: { width: 2.5, color: '#10b981' },
-                    areaStyle: { 
-                        opacity: 0.12,
-                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: '#10b981' },
-                            { offset: 1, color: '#ffffff' }
-                        ])
-                    },
+                    lineStyle: { width: 2.5, color: '#176b5e' },
+                    areaStyle: { color: 'rgba(23, 107, 94, 0.10)' },
                     emphasis: { disabled: true }
                 }],
                 grid: { left: 8, right: 16, bottom: 8, top: 8, containLabel: true },
@@ -1010,10 +1006,10 @@ const InfluencerPerformance: React.FC = () => {
     }, [filteredVideos]);
 
     return (
-        <div className="relative min-h-screen bg-[#F8F9FA]">
+        <div className="workspace-page influencer-performance">
             {/* Main Content Wrapper - Motion is controlled by App.tsx */}
             <div className="w-full">
-                <div className="p-8 space-y-8 max-w-full mx-auto">
+                <div className="space-y-10 max-w-full mx-auto">
                     <Filters 
                         dateRange={dateRange} 
                         setDateRange={setDateRange} 
@@ -1106,18 +1102,18 @@ const InfluencerPerformance: React.FC = () => {
                     {/* Backdrop overlay */}
                     <div
                         onClick={() => setSidebarState(false)}
-                        className={`fixed inset-0 bg-transparent backdrop-blur-[2px] z-[99] transition-opacity duration-500 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                        className={`trendline-backdrop fixed inset-0 bg-slate-900/10 z-[99] transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                     />
 
                     {/* Sidebar panel */}
-                    <div className={`fixed top-0 right-0 h-full w-[520px] bg-white z-[100] flex flex-col border-l border-[#bfdbfe]/50 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                    <div className={`trendline-sidebar fixed top-0 right-0 h-full w-[520px] max-w-full bg-white z-[100] flex flex-col border-l border-[#bfdbfe]/50 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
 
                         {/* ── Header ── */}
-                        <div className="flex-none bg-slate-900 px-6 py-5">
+                        <div className="trendline-sidebar-header flex-none px-6 py-5">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Video Trendline</p>
-                                    <h2 className="text-base font-bold text-white leading-snug line-clamp-2">
+                                    <p className="text-xs font-semibold text-[var(--accent-color)] mb-1">Video trendline</p>
+                                    <h2 className="text-base font-bold text-slate-900 leading-snug line-clamp-2">
                                         {selectedVideo?.title || 'Loading…'}
                                     </h2>
                                     {selectedVideo && (
@@ -1135,7 +1131,7 @@ const InfluencerPerformance: React.FC = () => {
                                 </div>
                                 <button
                                     onClick={() => setSidebarState(false)}
-                                    className="flex-none mt-0.5 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                                    className="flex-none mt-0.5 w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-all"
                                 >
                                     <X size={18} />
                                 </button>
@@ -1144,7 +1140,7 @@ const InfluencerPerformance: React.FC = () => {
 
                         {/* ── View Growth Badge ── */}
                         {selectedVideo && (
-                            <div className="flex-none px-6 py-3 border-b border-[#bfdbfe]/30 bg-slate-50/50 flex items-center justify-between">
+                            <div className="trendline-growth-row flex-none px-6 py-3 border-b border-[#bfdbfe]/30 flex items-center justify-between">
                                 <span className="text-xs text-slate-500 font-medium">View Growth (selected period)</span>
                                 <span className="text-sm font-black text-emerald-600">+{formatNumber(selectedVideo.viewGrowth)}</span>
                             </div>
@@ -1156,7 +1152,7 @@ const InfluencerPerformance: React.FC = () => {
                             {/* Chart section */}
                             <div className="px-6 pt-5 pb-2">
                                 <div className="flex items-center justify-between mb-3">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">View Count Over Time</p>
+                                    <p className="text-xs font-semibold text-slate-600">View count over time</p>
                                 </div>
 
                                 {isTrendlineLoading ? (

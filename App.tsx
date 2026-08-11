@@ -12,11 +12,11 @@ type Tab = 'affiliate' | 'conversion' | 'influencer' | 'kpi';
 // --- App Component ---
 
 const Header: React.FC = () => (
-  <header className="text-center py-10">
-    <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest block mb-2">Internal Workspace</span>
-    <h1 className="text-4xl font-extrabold text-[#05339C] tracking-tight">
-      TrueProfit Affiliate Dashboard
-    </h1>
+  <header className="app-header">
+    <div className="app-header-brand">
+      <h1>TrueProfit Dashboard</h1>
+      <p>Affiliate &amp; Influencer Channels</p>
+    </div>
   </header>
 );
 
@@ -28,18 +28,18 @@ const Tabs: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ 
     ];
 
   return (
-    <nav className="mb-12">
-      <div className="flex justify-center gap-3">
+    <nav className="app-navigation" aria-label="Workspace sections">
+      <div className="app-navigation-list">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => !tab.disabled && setActiveTab(tab.id)}
             disabled={tab.disabled}
-            className={`px-6 py-2 text-sm font-semibold transition-all duration-200 rounded-full focus:outline-none border
+            className={`app-navigation-item
               ${
                 activeTab === tab.id
-                  ? 'bg-[#e8f8f2] text-[#10714F] border-[#23C48C]/40'
-                  : 'bg-white text-slate-500 border-[#bfdbfe]/50 hover:text-slate-800 hover:bg-slate-50'
+                  ? 'is-active'
+                  : ''
               }
               ${tab.disabled ? 'cursor-not-allowed opacity-50' : ''}
             `}
@@ -230,8 +230,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-slate-800 overflow-x-hidden">
-      <div className="max-w-[1800px] mx-auto px-4 md:px-8 lg:px-12">
+    <div className="app-shell">
+      <div className="app-frame">
         <Header />
         <Tabs activeTab={activeTab} setActiveTab={handleSetActiveTab} />
         <main key={activeTab} className="tab-content-active">{renderContent()}</main>

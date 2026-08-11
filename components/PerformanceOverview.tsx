@@ -43,13 +43,13 @@ const ChangeIndicator: React.FC<{ value: number }> = ({ value }) => {
 const CustomSelect: React.FC<{ options: {value: string, label: string}[], value: string, onChange: (value: string) => void }> = ({ options, value, onChange }) => {
     const [isOpen, setIsOpen] = useState(false); const dropdownRef = useRef<HTMLDivElement>(null); const selectedLabel = options.find(o => o.value === value)?.label;
     useEffect(() => { const handleClickOutside = (event: MouseEvent) => { if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false); }; document.addEventListener('mousedown', handleClickOutside); return () => document.removeEventListener('mousedown', handleClickOutside); }, []);
-    return ( <div className="relative" ref={dropdownRef}> <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"> <span className="text-slate-800">{selectedLabel}</span> <svg className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg> </button> {isOpen && ( <ul className="absolute z-10 mt-1 w-full bg-white max-h-60 overflow-auto border border-[#bfdbfe]/50 rounded-2xl overflow-hidden">{options.map(option => <li key={option.value} onClick={() => { onChange(option.value); setIsOpen(false); }} className={`px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 cursor-pointer ${value === option.value ? 'bg-emerald-50' : ''}`}>{option.label}</li>)}</ul>)} </div> );
+    return ( <div className="relative" ref={dropdownRef}> <button type="button" onClick={() => setIsOpen(!isOpen)} aria-expanded={isOpen} className="filter-control w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"> <span className="text-slate-800">{selectedLabel}</span> <svg className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg> </button> {isOpen && ( <ul className="filter-menu absolute z-10 mt-1 w-full bg-white max-h-60 overflow-auto border border-[#bfdbfe]/50 rounded-2xl overflow-hidden">{options.map(option => <li key={option.value} onClick={() => { onChange(option.value); setIsOpen(false); }} className={`px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 cursor-pointer ${value === option.value ? 'bg-emerald-50' : ''}`}>{option.label}</li>)}</ul>)} </div> );
 };
 
 const AffiliateMultiSelect: React.FC<{ options: Affiliate[], selectedAccountIds: string[], onChange: (selected: string[]) => void }> = ({ options, selectedAccountIds, onChange }) => {
     const [isOpen, setIsOpen] = useState(false); const [searchTerm, setSearchTerm] = useState(''); const dropdownRef = useRef<HTMLDivElement>(null); const filteredOptions = useMemo(() => options.filter(o => o.name.toLowerCase().includes(searchTerm.toLowerCase())), [options, searchTerm]); const toggleOption = (accountId: string) => onChange(selectedAccountIds.includes(accountId) ? selectedAccountIds.filter(id => id !== accountId) : [...selectedAccountIds, accountId]);
     useEffect(() => { const handleClickOutside = (event: MouseEvent) => { if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false); }; document.addEventListener('mousedown', handleClickOutside); return () => document.removeEventListener('mousedown', handleClickOutside); }, []);
-    return ( <div className="relative" ref={dropdownRef}> <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"> <span className={selectedAccountIds.length > 0 ? 'text-slate-800' : 'text-slate-400'}>{selectedAccountIds.length === 0 ? 'All Affiliates' : selectedAccountIds.length === 1 ? options.find(o => o.accountId === selectedAccountIds[0])?.name : `${selectedAccountIds.length} affiliates selected`}</span> <svg className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg> </button> {isOpen && ( <div className="absolute z-10 mt-1 w-full bg-white rounded-2xl border border-[#bfdbfe]/50 overflow-hidden"><div className="p-2 border-b border-[#bfdbfe]/30"><input type="text" placeholder="Search..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 border border-[#bfdbfe]/50 focus:ring-1 focus:ring-[var(--accent-color)] rounded-full px-4"/></div><ul className="max-h-60 overflow-auto">{filteredOptions.map(option => ( <li key={option.accountId} onClick={() => toggleOption(option.accountId)} className="px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 cursor-pointer flex items-center"><input type="checkbox" readOnly checked={selectedAccountIds.includes(option.accountId)} className="h-4 w-4 text-[var(--accent-color)] border-[#bfdbfe]/80 mr-3 focus:ring-[var(--accent-color)] rounded" />{option.name}</li>))}</ul></div>)} </div> );
+    return ( <div className="relative" ref={dropdownRef}> <button type="button" onClick={() => setIsOpen(!isOpen)} aria-expanded={isOpen} className="filter-control w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"> <span className={selectedAccountIds.length > 0 ? 'text-slate-800' : 'text-slate-400'}>{selectedAccountIds.length === 0 ? 'All Affiliates' : selectedAccountIds.length === 1 ? options.find(o => o.accountId === selectedAccountIds[0])?.name : `${selectedAccountIds.length} affiliates selected`}</span> <svg className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg> </button> {isOpen && ( <div className="filter-menu absolute z-10 mt-1 w-full bg-white rounded-2xl border border-[#bfdbfe]/50 overflow-hidden"><div className="p-2 border-b border-[#bfdbfe]/30"><input type="text" placeholder="Search..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 border border-[#bfdbfe]/50 focus:ring-1 focus:ring-[var(--accent-color)] rounded-full px-4"/></div><ul className="max-h-60 overflow-auto">{filteredOptions.map(option => ( <li key={option.accountId} onClick={() => toggleOption(option.accountId)} className="px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 cursor-pointer flex items-center"><input type="checkbox" readOnly checked={selectedAccountIds.includes(option.accountId)} className="h-4 w-4 text-[var(--accent-color)] border-[#bfdbfe]/80 mr-3 focus:ring-[var(--accent-color)] rounded" />{option.name}</li>))}</ul></div>)} </div> );
 };
 
 // --- FILTERS COMPONENT ---
@@ -88,7 +88,7 @@ const Filters: React.FC<FiltersProps> = ({
 }) => {
     const handlePresetSelect = (preset: string) => setDateRange(getPresetDateRange(preset));
     return ( 
-        <div className="card p-6 space-y-6"> 
+        <div className="affiliate-filters card p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6"> 
                 <div className="col-span-1 md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">Time Range</label><DateRangePicker value={dateRange} onChange={setDateRange} onPresetSelect={handlePresetSelect} /></div> 
                 <div className="col-span-1"><label htmlFor="tier" className="block text-sm font-medium text-slate-700 mb-1">Affiliate Tier</label><CustomSelect options={[{value: 'All', label: 'All'}, {value: 'KOL', label: 'KOL'}, {value: 'NonKOL', label: 'NonKOL'}]} value={tier} onChange={setTier} /></div> 
@@ -560,49 +560,43 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
         if (dailyData.length > 0) {
             const sortedDailyData = [...dailyData].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
             const option = { 
-                tooltip: { trigger: 'axis' }, 
-                legend: { data: ['Signups', 'Clicks', 'Installs', 'Revenue', 'Payouts'], top: 'bottom' }, 
-                grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true }, 
-                xAxis: { type: 'category', boundaryGap: true, data: sortedDailyData.map(d => formatDisplayDateGmt7(d.date)) }, 
-                yAxis: [{ type: 'value', name: 'Count' }, { type: 'value', name: 'Amount ($)', axisLabel: { formatter: '${value}' } }], 
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: '#ffffff',
+                    borderColor: '#e5eae7',
+                    borderWidth: 1,
+                    padding: [10, 12],
+                    textStyle: { color: '#1c2826', fontSize: 12 },
+                    axisPointer: { lineStyle: { color: '#a1adaa', type: 'dashed' } },
+                    extraCssText: 'border-radius: 6px; box-shadow: none;'
+                },
+                legend: { data: ['Signups', 'Clicks', 'Installs', 'Revenue', 'Payouts'], top: 'bottom', itemWidth: 10, itemHeight: 10, textStyle: { color: '#687572', fontSize: 12 } },
+                grid: { left: '2%', right: '3%', bottom: '14%', top: '6%', containLabel: true },
+                xAxis: { type: 'category', boundaryGap: true, data: sortedDailyData.map(d => formatDisplayDateGmt7(d.date)), axisLine: { lineStyle: { color: '#d6dcda' } }, axisTick: { show: false }, axisLabel: { color: '#687572', fontSize: 11 } },
+                yAxis: [{ type: 'value', name: 'Count', nameTextStyle: { color: '#687572', fontSize: 11 }, axisLabel: { color: '#687572', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#e5eae7', type: 'dashed' } } }, { type: 'value', name: 'Amount ($)', nameTextStyle: { color: '#687572', fontSize: 11 }, axisLabel: { formatter: '${value}', color: '#687572', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }],
                 series: [ 
                     { 
                         name: 'Signups', 
                         type: 'line', 
                         smooth: true, 
                         itemStyle: { color: PALETTE.signups }, 
-                        areaStyle: { 
-                            color: {
-                                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                                colorStops: [
-                                    { offset: 0, color: hexToRgba(PALETTE.signups, 1.0) },
-                                    { offset: 1, color: hexToRgba(PALETTE.signups, 0.3) }
-                                ]
-                            }
-                        }, 
+                        lineStyle: { width: 2.5 },
+                        showSymbol: false,
+                        areaStyle: { color: hexToRgba(PALETTE.signups, 0.09) },
                         data: sortedDailyData.map(d => d.signups) 
                     }, 
                     { 
                         name: 'Installs', 
                         type: 'bar', 
                         stack: 'clicks_installs',
-                        itemStyle: { color: PALETTE.installs, borderColor: '#be123c', borderWidth: 1 }, 
+                        itemStyle: { color: PALETTE.installs, borderRadius: [3, 3, 0, 0] },
                         data: sortedDailyData.map(d => d.installs) 
                     }, 
                     { 
                         name: 'Clicks', 
                         type: 'bar', 
                         stack: 'clicks_installs',
-                        itemStyle: { 
-                            color: {
-                                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                                colorStops: [
-                                    { offset: 0, color: hexToRgba(PALETTE.clicks, 1.0) },
-                                    { offset: 1, color: hexToRgba(PALETTE.clicks, 0.6) }
-                                ]
-                            },
-                            borderColor: '#10714f', borderWidth: 1
-                        }, 
+                        itemStyle: { color: PALETTE.clicks, borderRadius: [3, 3, 0, 0] },
                         data: sortedDailyData.map(d => d.clicks) 
                     }, 
                     { 
@@ -611,15 +605,9 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                         smooth: true, 
                         yAxisIndex: 1, 
                         itemStyle: { color: PALETTE.revenue }, 
-                        areaStyle: { 
-                            color: {
-                                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                                colorStops: [
-                                    { offset: 0, color: hexToRgba(PALETTE.revenue, 1.0) },
-                                    { offset: 1, color: hexToRgba(PALETTE.revenue, 0.3) }
-                                ]
-                            }
-                        }, 
+                        lineStyle: { width: 2.5 },
+                        showSymbol: false,
+                        areaStyle: { color: hexToRgba(PALETTE.revenue, 0.07) },
                         data: sortedDailyData.map(d => d.revenue) 
                     }, 
                     { 
@@ -628,15 +616,9 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                         smooth: true, 
                         yAxisIndex: 1, 
                         itemStyle: { color: PALETTE.payouts }, 
-                        areaStyle: { 
-                            color: {
-                                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                                colorStops: [
-                                    { offset: 0, color: hexToRgba(PALETTE.payouts, 1.0) },
-                                    { offset: 1, color: hexToRgba(PALETTE.payouts, 0.3) }
-                                ]
-                            }
-                        }, 
+                        lineStyle: { width: 2.5 },
+                        showSymbol: false,
+                        areaStyle: { color: hexToRgba(PALETTE.payouts, 0.07) },
                         data: sortedDailyData.map(d => d.payouts) 
                     }
                 ] 
@@ -742,12 +724,7 @@ const MerchantsDetailsSection: React.FC<{ metrics: any; vsDateRangeText: string 
 
     return (
         <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-            <h3 className="text-lg font-bold text-slate-800 tracking-tight flex items-center">
-                <svg className="w-5 h-5 mr-2 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                Merchants Details
-            </h3>
+            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Merchants Details</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <MetricBlock 
@@ -817,32 +794,33 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
         const chart = echarts.init(chartRef.current);
         if (top10.length > 0) {
             const option = {
-                title: {
-                    text: 'Top 10 Performing Affiliates',
-                    left: 'center',
-                    textStyle: {
-                        fontSize: 16,
-                        fontWeight: '600',
-                        color: '#1e293b'
-                    }
-                },
                 tooltip: {
                     trigger: 'axis',
+                    backgroundColor: '#ffffff',
+                    borderColor: '#e5eae7',
+                    borderWidth: 1,
+                    padding: [10, 12],
+                    textStyle: { color: '#1c2826', fontSize: 12 },
+                    extraCssText: 'border-radius: 6px; box-shadow: none;',
                     axisPointer: {
                         type: 'cross',
                         crossStyle: {
-                            color: '#94a3b8'
+                            color: '#a1adaa'
                         }
                     }
                 },
                 legend: {
                     data: ['Revenue', 'Clicks', 'Installs'],
-                    top: 'bottom'
+                    top: 0,
+                    itemWidth: 10,
+                    itemHeight: 10,
+                    textStyle: { color: '#687572', fontSize: 12 }
                 },
                 grid: {
                     left: '3%',
                     right: '4%',
-                    bottom: '12%',
+                    top: '14%',
+                    bottom: '10%',
                     containLabel: true
                 },
                 xAxis: [
@@ -855,26 +833,42 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                         axisLabel: {
                             interval: 0,
                             rotate: 15,
+                            color: '#687572',
+                            fontSize: 11,
                             formatter: (value: string) => {
                                 return value.length > 15 ? value.substring(0, 15) + '...' : value;
                             }
-                        }
+                        },
+                        axisLine: { lineStyle: { color: '#d6dcda' } },
+                        axisTick: { show: false }
                     }
                 ],
                 yAxis: [
                     {
                         type: 'value',
                         name: 'Clicks / Installs',
+                        nameTextStyle: { color: '#687572', fontSize: 11 },
                         axisLabel: {
-                            formatter: '{value}'
-                        }
+                            formatter: '{value}',
+                            color: '#687572',
+                            fontSize: 11
+                        },
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                        splitLine: { lineStyle: { color: '#e5eae7', type: 'dashed' } }
                     },
                     {
                         type: 'value',
                         name: 'Revenue',
+                        nameTextStyle: { color: '#687572', fontSize: 11 },
                         axisLabel: {
-                            formatter: '${value}'
-                        }
+                            formatter: '${value}',
+                            color: '#687572',
+                            fontSize: 11
+                        },
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                        splitLine: { show: false }
                     }
                 ],
                 series: [
@@ -882,9 +876,9 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                         name: 'Revenue',
                         type: 'line',
                         smooth: true,
-                        areaStyle: {
-                            opacity: 0.15
-                        },
+                        lineStyle: { width: 2.5 },
+                        showSymbol: false,
+                        areaStyle: { color: hexToRgba(PALETTE.revenue, 0.08) },
                         yAxisIndex: 1,
                         itemStyle: { color: PALETTE.revenue },
                         data: top10.map(d => d.revenue)
@@ -894,11 +888,7 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                         type: 'bar',
                         yAxisIndex: 0,
                         stack: 'clicks_installs',
-                        itemStyle: { 
-                            color: PALETTE.installs,
-                            borderColor: '#be123c',
-                            borderWidth: 1
-                        },
+                        itemStyle: { color: PALETTE.installs, borderRadius: [3, 3, 0, 0] },
                         data: top10.map(d => d.installs)
                     },
                     {
@@ -906,21 +896,7 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                         type: 'bar',
                         yAxisIndex: 0,
                         stack: 'clicks_installs',
-                        itemStyle: {
-                            color: {
-                                type: 'linear',
-                                x: 0,
-                                y: 0,
-                                x2: 0,
-                                y2: 1,
-                                colorStops: [
-                                    { offset: 0, color: hexToRgba(PALETTE.clicks, 1.0) },
-                                    { offset: 1, color: hexToRgba(PALETTE.clicks, 0.6) }
-                                ]
-                            },
-                            borderColor: '#10714f',
-                            borderWidth: 1
-                        },
+                        itemStyle: { color: PALETTE.clicks, borderRadius: [3, 3, 0, 0] },
                         data: top10.map(d => d.clicks)
                     }
                 ]
@@ -942,12 +918,7 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
     return (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h3 className="text-lg font-bold text-slate-800 tracking-tight flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                    Top Performing Affiliates
-                </h3>
+                <h3 className="text-lg font-bold text-slate-800 tracking-tight">Top Performing Affiliates</h3>
                 <div className="flex bg-slate-100 p-1 rounded-full w-fit">
                     {(['clicks', 'installs', 'revenue'] as const).map(metric => (
                         <button

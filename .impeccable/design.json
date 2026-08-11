@@ -1,80 +1,135 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-06-03T07:15:30.000Z",
-  "title": "Design System: TrueProfit Affiliate Dashboard",
+  "generatedAt": "2026-08-11T09:34:04.892Z",
+  "title": "Design System: TrueProfit Operations Workspace",
   "extensions": {
     "colorMeta": {
       "primary": {
         "role": "primary",
-        "displayName": "Vibrant Laurel",
-        "canonical": "oklch(72% 0.17 165)",
-        "tonalRamp": ["#0b3f2d", "#116044", "#18805b", "#1e9f72", "#23c48c", "#56d6a9", "#8be4c6", "#c5f3e4"]
+        "displayName": "Active Green",
+        "canonical": "#176B5E",
+        "tonalRamp": ["#0c3932", "#115046", "#176b5e", "#218274", "#52a797", "#90c7bc", "#c8e2dc", "#eef7f4"]
       },
       "neutral-bg": {
         "role": "neutral",
-        "displayName": "Off-white Linen",
-        "canonical": "oklch(98% 0.003 240)",
-        "tonalRamp": ["#0f1115", "#2a2f3b", "#495064", "#717992", "#a1a8c0", "#cdd1df", "#ebedf3", "#f8f9fa"]
+        "displayName": "Canvas",
+        "canonical": "#FBFBF8",
+        "tonalRamp": ["#1c2826", "#35423f", "#53605d", "#7b8784", "#aab2af", "#d6dcda", "#eef0ee", "#fbfbf8"]
       },
-      "neutral-card": {
+      "neutral-surface": {
         "role": "neutral",
-        "displayName": "Pure Lily",
-        "canonical": "oklch(100% 0 0)",
-        "tonalRamp": ["#0f1115", "#2a2f3b", "#495064", "#717992", "#a1a8c0", "#cdd1df", "#ebedf3", "#ffffff"]
+        "displayName": "Surface",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#1c2826", "#35423f", "#53605d", "#7b8784", "#aab2af", "#d6dcda", "#eef0ee", "#ffffff"]
       },
-      "neutral-border": {
+      "ink": {
         "role": "neutral",
-        "displayName": "Morning Dew",
-        "canonical": "rgba(191, 219, 254, 0.5)",
-        "tonalRamp": ["#081d3d", "#123a78", "#235cb2", "#4481eb", "#82b1ff", "#b9d4ff", "#e0ecff", "#f0f6ff"]
+        "displayName": "Ink",
+        "canonical": "#1C2826",
+        "tonalRamp": ["#0b1110", "#1c2826", "#35423f", "#53605d", "#7b8784", "#aab2af", "#d6dcda", "#eef0ee"]
       },
-      "sage": {
-        "role": "secondary",
-        "displayName": "Sage Leaf",
-        "canonical": "oklch(50% 0.04 140)",
-        "tonalRamp": ["#19211b", "#2c3b30", "#405546", "#546e5a", "#657c6a", "#879c8b", "#a9bcae", "#ccd8cf"]
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "canonical": "#687572",
+        "tonalRamp": ["#27312f", "#40504d", "#53605d", "#687572", "#8f9a97", "#b9c0be", "#dce0df", "#f1f3f2"]
       },
-      "rose": {
-        "role": "secondary",
-        "displayName": "Rose Petal",
-        "canonical": "oklch(60% 0.20 5)",
-        "tonalRamp": ["#440914", "#7b1125", "#b21c38", "#d63250", "#f75270", "#fa8298", "#fcb1bf", "#fee0e5"]
+      "rule": {
+        "role": "neutral",
+        "displayName": "Quiet Rule",
+        "canonical": "#E5EAE7",
+        "tonalRamp": ["#35423f", "#53605d", "#687572", "#8f9a97", "#b9c0be", "#d6dcda", "#e5eae7", "#f5f7f6"]
       },
-      "gold": {
-        "role": "secondary",
-        "displayName": "Marigold Gold",
-        "canonical": "oklch(75% 0.17 80)",
-        "tonalRamp": ["#3d2800", "#6d4900", "#9e6c00", "#c48805", "#e9a319", "#f0be55", "#f6d892", "#fbf1ce"]
+      "control-rule": {
+        "role": "neutral",
+        "displayName": "Control Rule",
+        "canonical": "#C9D4CF",
+        "tonalRamp": ["#53605d", "#687572", "#8f9a97", "#aebdb7", "#b9c8c2", "#c9d4cf", "#dce4e0", "#f5f7f6"]
       },
-      "navy": {
+      "recessed-surface": {
+        "role": "neutral",
+        "displayName": "Recessed Surface",
+        "canonical": "#F7F9F8",
+        "tonalRamp": ["#35423f", "#53605d", "#687572", "#aebdb7", "#c9d4cf", "#e5eae7", "#f1f5f3", "#f7f9f8"]
+      },
+      "utility-ink": {
+        "role": "neutral",
+        "displayName": "Utility Ink",
+        "canonical": "#2B3B38",
+        "tonalRamp": ["#1c2826", "#2b3b38", "#35423f", "#53605d", "#687572", "#8f9a97", "#b9c0be", "#dce0df"]
+      },
+      "muted-detail": {
+        "role": "neutral",
+        "displayName": "Muted Detail",
+        "canonical": "#72807C",
+        "tonalRamp": ["#53605d", "#687572", "#72807c", "#8f9a97", "#a1adaa", "#b9c0be", "#dce0df", "#f1f3f2"]
+      },
+      "chart-label": {
         "role": "secondary",
-        "displayName": "Midnight Iris",
-        "canonical": "oklch(35% 0.18 265)",
-        "tonalRamp": ["#010f30", "#021f61", "#033296", "#0444cc", "#1c60ff", "#5c8eff", "#9cbdff", "#dce7ff"]
+        "displayName": "Chart Label",
+        "canonical": "#94A3B8",
+        "tonalRamp": ["#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#f8fafc", "#ffffff"]
+      },
+      "chart-positive": {
+        "role": "secondary",
+        "displayName": "Chart Positive",
+        "canonical": "#10B981",
+        "tonalRamp": ["#064e3b", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#d1fae5"]
+      },
+      "chart-deep": {
+        "role": "secondary",
+        "displayName": "Chart Deep",
+        "canonical": "#004D40",
+        "tonalRamp": ["#00251e", "#003d32", "#004d40", "#00695c", "#00897b", "#26a69a", "#80cbc4", "#d7f1ed"]
       }
     },
     "typographyMeta": {
       "display": {
-        "displayName": "Display Title",
-        "purpose": "Used for main page headers."
+        "displayName": "Workspace Title",
+        "purpose": "Used for the app and page titles."
       },
       "body": {
-        "displayName": "Body Text",
-        "purpose": "Used for copy and descriptions."
+        "displayName": "Operational Body",
+        "purpose": "Used for controls, tables, and supporting copy."
+      },
+      "micro": {
+        "displayName": "Micro Label",
+        "purpose": "Used only where dense operational metadata requires it."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Used for compact chart and status metadata."
+      },
+      "table-label": {
+        "displayName": "Table Label",
+        "purpose": "Used for table headers and concise supporting labels."
+      },
+      "metadata": {
+        "displayName": "Metadata",
+        "purpose": "Used for breadcrumbs and secondary workspace information."
+      },
+      "compact-display": {
+        "displayName": "Compact Display",
+        "purpose": "Used for responsive workspace headings."
       }
     },
     "shadows": [],
     "motion": [
       {
-        "name": "soft-transition",
-        "value": "background-color 0.2s ease-in-out, border-color 0.2s ease-in-out",
-        "purpose": "Default styling transitions for interactive elements."
+        "name": "workspace-enter",
+        "value": "opacity 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Short, subtle feedback for workspace and tab changes."
+      },
+      {
+        "name": "control-response",
+        "value": "color, background-color, border-color, opacity, transform 160ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Consistent control hover and focus response."
       }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "md", "value": "768px" },
-      { "name": "lg", "value": "1024px" }
+      { "name": "mobile", "value": "320px" },
+      { "name": "compact", "value": "700px" },
+      { "name": "wide", "value": "1560px" }
     ]
   },
   "components": [
@@ -82,58 +137,65 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Standard action pill button.",
-      "html": "<button class=\"ds-btn-primary\">GET STARTED</button>",
-      "css": ".ds-btn-primary { background-color: #23C48C; color: #FFFFFF; border-radius: 9999px; padding: 10px 32px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: background-color 0.2s ease-in-out; } .ds-btn-primary:hover { background-color: #1ea072; }"
+      "description": "Compact ink command button for an explicit primary action.",
+      "html": "<button class=\"ds-btn-primary\">Get metrics</button>",
+      "css": ".ds-btn-primary { background: #1C2826; border: 0; border-radius: 5px; color: #FFFFFF; padding: 10px 16px; font: 600 14px Manrope, Arial, sans-serif; transition: background-color 160ms cubic-bezier(.16, 1, .3, 1), transform 160ms cubic-bezier(.16, 1, .3, 1); } .ds-btn-primary:hover { background: #2B3B38; transform: translateY(-1px); }"
     },
     {
-      "name": "Custom Select Trigger",
+      "name": "Field",
       "kind": "input",
-      "refersTo": "custom-select",
-      "description": "Select trigger pill.",
-      "html": "<div class=\"ds-select-trigger\"><span class=\"ds-select-text\">All Affiliates</span><svg class=\"ds-select-arrow\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\" /></svg></div>",
-      "css": ".ds-select-trigger { background-color: #FFFFFF; border: 1px solid rgba(191, 219, 254, 0.5); border-radius: 9999px; padding: 10px 20px; font-family: 'Inter', sans-serif; font-size: 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 42px; width: 220px; } .ds-select-text { color: #1e293b; } .ds-select-arrow { width: 16px; height: 16px; color: #94a3b8; }"
+      "refersTo": "field",
+      "description": "Minimal form control that preserves a clear input affordance.",
+      "html": "<input class=\"ds-field\" placeholder=\"Search\" />",
+      "css": ".ds-field { background: #FFFFFF; border: 1px solid #E5EAE7; border-radius: 5px; color: #1C2826; padding: 10px 12px; font: 400 14px Manrope, Arial, sans-serif; } .ds-field:focus { border-color: #176B5E; outline: 2px solid #176B5E; outline-offset: 3px; }"
     },
     {
-      "name": "Card Container",
-      "kind": "card",
-      "refersTo": "card-container",
-      "description": "Flat card container with dewy border.",
-      "html": "<div class=\"ds-card\"><h4 class=\"ds-card-title\">Card Title</h4><p class=\"ds-card-body\">This is card content with nice dewy borders and relaxed layout spacing.</p></div>",
-      "css": ".ds-card { background-color: #FFFFFF; border: 1px solid rgba(191, 219, 254, 0.5); border-radius: 8px; padding: 24px; font-family: 'Inter', sans-serif; } .ds-card-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 8px; } .ds-card-body { font-size: 14px; color: #64748b; line-height: 1.5; }"
+      "name": "Active Navigation Item",
+      "kind": "navigation",
+      "refersTo": "navigation-item",
+      "description": "Text navigation whose active and focused state is conveyed by a green underline.",
+      "html": "<button class=\"ds-nav-item is-active\">Influencer</button>",
+      "css": ".ds-nav-item { border: 0; border-bottom: 2px solid transparent; background: transparent; color: #687572; padding: 0 0 7px; font: 600 14px Manrope, Arial, sans-serif; } .ds-nav-item.is-active, .ds-nav-item:focus-visible { border-bottom-color: #176B5E; color: #1C2826; outline: 0; }"
     }
   ],
   "narrative": {
-    "northStar": "The Botanical Archive",
-    "overview": "The TrueProfit Affiliate Dashboard is a visual analytics workspace designed around a nature-inspired aesthetic. It frames data density with generous breathing room, fine dewy borders, and a warm, organic color palette. Rather than creating a cold, clinical, or mechanical interface, this design emphasizes approachability, balance, and human comfort. This system explicitly rejects heavy container drop-shadows, clunky high-contrast grids, aggressive animations, and clinical dark modes.",
+    "northStar": "Quiet Operating Sheet",
+    "overview": "TrueProfit is an internal operations workspace for affiliate performance, influencer management, proposals, progress tracking, and KPIs. It uses an open, nearly-white canvas where hierarchy comes from deliberate type, spacing, alignment, and only the minimum necessary control affordance.",
     "keyCharacteristics": [
-      "Tactile Softness: Interactive triggers and inputs use pill-shaped rounded profiles to invite touch.",
-      "Organic Visual Rhythm: A harmonious balance of sage green, rose red, and marigold gold accents set against structured alabaster pages.",
-      "Delicate Outlining: Flat layout sections framed by thin, semi-transparent border lines instead of heavy elevation shadows."
+      "Purpose before decoration: every visible element supports navigation, decision-making, input, feedback, or status.",
+      "Whitespace carries structure: ordinary sections are not wrapped in layout cards.",
+      "Reserved signal: green is for active navigation, focus, and intentional positive emphasis.",
+      "Dense data stays legible: tables keep their fields and scroll on compact screens.",
+      "Movement confirms change: interaction feedback is short and restrained."
     ],
     "rules": [
       {
-        "name": "The Dewy Frame Rule",
-        "body": "Surfaces are never divided by harsh dark rules or heavy shadows. Sections are bound by 1px Morning Dew borders (rgba(191, 219, 254, 0.5)) to keep the interface soft, lightweight, and structured.",
+        "name": "Reserved Signal",
+        "body": "Green is not a decorative wash. It signals the current navigation state, focus, or a semantic positive state. Status colors already tied to data retain their meaning.",
         "section": "colors"
       },
       {
-        "name": "The Flat-By-Default Rule",
-        "body": "Shadows are forbidden on cards, metric blocks, popovers, and dropdown menus. Elevated elements use solid white surfaces outlined by 1px Morning Dew borders and sit atop a layered z-index context.",
+        "name": "Whitespace Carries Structure",
+        "body": "Separate ordinary sections with consistent vertical rhythm and alignment rather than cards, colored section backgrounds, or layout borders.",
+        "section": "layout"
+      },
+      {
+        "name": "Flat Functional Overlays",
+        "body": "Dialogs, menus, and sidebars use a white surface and a quiet 1px rule only where a boundary is needed. Shadows and blur are prohibited.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do frame all cards and dropdown lists with a 1px solid border of color rgba(191, 219, 254, 0.5).",
-      "Do use fully rounded pill shapes (rounded-full) for main buttons, date picker buttons, and select boxes.",
-      "Do use a linear gradient on click charts with a bottom opacity of 0.6.",
-      "Do preserve the stacked order of charts where Installs sits at the bottom and Clicks on top."
+      "Use whitespace and consistent alignment to group operational content.",
+      "Use one icon library for familiar compact actions only.",
+      "Preserve status and data-color semantics.",
+      "Use 160-180ms transitions and support reduced motion."
     ],
     "donts": [
-      "Don't use box-shadow or container shadows on cards, metric blocks, or filter dropdowns.",
-      "Don't use side-stripe borders as colored accents on metrics or tables.",
-      "Don't use tiny tracked all-caps eyebrows above headings.",
-      "Don't pair a soft drop shadow with a border on the same container."
+      "Do not use cards, colored bands, or borders as ordinary layout scaffolding.",
+      "Do not add shadows, blur, gradients, decorative emoji, or ornamental icons.",
+      "Do not turn navigation or filters into pill collections.",
+      "Do not alter application behavior, data flow, or data-backed semantics during visual work."
     ]
   }
 }

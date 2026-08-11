@@ -786,7 +786,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         });
 
     return (
-        <div className="card p-6 space-y-6 font-sans">
+        <div className="workspace-page influencer-proposal font-sans">
             
             {/* VIEW 1: MAIN PROPOSALS TABLE LIST VIEW */}
             {activeView === 'list' && (
@@ -1350,7 +1350,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                         left: `${Math.min(window.innerWidth - 300, Math.max(16, activeStatusPopover.anchorRect.left))}px`,
                         zIndex: 99999
                     }}
-                    className="bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-4 w-72 font-sans"
+                    className="app-popover bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-4 w-72 font-sans"
                 >
                     <div className="space-y-3">
                         <div className="flex justify-between items-center pb-2 border-b border-slate-100">
@@ -1447,7 +1447,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                         left: `${Math.min(window.innerWidth - 320, Math.max(16, activeCellPopover.anchorRect.left))}px`,
                         zIndex: 99999
                     }}
-                    className="bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-4 w-80 font-sans"
+                    className="app-popover bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-4 w-80 font-sans"
                 >
                     {/* 1. Rate Popover */}
                     {activeCellPopover.type === 'rate' && (
@@ -1651,7 +1651,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             {/* PORTAL MODAL 1: DELETE CONFIRMATION POPUP MODAL */}
             {deleteConfirmProposal && createPortal(
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[999999] flex items-center justify-center p-4 overflow-y-auto font-sans">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
+                    <div className="app-dialog bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
                         <div className="p-5 text-center space-y-3">
                             <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
                                 <Trash2 className="w-6 h-6" />
@@ -1683,7 +1683,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             {/* PORTAL MODAL 2: ADD CREATOR VIA YOUTUBE URL MODAL */}
             {showAddCreatorModal && createPortal(
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto font-sans">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
+                    <div className="app-dialog bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
                         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
                             <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
                                 <Youtube className="w-5 h-5 text-red-500 fill-red-500" />
