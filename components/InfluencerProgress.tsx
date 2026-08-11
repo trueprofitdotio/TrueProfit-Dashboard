@@ -391,16 +391,22 @@ const InfluencerProgress: React.FC = () => {
                 const recordedCount = matchedVids.length;
                 const contentPercent = Math.min(100, Math.round((recordedCount / agreedCount) * 100));
 
-                let computedStatus = c.progress_status;
+                let systemStatus = 'Awaiting Content';
                 if (paymentPercent === 100 && contentPercent === 100) {
-                    computedStatus = 'All done';
-                } else if (recordedCount === 0 && actualSpent === 0) {
-                    computedStatus = 'Not started';
+                    systemStatus = 'All done';
+                } else if (paymentPercent > 0 || contentPercent > 0) {
+                    systemStatus = 'In Progress';
                 }
+
+                // Respect user-applied custom status over system status
+                const displayStatus = (c.is_custom_status && (c.custom_status || c.progress_status)) 
+                    ? (c.custom_status || c.progress_status) 
+                    : systemStatus;
 
                 return {
                     ...c,
-                    progress_status: computedStatus,
+                    system_status: systemStatus,
+                    progress_status: displayStatus,
                     released_date: latestRelDate,
                     videosList: matchedVids
                 };
@@ -483,6 +489,33 @@ const InfluencerProgress: React.FC = () => {
 
     // Update cell value in local state & Supabase
     const updateCollaborationField = async (rowId: string, field: keyof CollaborationRow, value: any) => {
+        if (field === 'progress_status') {
+            setCollaborations(prev => prev.map(c => c.id === rowId ? { 
+                ...c, 
+                progress_status: value, 
+                is_custom_status: true, 
+                custom_status: value 
+            } : c));
+            setActivePopover(null);
+
+            try {
+                const { error } = await supabaseClient
+                    .from('collaborations')
+                    .update({ 
+                        progress_status: value, 
+                        is_custom_status: true, 
+                        custom_status: value, 
+                        updated_at: new Date().toISOString() 
+                    })
+                    .eq('id', rowId);
+                if (error) throw error;
+            } catch (e) {
+                console.error(`Failed to update progress_status:`, e);
+                fetchData();
+            }
+            return;
+        }
+
         setCollaborations(prev => prev.map(c => c.id === rowId ? { ...c, [field]: value } : c));
         setActivePopover(null);
 
@@ -494,6 +527,33 @@ const InfluencerProgress: React.FC = () => {
             if (error) throw error;
         } catch (e) {
             console.error(`Failed to update ${field}:`, e);
+            fetchData();
+        }
+    };
+
+    const handleResetToAutoStatus = async (rowId: string, sysStatus?: string) => {
+        const resetStatus = sysStatus || 'Awaiting Content';
+        setCollaborations(prev => prev.map(c => c.id === rowId ? { 
+            ...c, 
+            progress_status: resetStatus, 
+            is_custom_status: false, 
+            custom_status: null 
+        } : c));
+        setActivePopover(null);
+
+        try {
+            const { error } = await supabaseClient
+                .from('collaborations')
+                .update({ 
+                    progress_status: resetStatus, 
+                    is_custom_status: false, 
+                    custom_status: null, 
+                    updated_at: new Date().toISOString() 
+                })
+                .eq('id', rowId);
+            if (error) throw error;
+        } catch (e) {
+            console.error(`Failed to reset status to automatic:`, e);
             fetchData();
         }
     };
@@ -1297,6 +1357,20 @@ const InfluencerProgress: React.FC = () => {
                                     className="px-3 py-1.5 text-xs font-medium text-white bg-slate-800 hover:bg-slate-900 rounded-xl shrink-0"
                                 >
                                     Add
+                                </button>
+                            </div>
+
+                            {/* Reset to Automatic Status */}
+                            <div className="pt-2 border-t border-slate-100">
+                                <button
+                                    onClick={() => {
+                                        const row = collaborations.find(c => c.id === activePopover.rowId);
+                                        handleResetToAutoStatus(activePopover.rowId, row?.system_status);
+                                    }}
+                                    className="w-full text-center py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span>Reset to automatic status</span>
                                 </button>
                             </div>
                         </div>

@@ -21,6 +21,41 @@ interface Message {
     created_at: string;
 }
 
+const detectMessageIntent = (text: string): 'Approved' | 'Rejected' | 'Re-negotiate' | null => {
+    if (!text) return null;
+    const lower = text.toLowerCase();
+
+    // Approve intent patterns (English, Vietnamese, mixed)
+    if (
+        lower.includes('oke') || lower.includes('proceed') || lower.includes('approve') ||
+        lower.includes('chốt') || lower.includes('duyệt') || lower.includes('đồng ý') ||
+        lower.includes('agree') || lower.includes('ok em') || lower.includes('ok chị') ||
+        lower.includes('ok nhe') || lower.includes('ok nhé') || lower.includes('tốt rồi')
+    ) {
+        return 'Approved';
+    }
+
+    // Reject intent patterns
+    if (
+        lower.includes('reject') || lower.includes('cancel') || lower.includes('từ chối') ||
+        lower.includes('không duyệt') || lower.includes('hủy') || lower.includes('decline') ||
+        lower.includes('too expensive') || lower.includes('bỏ qua') || lower.includes('không đồng ý')
+    ) {
+        return 'Rejected';
+    }
+
+    // Re-negotiate intent patterns
+    if (
+        lower.includes('negotiate') || lower.includes('thương lượng') || lower.includes('đàm phán') ||
+        lower.includes('bớt') || lower.includes('re-negotiate') || lower.includes('discount') ||
+        lower.includes('giảm giá') || lower.includes('discuss') || lower.includes('xem lại giá')
+    ) {
+        return 'Re-negotiate';
+    }
+
+    return null;
+};
+
 const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     isOpen,
     onClose,
@@ -397,63 +432,72 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                     const isSystem = msg.type === 'system';
 
                                     return (
-                                        <div key={msg.id || idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[88%] rounded-2xl px-4 py-2.5 shadow-xs text-sm ${
-                                                isUser 
-                                                    ? 'bg-[var(--accent-color)] text-white rounded-tr-xs' 
-                                                    : isSystem
-                                                    ? 'bg-slate-200/80 text-slate-700 rounded-tl-xs text-xs italic font-medium border border-slate-300/50'
-                                                    : 'bg-white border border-emerald-200 text-slate-800 rounded-tl-xs shadow-sm'
-                                            }`}>
-                                                {!isUser && !isSystem && (
-                                                    <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                                                        <Bot className="w-3.5 h-3.5" />
-                                                        <span>Gemini Advisor</span>
-                                                    </div>
-                                                )}
-                                                {isUser && (
-                                                    <div className="flex items-center justify-end gap-1 mb-1 text-[10px] font-bold text-emerald-100 uppercase tracking-wider opacity-80">
-                                                        <span>{msg.actor || 'You'}</span>
-                                                    </div>
-                                                )}
-
-                                                <div className="whitespace-pre-wrap leading-relaxed">
-                                                    {msg.body}
+                                        <div key={msg.id || idx}>
+                                            {isSystem ? (
+                                                <div className="text-[11px] italic text-slate-400 text-center my-2 opacity-80 flex items-center justify-center gap-1 font-medium select-none">
+                                                    <span>{msg.body}</span>
                                                 </div>
+                                            ) : (
+                                                <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} mb-3`}>
+                                                    <div className={`max-w-[88%] rounded-2xl px-4 py-2.5 shadow-xs text-sm ${
+                                                        isUser 
+                                                            ? 'bg-[var(--accent-color)] text-white rounded-tr-xs' 
+                                                            : 'bg-white border border-emerald-200 text-slate-800 rounded-tl-xs shadow-sm'
+                                                    }`}>
+                                                        {isUser && (
+                                                            <div className="flex items-center justify-end gap-1 mb-1 text-[10px] font-bold text-emerald-100 uppercase tracking-wider opacity-80">
+                                                                <span>{msg.actor || 'You'}</span>
+                                                            </div>
+                                                        )}
 
-                                                {/* Contextual Action Recommendation Buttons inside Chat */}
-                                                {msg.type === 'advisor' && (
-                                                    <div className="pt-3 mt-2 border-t border-emerald-100/80 flex flex-wrap gap-1.5">
-                                                        <span className="text-[10px] font-bold text-slate-500 w-full uppercase tracking-wider">Suggested Quick Actions:</span>
-                                                        <button
-                                                            onClick={() => handleExecuteActionFromChat('Approved')}
-                                                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
-                                                        >
-                                                            <Check className="w-3.5 h-3.5" />
-                                                            <span>Approve</span>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleExecuteActionFromChat('Rejected')}
-                                                            className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
-                                                        >
-                                                            <X className="w-3.5 h-3.5" />
-                                                            <span>Reject</span>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleExecuteActionFromChat('Re-negotiate')}
-                                                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
-                                                        >
-                                                            <RefreshCw className="w-3.5 h-3.5" />
-                                                            <span>Re-negotiate</span>
-                                                        </button>
+                                                        <div className="whitespace-pre-wrap leading-relaxed">
+                                                            {msg.body}
+                                                        </div>
+
+                                                        <div className={`flex items-center gap-1 mt-1.5 text-[9px] font-medium ${isUser ? 'text-emerald-100 justify-end' : 'text-slate-400'}`}>
+                                                            <Clock className="w-3 h-3" />
+                                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
                                                     </div>
-                                                )}
 
-                                                <div className={`flex items-center gap-1 mt-1.5 text-[9px] font-medium ${isUser ? 'text-emerald-100 justify-end' : 'text-slate-400'}`}>
-                                                    <Clock className="w-3 h-3" />
-                                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {/* Dynamic Gemini Intent Action Button */}
+                                                    {isUser && (() => {
+                                                        const intent = detectMessageIntent(msg.body);
+                                                        if (!intent) return null;
+                                                        return (
+                                                            <div className="mt-1.5 flex items-center gap-1.5 animate-in fade-in duration-200">
+                                                                {intent === 'Approved' && (
+                                                                    <button
+                                                                        onClick={() => handleExecuteActionFromChat('Approved')}
+                                                                        className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                                                                    >
+                                                                        <Check className="w-3.5 h-3.5" />
+                                                                        <span>✨ Suggested Action: Approve deal</span>
+                                                                    </button>
+                                                                )}
+                                                                {intent === 'Rejected' && (
+                                                                    <button
+                                                                        onClick={() => handleExecuteActionFromChat('Rejected')}
+                                                                        className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                                                                    >
+                                                                        <X className="w-3.5 h-3.5" />
+                                                                        <span>✨ Suggested Action: Reject deal</span>
+                                                                    </button>
+                                                                )}
+                                                                {intent === 'Re-negotiate' && (
+                                                                    <button
+                                                                        onClick={() => handleExecuteActionFromChat('Re-negotiate')}
+                                                                        className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                                                                    >
+                                                                        <RefreshCw className="w-3.5 h-3.5" />
+                                                                        <span>✨ Suggested Action: Re-negotiate deal</span>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
                                     );
                                 })
@@ -486,15 +530,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                 </button>
                             </div>
 
-                            <div className="mt-3 flex justify-between items-center">
-                                <button
-                                    onClick={handleAskAdvisor}
-                                    disabled={askingAdvisor || loading || !threadId}
-                                    className="text-xs font-semibold text-[var(--accent-color)] bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                                >
-                                    {askingAdvisor ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
-                                    <span>Ask Gemini Advisor</span>
-                                </button>
+                            <div className="mt-2 flex justify-end items-center">
                                 <span className="text-[10px] text-slate-400 font-medium">Press Enter to send</span>
                             </div>
                         </div>

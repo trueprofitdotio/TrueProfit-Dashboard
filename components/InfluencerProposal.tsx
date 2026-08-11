@@ -6,7 +6,7 @@ import DiscussionSidebar from './DiscussionSidebar';
 import { fetchYouTubeChannelDetails } from '../services/youtubeService';
 import { 
     Plus, Search, Edit2, Trash2, X, Calendar, DollarSign, Filter, ArrowUpDown, Check, 
-    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight, MessageCircle, RefreshCw
+    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight, MessageCircle, RefreshCw, RotateCcw
 } from 'lucide-react';
 
 interface ProposalKol {
@@ -57,9 +57,8 @@ const getCreatorStatusStyle = (status?: string | null) => {
 };
 
 const DEFAULT_PROPOSAL_TAGS = [
-    'Need to check',
-    'Approved',
-    'Rejected'
+    'Active',
+    'Archived'
 ];
 
 const COLOR_PALETTES = [
@@ -73,20 +72,10 @@ const COLOR_PALETTES = [
 ];
 
 const getProposalTagStyle = (status?: string | null) => {
-    if (!status) return 'bg-slate-100 text-slate-700 border-slate-200 font-normal';
+    if (!status) return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold';
     const s = status.trim().toLowerCase();
-    if (s === 'need to check') return 'bg-amber-100 text-amber-800 border-amber-300 font-semibold';
-    if (s === 'approved') return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold';
-    if (s === 'rejected') return 'bg-rose-100 text-rose-800 border-rose-300 font-semibold';
-    if (s === 'in progress') return 'bg-blue-100 text-blue-800 border-blue-300 font-semibold';
-    if (s === 'completed') return 'bg-purple-100 text-purple-800 border-purple-300 font-semibold';
-    
-    let hash = 0;
-    for (let i = 0; i < status.length; i++) {
-        hash = status.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const paletteIdx = Math.abs(hash) % COLOR_PALETTES.length;
-    return COLOR_PALETTES[paletteIdx];
+    if (s === 'archived') return 'bg-slate-100 text-slate-600 border-slate-300 font-semibold';
+    return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold';
 };
 
 const formatCurrencyUSD = (val?: string | number | null): string => {
@@ -490,7 +479,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             await supabaseClient.from('proposal_kols').upsert({
                 proposal_id: selectedProposalId,
                 kol_id: newKol.id,
-                deliverables: '• 1x YouTube Video'
+                deliverables: ''
             }, { onConflict: 'proposal_id,kol_id' });
 
             setYtChannelInput('');
@@ -532,7 +521,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         setActiveCellPopover({ proposalId, kolId, type, anchorRect: rect });
     };
 
-    const updateCreatorStatus = async (proposalId: string, kolId: string, newStatus: string) => {
+    const updateCreatorStatus = async (proposalId: string, kolId: string, newStatus: string, triggerSystemMsg = true) => {
         setProposals(prev => prev.map(p => {
             if (p.id !== proposalId) return p;
             const updatedPks = (p.proposal_kols || []).map(pk => {
@@ -543,12 +532,15 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         }));
 
         try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const actorName = user?.user_metadata?.full_name || user?.email || 'Team Member';
+
             const { error } = await supabaseClient.rpc('update_proposal_kol_status', {
                 p_proposal_id: proposalId,
                 p_kol_id: kolId,
                 p_new_status: newStatus,
-                p_actor: 'Dashboard User',
-                p_source: 'UI Action'
+                p_actor: actorName,
+                p_source: triggerSystemMsg ? 'Action Column' : 'Reset Action (No Msg)'
             });
             if (error) throw error;
         } catch (err) {
@@ -1148,9 +1140,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                         title="Click to edit terms"
                                                     >
                                                         {pk.terms && pk.terms.trim() ? (
-                                                            <div className="text-xs text-slate-700 font-normal leading-relaxed whitespace-pre-line line-clamp-3">
-                                                                {pk.terms}
-                                                            </div>
+                                                            renderRichText(pk.terms)
                                                         ) : (
                                                             <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
                                                                 <Plus className="w-3.5 h-3.5" />
@@ -1202,34 +1192,41 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </button>
                                                 </td>
 
-                                                {/* 9. Actions Column (Approve, Reject, Re-negotiate, Remove) */}
+                                                {/* 9. Actions Column (Approve, Reject, Re-negotiate, Reset, Remove) */}
                                                 <td className="px-4 py-3 text-center align-middle">
-                                                    <div className="flex items-center justify-center gap-1">
+                                                    <div className="flex items-center justify-center gap-0.5">
                                                         <button
-                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Approved')}
-                                                            className={`p-1.5 rounded-lg border transition-colors ${pk.status === 'Approved' ? 'bg-emerald-600 text-white border-emerald-600' : 'text-emerald-600 hover:bg-emerald-50 border-emerald-200'}`}
-                                                            title="Approve Creator Proposal"
+                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Approved', true)}
+                                                            className={`p-1.5 rounded-lg transition-colors ${pk.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 font-semibold' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
+                                                            title="Approve this creator"
                                                         >
                                                             <Check className="w-4 h-4" />
                                                         </button>
                                                         <button
-                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Rejected')}
-                                                            className={`p-1.5 rounded-lg border transition-colors ${pk.status === 'Rejected' ? 'bg-rose-600 text-white border-rose-600' : 'text-rose-600 hover:bg-rose-50 border-rose-200'}`}
-                                                            title="Reject Creator Proposal"
+                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Rejected', true)}
+                                                            className={`p-1.5 rounded-lg transition-colors ${pk.status === 'Rejected' ? 'bg-rose-100 text-rose-700 font-semibold' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'}`}
+                                                            title="Reject this creator"
                                                         >
                                                             <X className="w-4 h-4" />
                                                         </button>
                                                         <button
-                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Re-negotiate')}
-                                                            className={`p-1.5 rounded-lg border transition-colors ${pk.status === 'Re-negotiate' ? 'bg-amber-500 text-white border-amber-500' : 'text-amber-600 hover:bg-amber-50 border-amber-200'}`}
-                                                            title="Re-negotiate Creator Proposal"
+                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Re-negotiate', true)}
+                                                            className={`p-1.5 rounded-lg transition-colors ${pk.status === 'Re-negotiate' ? 'bg-amber-100 text-amber-700 font-semibold' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
+                                                            title="Rediscuss deal"
                                                         >
                                                             <RefreshCw className="w-4 h-4" />
                                                         </button>
+                                                        <button
+                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Active', false)}
+                                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                            title="Reset status to Active"
+                                                        >
+                                                            <RotateCcw className="w-4 h-4" />
+                                                        </button>
                                                         <button 
                                                             onClick={() => handleRemoveCreatorFromProposal(selectedProposal.id, pk.kol_id)}
-                                                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors ml-1"
-                                                            title="Remove Creator"
+                                                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                                            title="Remove creator from proposal"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
