@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.codex/
+.claude/settings.local.json
+test-results/
+*.xlsx

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import PerformanceOverview from './components/PerformanceOverview';
 import InfluencerWorkspace from './components/InfluencerWorkspace';
 import KpiRunrate from './components/KpiRunrate';
-import { KpiTarget } from './types';
+import { ConversionReportRow, KpiTarget } from './types';
 import { supabaseClient } from './services/supabaseClient';
-import { fetchAffiliates, fetchClickReport } from './services/trackdeskService';
+import { fetchAffiliates, fetchClickReport, fetchConversionReport } from './services/trackdeskService';
 import { getQuarterInfo, getQuarterDateRange } from './utils/timeHelper';
+import { createEmptyKpiProgress } from './utils/kpiMetrics';
 
 type Tab = 'affiliate' | 'conversion' | 'influencer' | 'kpi';
 
@@ -55,8 +56,8 @@ const Tabs: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ 
 
 export interface KpiData {
     allKpiTargets: KpiTarget[];
-    currentQuarterProgress: { signups: number; clicks: number; viewcount: number; };
-    pastQuartersProgress: Record<string, { signups: number; clicks: number; viewcount: number; }>;
+    currentQuarterProgress: Record<string, number>;
+    pastQuartersProgress: Record<string, Record<string, number>>;
 }
 
 const getInitialTab = (): Tab => {
@@ -120,12 +121,16 @@ const App: React.FC = () => {
       const { year, quarter } = getQuarterInfo();
       // Fetch all affiliates to partition KOL vs NonKOL in memory (Trackdesk API does not filter tierName reliably)
       const { affiliates: allAffiliates } = await fetchAffiliates();
+      const isKolTier = (tierName?: string) => {
+          const rawTier = tierName || 'NonKOL';
+          return rawTier === 'KOL (Old Offer)' || rawTier === 'KOL (New Offer)' || rawTier === 'Standard';
+      };
       const nonKolAffiliates = allAffiliates.filter(aff => {
-          const rawTier = aff.tierName || 'NonKOL';
-          return !(rawTier === 'KOL (Old Offer)' || rawTier === 'KOL (New Offer)' || rawTier === 'Standard');
+          return !isKolTier(aff.tierName);
       });
       const nonKolPublicIds = nonKolAffiliates.map(aff => aff.publicId);
       const nonKolPublicIdsSet = new Set(nonKolPublicIds);
+      const kolPublicIdsSet = new Set(allAffiliates.filter(aff => isKolTier(aff.tierName)).map(aff => aff.publicId));
       
       const { data: kolVideos, error: kolVideosError } = await supabaseClient.from('videos').select('id').not('kol_id', 'is', null);
       if(kolVideosError) throw new Error(`Failed to fetch KOL videos: ${kolVideosError.message}`);
@@ -141,9 +146,10 @@ const App: React.FC = () => {
           const signupFilters = { registeredFrom: timeRange.from, registeredTo: timeRange.to };
           const clickFilters = { sourceId: nonKolPublicIds };
 
-          const [signupsRes, clicksRes, videoPerformanceRes] = await Promise.all([
+          const [signupsRes, clicksRes, conversionsRes, videoPerformanceRes] = await Promise.all([
               fetchAffiliates(signupFilters),
               nonKolPublicIds.length > 0 ? fetchClickReport(timeRange, clickFilters) : Promise.resolve({ rows: [] }),
+              fetchConversionReport(timeRange, {}),
               // Use get_video_performance RPC to bypass Supabase 1000 row truncation limit
               kolVideoIds.length > 0 ? supabaseClient.rpc('get_video_performance', {
                   p_video_ids: kolVideoIds,
@@ -161,9 +167,40 @@ const App: React.FC = () => {
           }).length;
 
           const signups = signupsRes.affiliates.filter(aff => {
-              const rawTier = aff.tierName || 'NonKOL';
-              return !(rawTier === 'KOL (Old Offer)' || rawTier === 'KOL (New Offer)' || rawTier === 'Standard');
+              return !isKolTier(aff.tierName);
           }).length;
+
+          const progress = createEmptyKpiProgress();
+          progress['NonKOL Signups'] = signups;
+          progress['NonKOL Clicks'] = clicks;
+
+          const activeMerchantIds = new Set<string>();
+          const payingMerchantIds = new Set<string>();
+          conversionsRes.rows.forEach((conversion: ConversionReportRow) => {
+              const conversionType = conversion.conversionType?.name?.toLowerCase();
+              const publicId = conversion.source?.publicId;
+              const isKolSource = publicId ? kolPublicIdsSet.has(publicId) : false;
+              const revenueValue = parseFloat(conversion.revenue?.value || '0') || 0;
+
+              progress['Affiliate Revenue'] += revenueValue;
+
+              if (conversionType === 'install') {
+                  progress['Total Installs'] += 1;
+                  if (isKolSource) {
+                      progress['KOL Installs'] += 1;
+                  } else {
+                      progress['NonKOL Installs'] += 1;
+                  }
+                  if (conversion.customerId) activeMerchantIds.add(conversion.customerId);
+              }
+
+              if (conversionType === 'payout') {
+                  if (conversion.customerId) {
+                      activeMerchantIds.add(conversion.customerId);
+                      payingMerchantIds.add(conversion.customerId);
+                  }
+              }
+          });
 
           let viewcount = 0;
           if (videoPerformanceRes.data) {
@@ -172,15 +209,18 @@ const App: React.FC = () => {
                   if (growth > 0) viewcount += growth;
               });
           }
+          progress['KOL Viewcount'] = viewcount;
+          progress['Active Merchants'] = activeMerchantIds.size;
+          progress['Paying Merchants'] = payingMerchantIds.size;
           
-          return { quarter: `q${q}`, progress: { signups, clicks, viewcount } };
+          return { quarter: `q${q}`, progress };
       });
 
       const results = await Promise.all(quarterPromises);
-      const pastQuartersProgress: Record<string, { signups: number; clicks: number; viewcount: number; }> = {};
-      let currentQuarterProgress = { signups: 0, clicks: 0, viewcount: 0 };
+      const pastQuartersProgress: Record<string, Record<string, number>> = {};
+      let currentQuarterProgress = createEmptyKpiProgress();
       
-      results.forEach((r: { quarter: string; progress: { signups: number; clicks: number; viewcount: number; } }) => {
+      results.forEach((r: { quarter: string; progress: Record<string, number>; }) => {
           if (r.quarter !== `q${quarter}`) {
               pastQuartersProgress[r.quarter] = r.progress;
           } else {

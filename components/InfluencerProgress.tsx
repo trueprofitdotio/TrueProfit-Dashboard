@@ -375,11 +375,14 @@ const InfluencerProgress: React.FC = () => {
                     };
                 });
 
-                // AUTO-SORT REPORTED VIDEOS OLDEST (TOP) TO NEWEST (BOTTOM)
+                // AUTO-SORT REPORTED VIDEOS LATEST (TOP) TO OLDEST (BOTTOM)
                 matchedVids.sort((a, b) => {
                     const timeA = a.released_date ? (Date.parse(a.released_date) || 0) : 0;
                     const timeB = b.released_date ? (Date.parse(b.released_date) || 0) : 0;
-                    return timeA - timeB;
+                    if (timeA === 0 && timeB === 0) return 0;
+                    if (timeA === 0) return 1; // undated videos to the bottom
+                    if (timeB === 0) return -1;
+                    return timeB - timeA;
                 });
 
                 const latestRelDate = matchedVids.map(v => v.released_date).filter(Boolean)[0] || c.released_date;
@@ -426,15 +429,28 @@ const InfluencerProgress: React.FC = () => {
                         try {
                             const details = await fetchYouTubeVideoDetails(vid.video_url);
                             if (details && details.title) {
-                                setCollaborations(prev => prev.map(c => ({
-                                    ...c,
-                                    videosList: (c.videosList || []).map(v => {
+                                setCollaborations(prev => prev.map(c => {
+                                    const nextVids = (c.videosList || []).map(v => {
                                         if (v.video_url === vid.video_url || getYouTubeVideoId(v.video_url) === ytId) {
                                             return { ...v, title: details.title, released_date: v.released_date || details.publishedAt };
                                         }
                                         return v;
-                                    })
-                                })));
+                                    });
+                                    nextVids.sort((a, b) => {
+                                        const timeA = a.released_date ? (Date.parse(a.released_date) || 0) : 0;
+                                        const timeB = b.released_date ? (Date.parse(b.released_date) || 0) : 0;
+                                        if (timeA === 0 && timeB === 0) return 0;
+                                        if (timeA === 0) return 1;
+                                        if (timeB === 0) return -1;
+                                        return timeB - timeA;
+                                    });
+                                    const latestRel = nextVids.map(v => v.released_date).filter(Boolean)[0] || c.released_date;
+                                    return {
+                                        ...c,
+                                        released_date: latestRel,
+                                        videosList: nextVids
+                                    };
+                                }));
                                 await supabaseClient.from('videos').upsert({
                                     new_id: `yt_${ytId}`,
                                     video_url: vid.video_url,
@@ -576,7 +592,9 @@ const InfluencerProgress: React.FC = () => {
         if (type === 'payment') {
             setSpentInputVal(String(row.actual_spent || 0));
         } else if (type === 'videos') {
-            const urls = (row.report_links || '').match(/(https?:\/\/[^\s,]+)/g) || [];
+            const urls = row.videosList && row.videosList.length > 0
+                ? row.videosList.map(v => v.video_url)
+                : ((row.report_links || '').match(/(https?:\/\/[^\s,]+)/g) || []);
             setVideoUrlsList(urls);
             setNewVideoUrlInput('');
         } else if (type === 'agreement') {
@@ -878,7 +896,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowStatusFilterPopover(!showStatusFilterPopover)}
-                                    className="flex items-center gap-2 px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors"
+                                    className="flex items-center gap-2 px-3.5 py-1.5 border border-slate-200 rounded-xl text-sm bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors"
                                 >
                                     <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                     <span>{statusBtnLabel}</span>
@@ -893,7 +911,7 @@ const InfluencerProgress: React.FC = () => {
                                                 <button 
                                                     type="button"
                                                     onClick={() => setSelectedStatuses([...allActiveStatuses])} 
-                                                    className="text-[11px] font-medium text-emerald-600 hover:underline"
+                                                className="text-xs font-medium text-emerald-600 hover:underline"
                                                 >
                                                     Check all
                                                 </button>
@@ -901,7 +919,7 @@ const InfluencerProgress: React.FC = () => {
                                                 <button 
                                                     type="button"
                                                     onClick={() => setSelectedStatuses([])} 
-                                                    className="text-[11px] font-medium text-slate-500 hover:underline"
+                                                    className="text-xs font-medium text-slate-500 hover:underline"
                                                 >
                                                     Reset all
                                                 </button>
@@ -1024,7 +1042,7 @@ const InfluencerProgress: React.FC = () => {
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <button
                                                 onClick={e => openPopover(e, c, 'progress')}
-                                                className={`px-3 py-1 rounded-full text-xs border transition-transform hover:scale-105 inline-block shadow-2xs ${getProgressTagStyle(c.progress_status)}`}
+                                                className={`px-3 py-1 rounded-full text-[13px] border transition-transform hover:scale-105 inline-block shadow-2xs ${getProgressTagStyle(c.progress_status)}`}
                                                 title="Click to change status tag"
                                             >
                                                 <span>{c.progress_status || 'Select Status'}</span>
@@ -1144,7 +1162,7 @@ const InfluencerProgress: React.FC = () => {
                                                                     e.stopPropagation();
                                                                     setExpandedVideoRows(prev => ({ ...prev, [c.id]: !prev[c.id] }));
                                                                 }}
-                                                                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1 pt-1 border-t border-slate-100"
+                                                                className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1 pt-1"
                                                             >
                                                                 <span>{isExpanded ? 'Show less' : `+${allVids.length - 4} more`}</span>
                                                                 <ChevronRight className={`w-3 h-3 transition-transform ${isExpanded ? '-rotate-90' : 'rotate-90'}`} />

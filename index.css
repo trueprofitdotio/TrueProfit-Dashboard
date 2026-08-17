@@ -226,8 +226,8 @@ body > div.discussion-sidebar { border-radius: 0 !important; }
 }
 
 .trendline-sidebar-header { border-bottom: 1px solid var(--tp-rule); }
-.discussion-message-feed { background: #f7f9f8 !important; }
-.discussion-composer { border-top-color: var(--tp-rule) !important; }
+.discussion-message-feed { background: transparent !important; }
+.discussion-composer { border-top-color: transparent !important; }
 .trendline-backdrop { backdrop-filter: none !important; }
 
 .influencer-performance .space-y-8, .influencer-performance .space-y-12, .influencer-progress, .influencer-proposal, .kpi-runrate { row-gap: 2.5rem; }
