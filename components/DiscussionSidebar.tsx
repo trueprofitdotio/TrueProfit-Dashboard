@@ -73,6 +73,16 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messageInputRef = useRef<HTMLTextAreaElement>(null);
+
+    // Auto-focus the message box whenever the sidebar opens (or switches to a different
+    // creator while already open) so the user can start typing immediately without an
+    // extra click. Delayed to roughly match the sidebar's own 200ms slide-in transition.
+    useEffect(() => {
+        if (!isOpen || authLoading || !user) return;
+        const t = setTimeout(() => messageInputRef.current?.focus(), 220);
+        return () => clearTimeout(t);
+    }, [isOpen, kolId, user, authLoading]);
 
     // 1. Google OAuth Auth Check & @firegroup.io Domain Enforcement
     useEffect(() => {
@@ -510,6 +520,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                         <div className="discussion-composer px-6 pb-5 pt-3">
                             <div className="flex items-end gap-2">
                                 <textarea
+                                    ref={messageInputRef}
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                     onKeyDown={(e) => {

@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { supabaseClient } from '../services/supabaseClient';
 import KOLCell, { KolData } from './KOLCell';
 import DiscussionSidebar from './DiscussionSidebar';
+import ActionMenu, { ActionMenuItem } from './ActionMenu';
 import { fetchYouTubeChannelDetails } from '../services/youtubeService';
-import { 
-    Plus, Search, Edit2, Trash2, X, Calendar, DollarSign, Filter, ArrowUpDown, Check, 
-    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight, MessageCircle, RefreshCw, RotateCcw, Link as LinkIcon
+import {
+    Plus, Search, Edit2, Trash2, X, Calendar, DollarSign, Filter, ArrowUpDown, Check,
+    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight, MessageCircle, RefreshCw, RotateCcw, Link as LinkIcon,
+    MoreVertical, ArrowRightLeft
 } from 'lucide-react';
 
 interface ProposalKol {
@@ -236,6 +238,27 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         kolName: string;
     } | null>(null);
 
+    // Creator Row Action Dropdown Menu state
+    const [activeActionMenu, setActiveActionMenu] = useState<{
+        proposalId: string;
+        kolId: string;
+        anchorRect: DOMRect;
+    } | null>(null);
+
+    // Move Creator To Another Proposal Modal state
+    const [moveCreatorModal, setMoveCreatorModal] = useState<{
+        sourceProposalId: string;
+        kolId: string;
+        kolName: string;
+    } | null>(null);
+    const [moveSearchQuery, setMoveSearchQuery] = useState('');
+    const [moveTargetProposalId, setMoveTargetProposalId] = useState<string | null>(null);
+    const [movingCreator, setMovingCreator] = useState(false);
+
+    // Creators Table Sort state (independent from the top-level proposals list sort)
+    const [creatorSortField, setCreatorSortField] = useState<'name' | 'status' | 'est_rate' | null>(null);
+    const [creatorSortDirection, setCreatorSortDirection] = useState<'asc' | 'desc'>('asc');
+
     // Popover input temporary values
     const [cellRateVal, setCellRateVal] = useState('');
     const [cellDeliverablesVal, setCellDeliverablesVal] = useState('');
@@ -255,6 +278,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
 
     const statusPopoverRef = useRef<HTMLDivElement>(null);
     const cellPopoverRef = useRef<HTMLDivElement>(null);
+    const actionMenuRef = useRef<HTMLDivElement>(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -342,6 +366,9 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             if (cellPopoverRef.current && !cellPopoverRef.current.contains(e.target as Node)) {
                 setActiveCellPopover(null);
             }
+            if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+                setActiveActionMenu(null);
+            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => {
@@ -350,6 +377,133 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     }, []);
 
     const selectedProposal = proposals.find(p => p.id === selectedProposalId);
+
+    // Sort creators within the open proposal's detailed table (independent of the proposals-list sort)
+    const handleCreatorSort = (field: 'name' | 'status' | 'est_rate') => {
+        if (creatorSortField === field) {
+            setCreatorSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setCreatorSortField(field);
+            setCreatorSortDirection('asc');
+        }
+    };
+
+    const sortedProposalKols = useMemo(() => {
+        const list = selectedProposal?.proposal_kols || [];
+        if (!creatorSortField) return list;
+
+        return [...list].sort((a, b) => {
+            let valA: any;
+            let valB: any;
+
+            if (creatorSortField === 'name') {
+                valA = (a.kols?.name || '').toLowerCase();
+                valB = (b.kols?.name || '').toLowerCase();
+            } else if (creatorSortField === 'status') {
+                valA = (a.status || 'Active').toLowerCase();
+                valB = (b.status || 'Active').toLowerCase();
+            } else {
+                valA = parseFloat(String(a.est_rate || '0')) || 0;
+                valB = parseFloat(String(b.est_rate || '0')) || 0;
+            }
+
+            if (valA < valB) return creatorSortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return creatorSortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [selectedProposal?.proposal_kols, creatorSortField, creatorSortDirection]);
+
+    // Move Creator To Another Proposal (keeps est_rate, deliverables, terms, contract_link,
+    // audience_screenshots, and status intact, and re-points the discussion thread so all
+    // prior conversation history stays attached to the creator rather than the proposal)
+    const handleMoveCreatorToProposal = async (sourceProposalId: string, destProposalId: string, kolId: string) => {
+        const sourceProposal = proposals.find(p => p.id === sourceProposalId);
+        const movingPk = sourceProposal?.proposal_kols?.find(pk => pk.kol_id === kolId);
+        if (!movingPk) return;
+
+        setMovingCreator(true);
+
+        // Optimistic local update
+        setProposals(prev => prev.map(p => {
+            if (p.id === sourceProposalId) {
+                return { ...p, proposal_kols: (p.proposal_kols || []).filter(pk => pk.kol_id !== kolId) };
+            }
+            if (p.id === destProposalId) {
+                return { ...p, proposal_kols: [...(p.proposal_kols || []), { ...movingPk, proposal_id: destProposalId }] };
+            }
+            return p;
+        }));
+
+        if (activeDiscussion?.proposalId === sourceProposalId && activeDiscussion.kolId === kolId) {
+            setActiveDiscussion(null);
+        }
+
+        try {
+            // 1. Insert at destination first (so a mid-failure leaves a recoverable duplicate, not a lost row)
+            const { error: insertError } = await supabaseClient
+                .from('proposal_kols')
+                .insert({
+                    proposal_id: destProposalId,
+                    kol_id: kolId,
+                    est_rate: movingPk.est_rate,
+                    deliverables: movingPk.deliverables,
+                    terms: movingPk.terms,
+                    contract_link: movingPk.contract_link,
+                    audience_screenshots: movingPk.audience_screenshots,
+                    status: movingPk.status
+                });
+            if (insertError) throw insertError;
+
+            // 2. Remove from source
+            const { error: deleteError } = await supabaseClient
+                .from('proposal_kols')
+                .delete()
+                .eq('proposal_id', sourceProposalId)
+                .eq('kol_id', kolId);
+            if (deleteError) throw deleteError;
+
+            // 3. Re-point the discussion thread (if any) so all prior messages stay with the creator
+            const { data: sourceThread } = await supabaseClient
+                .from('proposal_discussion_threads')
+                .select('id')
+                .eq('proposal_id', sourceProposalId)
+                .eq('kol_id', kolId)
+                .maybeSingle();
+
+            if (sourceThread) {
+                const { data: destThread } = await supabaseClient
+                    .from('proposal_discussion_threads')
+                    .select('id')
+                    .eq('proposal_id', destProposalId)
+                    .eq('kol_id', kolId)
+                    .maybeSingle();
+
+                if (destThread) {
+                    // An orphaned thread already sits at the destination (left behind by a prior
+                    // remove-from-proposal). Absorb its messages into the moving thread, then drop it,
+                    // so we never end up with two threads for the same (proposal, kol) pair.
+                    await supabaseClient
+                        .from('proposal_discussion_messages')
+                        .update({ thread_id: sourceThread.id })
+                        .eq('thread_id', destThread.id);
+                    await supabaseClient
+                        .from('proposal_discussion_threads')
+                        .delete()
+                        .eq('id', destThread.id);
+                }
+
+                await supabaseClient
+                    .from('proposal_discussion_threads')
+                    .update({ proposal_id: destProposalId })
+                    .eq('id', sourceThread.id);
+            }
+        } catch (err) {
+            console.error('Failed to move creator to another proposal:', err);
+            fetchData();
+        } finally {
+            setMovingCreator(false);
+        }
+    };
 
     // Notify parent workspace of current selected proposal title for Breadcrumbs & sync URL path
     useEffect(() => {
@@ -1088,15 +1242,30 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                         <table className="w-full text-sm text-left text-slate-600 border-collapse">
                             <thead className="text-xs text-slate-500 font-normal uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
                                 <tr>
-                                    <th className="px-4 py-3.5 min-w-[200px] font-normal">KOL Channel</th>
-                                    <th className="px-4 py-3.5 min-w-[110px] font-normal">Status</th>
+                                    <th onClick={() => handleCreatorSort('name')} className="px-4 py-3.5 min-w-[200px] font-normal cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                        <div className="flex items-center gap-1">
+                                            <span>KOL Channel</span>
+                                            <ArrowUpDown className={`w-3 h-3 ${creatorSortField === 'name' ? 'text-slate-600' : 'text-slate-400'}`} />
+                                        </div>
+                                    </th>
+                                    <th onClick={() => handleCreatorSort('status')} className="px-4 py-3.5 min-w-[110px] font-normal cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                        <div className="flex items-center gap-1">
+                                            <span>Status</span>
+                                            <ArrowUpDown className={`w-3 h-3 ${creatorSortField === 'status' ? 'text-slate-600' : 'text-slate-400'}`} />
+                                        </div>
+                                    </th>
                                     <th className="px-4 py-3.5 min-w-[220px] font-normal">Audience Insight Attachments</th>
-                                    <th className="px-4 py-3.5 text-right min-w-[130px] font-normal">Est. Rate ($ USD)</th>
+                                    <th onClick={() => handleCreatorSort('est_rate')} className="px-4 py-3.5 text-right min-w-[130px] font-normal cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <span>Est. Rate ($ USD)</span>
+                                            <ArrowUpDown className={`w-3 h-3 ${creatorSortField === 'est_rate' ? 'text-slate-600' : 'text-slate-400'}`} />
+                                        </div>
+                                    </th>
                                     <th className="px-4 py-3.5 min-w-[220px] font-normal">Deliverables</th>
                                     <th className="px-4 py-3.5 min-w-[200px] font-normal">Terms & Conditions</th>
                                     <th className="px-4 py-3.5 min-w-[140px] font-normal">Contract Link</th>
-                                    <th className="px-4 py-3.5 min-w-[150px] font-normal">Discussion</th>
-                                    <th className="px-4 py-3.5 text-center min-w-[160px] font-normal">Action</th>
+                                    <th className="px-4 py-3.5 min-w-[150px] font-normal border-l border-[#bfdbfe]/50">Discussion</th>
+                                    <th className="px-4 py-3.5 text-center min-w-[70px] font-normal">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#bfdbfe]/30">
@@ -1107,7 +1276,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                         </td>
                                     </tr>
                                 ) : (
-                                    selectedProposal.proposal_kols.map((pk, idx) => {
+                                    sortedProposalKols.map((pk, idx) => {
                                         const kol = pk.kols;
 
                                         let screenshotsList: string[] = [];
@@ -1134,7 +1303,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
 
                                                 {/* 2. Read-Only Status Cell */}
                                                 <td className="px-4 py-3 align-middle">
-                                                    <div className="flex items-center h-8">
+                                                    <div className="flex items-center min-h-[36px]">
                                                         <span
                                                             className={`px-3 py-1 rounded-full text-xs border inline-block shadow-2xs ${getCreatorStatusStyle(pk.status)}`}
                                                         >
@@ -1186,15 +1355,15 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
 
                                                 {/* 4. Est. Rate ($ USD) */}
                                                 <td className="px-4 py-3 text-right align-middle">
-                                                    <div className="flex items-center justify-end h-8">
+                                                    <div className="flex items-center justify-end min-h-[36px]">
                                                         <button
                                                             onClick={e => openCellPopover(e, selectedProposal.id, pk.kol_id, 'rate', pk)}
                                                             className="hover:bg-slate-100 px-2.5 py-1 rounded-lg text-slate-800 font-semibold text-xs transition-colors border border-transparent hover:border-slate-200 inline-flex items-center"
                                                             title="Click to edit estimated rate"
                                                         >
-                                                            {pk.est_rate !== undefined && pk.est_rate !== null && pk.est_rate !== 0 
-                                                                ? formatCurrencyUSD(pk.est_rate) 
-                                                                : <span className="text-slate-400 font-medium text-xs">Add</span>}
+                                                            {pk.est_rate !== undefined && pk.est_rate !== null && pk.est_rate !== 0
+                                                                ? formatCurrencyUSD(pk.est_rate)
+                                                                : <span className="text-slate-400 font-medium text-xs flex items-center gap-1"><Plus className="w-3.5 h-3.5" /><span>Add</span></span>}
                                                         </button>
                                                     </div>
                                                 </td>
@@ -1264,8 +1433,8 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </div>
                                                 </td>
 
-                                                {/* 8. Discussion Column */}
-                                                <td className="px-4 py-3 align-middle">
+                                                {/* 8. Discussion Column (controls cluster starts here, separated from deal-data columns) */}
+                                                <td className="px-4 py-3 align-middle border-l border-slate-100">
                                                     <button
                                                         onClick={() => setActiveDiscussion({
                                                             proposalId: selectedProposal.id,
@@ -1279,43 +1448,18 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </button>
                                                 </td>
 
-                                                {/* 9. Actions Column (Approve, Reject, Re-negotiate, Reset, Remove) */}
-                                                <td className="px-4 py-3 text-center align-middle">
-                                                    <div className="flex items-center justify-center gap-0.5">
+                                                {/* 9. Actions Column — single dropdown menu */}
+                                                <td className="px-2 py-3 text-center align-middle">
+                                                    <div className="flex items-center justify-center min-h-[36px]">
                                                         <button
-                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Approved', true)}
-                                                            className={`p-1.5 rounded-lg transition-colors ${pk.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 font-semibold' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
-                                                            title="Approve this creator"
+                                                            onClick={e => {
+                                                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                                                setActiveActionMenu({ proposalId: selectedProposal.id, kolId: pk.kol_id, anchorRect: rect });
+                                                            }}
+                                                            className={`p-1.5 rounded-lg transition-colors ${activeActionMenu?.proposalId === selectedProposal.id && activeActionMenu?.kolId === pk.kol_id ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}
+                                                            title="More actions"
                                                         >
-                                                            <Check className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Rejected', true)}
-                                                            className={`p-1.5 rounded-lg transition-colors ${pk.status === 'Rejected' ? 'bg-rose-100 text-rose-700 font-semibold' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'}`}
-                                                            title="Reject this creator"
-                                                        >
-                                                            <X className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Re-negotiate', true)}
-                                                            className={`p-1.5 rounded-lg transition-colors ${pk.status === 'Re-negotiate' ? 'bg-amber-100 text-amber-700 font-semibold' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
-                                                            title="Rediscuss deal"
-                                                        >
-                                                            <RefreshCw className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => updateCreatorStatus(selectedProposal.id, pk.kol_id, 'Active', false)}
-                                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                            title="Reset status to Active"
-                                                        >
-                                                            <RotateCcw className="w-4 h-4" />
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => handleRemoveCreatorFromProposal(selectedProposal.id, pk.kol_id)}
-                                                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                                            title="Remove creator from proposal"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            <MoreVertical className="w-4 h-4" />
                                                         </button>
                                                     </div>
                                                 </td>
@@ -1644,6 +1788,162 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                             </div>
                         </div>
                     )}
+                </div>,
+                document.body
+            )}
+
+            {/* CREATOR ROW ACTION DROPDOWN MENU (Approve / Reject / Re-negotiate / Reset / Move / Remove) */}
+            {activeActionMenu && (() => {
+                const menuProposal = proposals.find(p => p.id === activeActionMenu.proposalId);
+                const menuPk = menuProposal?.proposal_kols?.find(pk => pk.kol_id === activeActionMenu.kolId);
+                if (!menuPk) return null;
+
+                const items: ActionMenuItem[] = [
+                    {
+                        key: 'approve',
+                        label: 'Approve',
+                        icon: <Check className="w-4 h-4 text-emerald-600" />,
+                        activeWhen: menuPk.status === 'Approved',
+                        onClick: () => updateCreatorStatus(activeActionMenu.proposalId, activeActionMenu.kolId, 'Approved', true)
+                    },
+                    {
+                        key: 'reject',
+                        label: 'Reject',
+                        icon: <X className="w-4 h-4 text-rose-600" />,
+                        activeWhen: menuPk.status === 'Rejected',
+                        onClick: () => updateCreatorStatus(activeActionMenu.proposalId, activeActionMenu.kolId, 'Rejected', true)
+                    },
+                    {
+                        key: 'renegotiate',
+                        label: 'Re-negotiate',
+                        icon: <RefreshCw className="w-4 h-4 text-amber-600" />,
+                        activeWhen: menuPk.status === 'Re-negotiate',
+                        onClick: () => updateCreatorStatus(activeActionMenu.proposalId, activeActionMenu.kolId, 'Re-negotiate', true)
+                    },
+                    {
+                        key: 'reset',
+                        label: 'Reset to Active',
+                        icon: <RotateCcw className="w-4 h-4 text-blue-600" />,
+                        onClick: () => updateCreatorStatus(activeActionMenu.proposalId, activeActionMenu.kolId, 'Active', false)
+                    },
+                    {
+                        key: 'move',
+                        label: 'Move to another proposal',
+                        icon: <ArrowRightLeft className="w-4 h-4 text-slate-500" />,
+                        separatorBefore: true,
+                        onClick: () => {
+                            setMoveSearchQuery('');
+                            setMoveTargetProposalId(null);
+                            setMoveCreatorModal({
+                                sourceProposalId: activeActionMenu.proposalId,
+                                kolId: activeActionMenu.kolId,
+                                kolName: menuPk.kols?.name || 'Creator'
+                            });
+                        }
+                    },
+                    {
+                        key: 'remove',
+                        label: 'Remove from proposal',
+                        icon: <Trash2 className="w-4 h-4 text-rose-600" />,
+                        destructive: true,
+                        separatorBefore: true,
+                        onClick: () => handleRemoveCreatorFromProposal(activeActionMenu.proposalId, activeActionMenu.kolId)
+                    }
+                ];
+
+                return (
+                    <ActionMenu
+                        anchorRect={activeActionMenu.anchorRect}
+                        items={items}
+                        onRequestClose={() => setActiveActionMenu(null)}
+                        menuRef={actionMenuRef}
+                    />
+                );
+            })()}
+
+            {/* MOVE CREATOR TO ANOTHER PROPOSAL MODAL */}
+            {moveCreatorModal && createPortal(
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[999999] flex items-center justify-center p-4 overflow-y-auto font-sans">
+                    <div className="app-dialog bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
+                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                            <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+                                <ArrowRightLeft className="w-4 h-4 text-slate-500" />
+                                <span>Move Creator</span>
+                            </h3>
+                            <button onClick={() => setMoveCreatorModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                        </div>
+
+                        <div className="p-5 space-y-3">
+                            <p className="text-xs text-slate-500">
+                                Move <strong className="text-slate-800">{moveCreatorModal.kolName}</strong> to another proposal. Their status, rate, deliverables, terms, attachments, and full discussion history move with them.
+                            </p>
+
+                            <input
+                                type="text"
+                                autoFocus
+                                value={moveSearchQuery}
+                                onChange={e => setMoveSearchQuery(e.target.value)}
+                                placeholder="Search proposals..."
+                                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal"
+                            />
+
+                            <div className="max-h-56 overflow-y-auto space-y-1 border border-slate-100 rounded-xl p-1.5">
+                                {(() => {
+                                    const candidates = proposals.filter(p =>
+                                        p.id !== moveCreatorModal.sourceProposalId &&
+                                        !(p.proposal_kols || []).some(pk => pk.kol_id === moveCreatorModal.kolId) &&
+                                        (!moveSearchQuery.trim() || p.title.toLowerCase().includes(moveSearchQuery.trim().toLowerCase()))
+                                    );
+
+                                    if (candidates.length === 0) {
+                                        return (
+                                            <div className="text-center py-6 text-xs text-slate-400">
+                                                No other eligible proposals found.
+                                            </div>
+                                        );
+                                    }
+
+                                    return candidates.map(p => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => setMoveTargetProposalId(p.id)}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-between gap-2 ${moveTargetProposalId === p.id ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'text-slate-700 hover:bg-slate-50 border border-transparent'}`}
+                                        >
+                                            <span className="truncate">{p.title}</span>
+                                            {moveTargetProposalId === p.id && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                                        </button>
+                                    ));
+                                })()}
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button
+                                    onClick={() => setMoveCreatorModal(null)}
+                                    className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (!moveTargetProposalId) return;
+                                        await handleMoveCreatorToProposal(moveCreatorModal.sourceProposalId, moveTargetProposalId, moveCreatorModal.kolId);
+                                        setMoveCreatorModal(null);
+                                    }}
+                                    disabled={!moveTargetProposalId || movingCreator}
+                                    className="px-5 py-2 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+                                >
+                                    {movingCreator ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            <span>Moving...</span>
+                                        </>
+                                    ) : (
+                                        <span>Move Creator</span>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>,
                 document.body
             )}
