@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabaseClient } from '../services/supabaseClient';
 import KOLCell, { KolData } from './KOLCell';
@@ -269,6 +269,99 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
         anchorRect?: DOMRect;
     } | null>(null);
 
+    // Discussion unread activities state
+    const [threadActivities, setThreadActivities] = useState<Record<string, {
+        threadId: string;
+        proposalId: string;
+        kolId: string;
+        lastMessageAt: string;
+        lastMessageBy: string;
+        unreadCount: number;
+    }>>({});
+
+    const fetchThreadActivities = useCallback(async (propId: string) => {
+        if (!propId) return;
+        try {
+            const { data: threads, error: tErr } = await supabaseClient
+                .from('proposal_discussion_threads')
+                .select('id, proposal_id, kol_id')
+                .eq('proposal_id', propId);
+
+            if (tErr || !threads || threads.length === 0) return;
+
+            const threadIds = threads.map((t: any) => t.id);
+            const { data: msgs, error: mErr } = await supabaseClient
+                .from('proposal_discussion_messages')
+                .select('id, thread_id, actor, created_at')
+                .in('thread_id', threadIds)
+                .order('created_at', { ascending: true });
+
+            if (mErr) return;
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const userEmail = (user?.email || '').toLowerCase();
+            const userName = (user?.user_metadata?.full_name || '').toLowerCase();
+
+            const activities: Record<string, {
+                threadId: string;
+                proposalId: string;
+                kolId: string;
+                lastMessageAt: string;
+                lastMessageBy: string;
+                unreadCount: number;
+            }> = {};
+
+            threads.forEach((t: any) => {
+                const threadMsgs = (msgs || []).filter((m: any) => m.thread_id === t.id);
+                if (threadMsgs.length === 0) return;
+
+                const lastMsg = threadMsgs[threadMsgs.length - 1];
+                const localReadTime = localStorage.getItem(`tp_thread_read_${t.id}_${userEmail}`) || '1970-01-01T00:00:00Z';
+                const readTimestamp = new Date(localReadTime).getTime();
+
+                const unreads = threadMsgs.filter((m: any) => {
+                    const isOwn = (m.actor || '').toLowerCase() === userName || (m.actor || '').toLowerCase() === userEmail;
+                    return !isOwn && new Date(m.created_at).getTime() > readTimestamp;
+                });
+
+                activities[t.kol_id] = {
+                    threadId: t.id,
+                    proposalId: t.proposal_id,
+                    kolId: t.kol_id,
+                    lastMessageAt: lastMsg.created_at,
+                    lastMessageBy: lastMsg.actor,
+                    unreadCount: unreads.length
+                };
+            });
+
+            setThreadActivities(activities);
+        } catch (e) {
+            console.error('Error fetching thread activities:', e);
+        }
+    }, []);
+
+    const markThreadAsReadLocally = (threadId: string, kolId: string) => {
+        supabaseClient.auth.getUser().then(({ data: { user } }) => {
+            const userEmail = user?.email || '';
+            if (userEmail) {
+                localStorage.setItem(`tp_thread_read_${threadId}_${userEmail}`, new Date().toISOString());
+            }
+            setThreadActivities(prev => ({
+                ...prev,
+                [kolId]: {
+                    ...(prev[kolId] || {
+                        threadId,
+                        proposalId: selectedProposalId || '',
+                        kolId,
+                        lastMessageAt: new Date().toISOString(),
+                        lastMessageBy: ''
+                    }),
+                    unreadCount: 0
+                }
+            }));
+        });
+    };
+
     // Discussion Sidebar state
     const [activeDiscussion, setActiveDiscussion] = useState<{
         proposalId: string;
@@ -400,6 +493,26 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     useEffect(() => {
         fetchData();
     }, []);
+
+    useEffect(() => {
+        if (activeView === 'workspace' && selectedProposalId) {
+            fetchThreadActivities(selectedProposalId);
+
+            const channel = supabaseClient.channel(`proposal_threads_${selectedProposalId}`)
+                .on(
+                    'postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'proposal_discussion_messages' },
+                    () => {
+                        fetchThreadActivities(selectedProposalId);
+                    }
+                )
+                .subscribe();
+
+            return () => {
+                supabaseClient.removeChannel(channel);
+            };
+        }
+    }, [activeView, selectedProposalId, fetchThreadActivities]);
 
     // Close popovers on click outside
     useEffect(() => {
@@ -1287,7 +1400,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
 
             {/* VIEW 2: DETAILED CREATORS PROPOSAL WORKSPACE VIEW */}
             {activeView === 'workspace' && selectedProposal && (
-                <div className={`space-y-6 animate-in fade-in duration-200 transition-all ${activeDiscussion ? 'mr-[460px]' : ''}`}>
+                <div className={`space-y-6 animate-in fade-in duration-200 transition-all ${activeDiscussion ? 'mr-[560px]' : ''}`}>
                     
                     {/* Workspace Header: Clean Title & Back Button */}
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1393,15 +1506,16 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                             }
                                         }
 
+                                        const activity = threadActivities[pk.kol_id];
+                                        const hasUnread = Boolean(activity && activity.unreadCount > 0);
+
                                         return (
-                                            <tr key={pk.kol_id || idx} className="hover:bg-slate-50/40 transition-colors align-middle">
+                                            <tr key={pk.kol_id || idx} className={`transition-colors align-middle ${hasUnread ? 'bg-emerald-50/40 hover:bg-emerald-50/70 border-l-2 border-emerald-500' : 'hover:bg-slate-50/40'}`}>
                                                 
                                                 {/* 1. KOL Channel Cell */}
                                                 <td className="px-4 py-3 align-middle">
                                                     <KOLCell kol={kol} />
                                                 </td>
-
-                                                {/* 2. Interactive Status Cell */}
                                                 <td className="px-4 py-3 align-middle" onClick={e => e.stopPropagation()}>
                                                     <div className="flex items-center min-h-[36px]">
                                                         <button

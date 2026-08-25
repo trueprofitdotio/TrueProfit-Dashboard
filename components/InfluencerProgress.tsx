@@ -175,6 +175,30 @@ const renderPlatformIcon = (url: string) => {
     return <Play className="w-3.5 h-3.5 text-slate-400 shrink-0" />;
 };
 
+// Contract/Document Name Formatter Helper
+const getContractDisplayName = (url: string, index?: number): string => {
+    if (!url || !url.trim()) return index !== undefined ? `Contract #${index}` : 'View Contract';
+    const trimmed = url.trim();
+    try {
+        const parsed = new URL(trimmed);
+        const pathname = parsed.pathname;
+        const lastSegment = pathname.split('/').filter(Boolean).pop();
+        
+        // If pathname ends with a clear document filename (e.g. .pdf, .docx, .doc, .xlsx, etc.)
+        if (lastSegment && /\.(pdf|docx?|xlsx?|pages|csv)$/i.test(lastSegment)) {
+            return decodeURIComponent(lastSegment);
+        }
+        
+        // For Google Docs / Sheets / Drive or generic web links
+        if (index !== undefined) {
+            return `Contract #${index}`;
+        }
+        return 'View Contract';
+    } catch {
+        return index !== undefined ? `Contract #${index}` : 'View Contract';
+    }
+};
+
 // Custom Single Mini Calendar Picker Component
 interface MiniCalendarPickerProps {
     initialDate?: string | null;
@@ -460,41 +484,62 @@ const InfluencerProgress: React.FC = () => {
                 console.error('Error fetching videos:', vidErr);
             }
 
-            const videoMap: Record<string, VideoRecord[]> = {};
-            (vidData || []).forEach(v => {
-                if (v.kol_id) {
-                    if (!videoMap[v.kol_id]) videoMap[v.kol_id] = [];
-                    videoMap[v.kol_id].push(v);
-                }
-            });
-
-            // Map collaboration rows
+            // Map collaboration rows: ONLY include videos explicitly listed in row.report_links for each deal
             const mappedRows: CollaborationRow[] = (collabData || []).map(row => {
                 const manualUrls: string[] = (row.report_links || '').match(/(https?:\/\/[^\s,]+)/g) || [];
-                const kolVideos = row.kol_id && videoMap[row.kol_id] ? videoMap[row.kol_id] : [];
                 
-                let combinedVideos: VideoRecord[] = [...kolVideos];
-                manualUrls.forEach((mUrl: string, idx: number) => {
-                    if (!combinedVideos.some(v => v.video_url === mUrl)) {
-                        combinedVideos.push({
-                            id: `manual_${row.id}_${idx}`,
-                            video_url: mUrl,
-                            title: null,
-                            released_date: null,
-                            current_views: null
-                        });
+                const dealVideos: VideoRecord[] = manualUrls.map((mUrl: string, idx: number) => {
+                    const trimmed = mUrl.trim();
+                    const ytId = getYouTubeVideoId(trimmed);
+
+                    const matchedVid = (vidData || []).find(v => {
+                        if (v.video_url && v.video_url.trim() === trimmed) return true;
+                        if (ytId) {
+                            if (v.new_id === `yt_${ytId}`) return true;
+                            const vYtId = getYouTubeVideoId(v.video_url || '');
+                            if (vYtId === ytId) return true;
+                        }
+                        return false;
+                    });
+
+                    if (matchedVid) {
+                        return {
+                            id: matchedVid.id || `manual_${row.id}_${idx}`,
+                            video_url: trimmed,
+                            title: matchedVid.title || null,
+                            released_date: matchedVid.released_date || null,
+                            current_views: matchedVid.current_views || null
+                        };
                     }
+
+                    return {
+                        id: `manual_${row.id}_${idx}`,
+                        video_url: trimmed,
+                        title: null,
+                        released_date: null,
+                        current_views: null
+                    };
+                });
+
+                // Auto-sort reported videos latest (top) to oldest (bottom)
+                dealVideos.sort((a, b) => {
+                    const timeA = a.released_date ? (Date.parse(a.released_date) || 0) : 0;
+                    const timeB = b.released_date ? (Date.parse(b.released_date) || 0) : 0;
+                    if (timeA === 0 && timeB === 0) return 0;
+                    if (timeA === 0) return 1;
+                    if (timeB === 0) return -1;
+                    return timeB - timeA;
                 });
 
                 // Auto-sync status based on tracked state if not custom override
                 let effectiveProgressStatus = row.progress_status || 'Not Started';
                 if (!row.is_custom_status) {
-                    const hasVideos = combinedVideos.length > 0;
+                    const hasVideos = dealVideos.length > 0;
                     const countAgreed = row.content_count || 1;
                     const pkgNum = parsePackageNumber(row.total_package);
                     const isFullyPaid = (row.actual_spent || 0) >= pkgNum && pkgNum > 0;
 
-                    if (hasVideos && combinedVideos.length >= countAgreed && isFullyPaid) {
+                    if (hasVideos && dealVideos.length >= countAgreed && isFullyPaid) {
                         effectiveProgressStatus = 'All Done';
                     } else if (hasVideos || (row.actual_spent || 0) > 0) {
                         effectiveProgressStatus = 'In Progress';
@@ -513,27 +558,20 @@ const InfluencerProgress: React.FC = () => {
                 }
 
                 // Find newest release date
-                let latestDate = row.released_date || null;
-                combinedVideos.forEach(v => {
-                    if (v.released_date) {
-                        if (!latestDate || new Date(v.released_date) > new Date(latestDate)) {
-                            latestDate = v.released_date;
-                        }
-                    }
-                });
+                const latestDate = dealVideos.map(v => v.released_date).filter(Boolean)[0] || row.released_date || null;
 
                 return {
                     ...row,
                     progress_status: effectiveProgressStatus,
                     payment_status: autoPaymentStatus,
                     released_date: latestDate,
-                    videosList: combinedVideos
+                    videosList: dealVideos
                 };
             });
 
             setCollaborations(mappedRows);
 
-            // Trigger async YouTube video details fetch
+            // Trigger async YouTube video details fetch for missing titles
             const missingDetailsList: { collabId: string; vidIndex: number; video_url: string }[] = [];
             mappedRows.forEach(c => {
                 (c.videosList || []).forEach((vid, idx) => {
@@ -545,16 +583,16 @@ const InfluencerProgress: React.FC = () => {
 
             if (missingDetailsList.length > 0) {
                 (async () => {
-                    for (const item of missingDetailsList.slice(0, 8)) {
+                    for (const item of missingDetailsList.slice(0, 10)) {
                         try {
                             const ytId = getYouTubeVideoId(item.video_url);
                             if (!ytId) continue;
-                            const details = await fetchYouTubeVideoDetails(ytId);
+                            const details = await fetchYouTubeVideoDetails(item.video_url);
                             if (details && details.title) {
                                 setCollaborations(prev => prev.map(c => {
                                     if (c.id !== item.collabId) return c;
                                     const nextVids = (c.videosList || []).map(v => {
-                                        if (v.video_url === item.video_url) {
+                                        if (v.video_url === item.video_url || (ytId && getYouTubeVideoId(v.video_url) === ytId)) {
                                             return {
                                                 ...v,
                                                 title: details.title,
@@ -563,12 +601,15 @@ const InfluencerProgress: React.FC = () => {
                                         }
                                         return v;
                                     });
-                                    let latestRel = c.released_date;
-                                    if (details.publishedAt) {
-                                        if (!latestRel || new Date(details.publishedAt) > new Date(latestRel)) {
-                                            latestRel = details.publishedAt;
-                                        }
-                                    }
+                                    nextVids.sort((a, b) => {
+                                        const timeA = a.released_date ? (Date.parse(a.released_date) || 0) : 0;
+                                        const timeB = b.released_date ? (Date.parse(b.released_date) || 0) : 0;
+                                        if (timeA === 0 && timeB === 0) return 0;
+                                        if (timeA === 0) return 1;
+                                        if (timeB === 0) return -1;
+                                        return timeB - timeA;
+                                    });
+                                    const latestRel = nextVids.map(v => v.released_date).filter(Boolean)[0] || c.released_date;
                                     return {
                                         ...c,
                                         released_date: latestRel,
@@ -1340,13 +1381,13 @@ const InfluencerProgress: React.FC = () => {
                                             >
                                                 {(() => {
                                                     const urls: string[] = (c.agreement_link || '').match(/(https?:\/\/[^\s,]+)/g) || [];
-                                                    if (urls.length === 0 && c.agreement_link) urls.push(c.agreement_link);
+                                                    if (urls.length === 0 && c.agreement_link && c.agreement_link.trim()) urls.push(c.agreement_link.trim());
 
                                                     if (urls.length > 0) {
                                                         return (
                                                             <div className="space-y-1">
                                                                 {urls.map((url, idx) => {
-                                                                    const docName = url.replace(/^https?:\/\/([^\/]+)\/.*?([^\/\?#]+)$/, '$2') || `Doc #${idx + 1}`;
+                                                                    const docName = getContractDisplayName(url, urls.length > 1 ? idx + 1 : undefined);
                                                                     return (
                                                                         <div key={idx} className="h-6 flex items-center text-xs">
                                                                             <a
