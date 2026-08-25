@@ -619,7 +619,9 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 .eq('kol_id', kolId);
             if (deleteError) throw deleteError;
 
-            // 3. Re-point the discussion thread (if any) so all prior messages stay with the creator
+            // 3. Migrate the discussion thread from source to destination:
+            // Always preserve the recent/active conversation from the source proposal and
+            // discard any stale/orphaned conversations at the destination.
             const { data: sourceThread } = await supabaseClient
                 .from('proposal_discussion_threads')
                 .select('id')
@@ -627,28 +629,27 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 .eq('kol_id', kolId)
                 .maybeSingle();
 
-            if (sourceThread) {
-                const { data: destThread } = await supabaseClient
+            const { data: destThread } = await supabaseClient
+                .from('proposal_discussion_threads')
+                .select('id')
+                .eq('proposal_id', destProposalId)
+                .eq('kol_id', kolId)
+                .maybeSingle();
+
+            if (destThread) {
+                // Purge stale messages and thread at destination
+                await supabaseClient
+                    .from('proposal_discussion_messages')
+                    .delete()
+                    .eq('thread_id', destThread.id);
+                await supabaseClient
                     .from('proposal_discussion_threads')
-                    .select('id')
-                    .eq('proposal_id', destProposalId)
-                    .eq('kol_id', kolId)
-                    .maybeSingle();
+                    .delete()
+                    .eq('id', destThread.id);
+            }
 
-                if (destThread) {
-                    // An orphaned thread already sits at the destination (left behind by a prior
-                    // remove-from-proposal). Absorb its messages into the moving thread, then drop it,
-                    // so we never end up with two threads for the same (proposal, kol) pair.
-                    await supabaseClient
-                        .from('proposal_discussion_messages')
-                        .update({ thread_id: sourceThread.id })
-                        .eq('thread_id', destThread.id);
-                    await supabaseClient
-                        .from('proposal_discussion_threads')
-                        .delete()
-                        .eq('id', destThread.id);
-                }
-
+            if (sourceThread) {
+                // Point source thread to destination proposal
                 await supabaseClient
                     .from('proposal_discussion_threads')
                     .update({ proposal_id: destProposalId })
@@ -1040,12 +1041,34 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             };
         }));
 
+        if (activeDiscussion?.proposalId === proposalId && activeDiscussion.kolId === kolId) {
+            setActiveDiscussion(null);
+        }
+
         try {
             await supabaseClient
                 .from('proposal_kols')
                 .delete()
                 .eq('proposal_id', proposalId)
                 .eq('kol_id', kolId);
+
+            const { data: thread } = await supabaseClient
+                .from('proposal_discussion_threads')
+                .select('id')
+                .eq('proposal_id', proposalId)
+                .eq('kol_id', kolId)
+                .maybeSingle();
+
+            if (thread) {
+                await supabaseClient
+                    .from('proposal_discussion_messages')
+                    .delete()
+                    .eq('thread_id', thread.id);
+                await supabaseClient
+                    .from('proposal_discussion_threads')
+                    .delete()
+                    .eq('id', thread.id);
+            }
         } catch (err) {
             console.error('Failed to remove creator from proposal:', err);
             fetchData();

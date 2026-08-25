@@ -463,22 +463,46 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
         const initializeThread = async () => {
             setLoading(true);
             try {
+                // 1. Try to find the exact thread for this proposal and creator
                 let { data: thread, error: fetchError } = await supabaseClient
                     .from('proposal_discussion_threads')
                     .select('id')
                     .eq('proposal_id', proposalId)
                     .eq('kol_id', kolId)
-                    .single();
-                if (fetchError && fetchError.code === 'PGRST116') {
-                    const { data: newThread, error: insertError } = await supabaseClient
+                    .maybeSingle();
+
+                if (fetchError) {
+                    console.error('Fetch thread error:', fetchError);
+                }
+
+                // 2. If no thread exists for this (proposal, creator), check if this creator has a thread
+                // migrated or created under a different proposal ID
+                if (!thread) {
+                    const { data: existingKolThread } = await supabaseClient
                         .from('proposal_discussion_threads')
-                        .insert({ proposal_id: proposalId, kol_id: kolId })
                         .select('id')
-                        .single();
-                    if (insertError) throw insertError;
-                    thread = newThread;
-                } else if (fetchError) {
-                    throw fetchError;
+                        .eq('kol_id', kolId)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (existingKolThread) {
+                        // Automatically re-point the thread to the active proposal so all prior messages follow the creator
+                        await supabaseClient
+                            .from('proposal_discussion_threads')
+                            .update({ proposal_id: proposalId })
+                            .eq('id', existingKolThread.id);
+                        thread = existingKolThread;
+                    } else {
+                        // 3. Create a new thread only if the creator has no previous thread
+                        const { data: newThread, error: insertError } = await supabaseClient
+                            .from('proposal_discussion_threads')
+                            .insert({ proposal_id: proposalId, kol_id: kolId })
+                            .select('id')
+                            .single();
+                        if (insertError) throw insertError;
+                        thread = newThread;
+                    }
                 }
                 if (thread) {
                     setThreadId(thread.id);
