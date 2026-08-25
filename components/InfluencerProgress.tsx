@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { supabaseClient } from '../services/supabaseClient';
 import KOLCell, { KolData } from './KOLCell';
@@ -22,6 +22,8 @@ interface CollaborationRow {
     start_month?: string | null;
     payment_status?: string | null;
     progress_status?: string | null;
+    custom_status?: string | null;
+    is_custom_status?: boolean | null;
     report_links?: string | null;
     released_date?: string | null;
     agreement_link?: string | null;
@@ -33,11 +35,13 @@ interface CollaborationRow {
     videosList?: VideoRecord[];
 }
 
-const DEFAULT_PROGRESS_TAGS = [
-    'All done',
+export const SYSTEM_DEFAULT_PROGRESS_TAGS = [
+    'Not Started',
     'In Progress',
-    'Not started'
+    'All Done'
 ];
+
+const DEFAULT_PROGRESS_TAGS = SYSTEM_DEFAULT_PROGRESS_TAGS;
 
 const COLOR_PALETTES = [
     'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold',
@@ -51,6 +55,44 @@ const COLOR_PALETTES = [
     'bg-orange-100 text-orange-800 border-orange-300 font-semibold',
     'bg-blue-100 text-blue-800 border-blue-300 font-semibold'
 ];
+
+const calcPopoverPosition = (
+    anchorRect?: DOMRect | null,
+    width = 300,
+    height = 340,
+    margin = 12
+): React.CSSProperties => {
+    if (!anchorRect) return { position: 'fixed', zIndex: 99999 };
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
+
+    const spaceBelow = vh - anchorRect.bottom;
+    const spaceAbove = anchorRect.top;
+
+    const openUpward = spaceBelow < height && spaceAbove > spaceBelow;
+
+    let top: number;
+    if (openUpward) {
+        top = Math.max(margin, anchorRect.top - height - 6);
+    } else {
+        top = Math.min(vh - height - margin, anchorRect.bottom + 6);
+    }
+    top = Math.max(margin, top);
+
+    let left = anchorRect.left;
+    if (left + width > vw - margin) {
+        left = Math.max(margin, vw - width - margin);
+    }
+    left = Math.max(margin, left);
+
+    return {
+        position: 'fixed',
+        top: `${top}px`,
+        left: `${left}px`,
+        maxHeight: `${Math.min(height, vh - 2 * margin)}px`,
+        zIndex: 99999,
+    };
+};
 
 const getProgressTagStyle = (status?: string | null) => {
     if (!status) return 'bg-slate-100 text-slate-700 border-slate-200 font-normal';
@@ -141,108 +183,147 @@ interface MiniCalendarPickerProps {
 }
 
 const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, onSelectDate, onClose }) => {
-    const initialDt = initialDate ? new Date(initialDate) : new Date();
-    const validDt = isNaN(initialDt.getTime()) ? new Date() : initialDt;
-
-    const [viewYear, setViewYear] = useState<number>(validDt.getFullYear());
-    const [viewMonth, setViewMonth] = useState<number>(validDt.getMonth());
-
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const dayHeaders = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-
-    const handlePrevYear = () => setViewYear(prev => prev - 1);
-    const handleNextYear = () => setViewYear(prev => prev + 1);
-    const handlePrevMonth = () => {
-        if (viewMonth === 0) {
-            setViewMonth(11);
-            setViewYear(prev => prev - 1);
-        } else {
-            setViewMonth(prev => prev - 1);
-        }
-    };
-    const handleNextMonth = () => {
-        if (viewMonth === 11) {
-            setViewMonth(0);
-            setViewYear(prev => prev + 1);
-        } else {
-            setViewMonth(prev => prev + 1);
-        }
+    const parseInitial = () => {
+        if (!initialDate) return new Date();
+        const parsed = new Date(initialDate);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
     };
 
-    const firstDayIndex = new Date(viewYear, viewMonth, 1).getDay();
-    const totalDaysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const initial = parseInitial();
+    const [viewDate, setViewDate] = useState<Date>(initial);
+    const [selectedDate, setSelectedDate] = useState<Date>(initial);
 
-    const daysGrid: (number | null)[] = [];
-    for (let i = 0; i < firstDayIndex; i++) {
-        daysGrid.push(null);
-    }
-    for (let d = 1; d <= totalDaysInMonth; d++) {
-        daysGrid.push(d);
-    }
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
 
-    const handleSelectDay = (day: number) => {
-        const selectedDt = new Date(viewYear, viewMonth, day);
-        const formatted = selectedDt.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+
+    const prevMonthDays = new Date(year, month, 0).getDate();
+
+    const handlePrevMonth = () => setViewDate(new Date(year, month - 1, 1));
+    const handleNextMonth = () => setViewDate(new Date(year, month + 1, 1));
+    const handlePrevYear = () => setViewDate(new Date(year - 1, month, 1));
+    const handleNextYear = () => setViewDate(new Date(year + 1, month, 1));
+
+    const handleDateClick = (day: number) => {
+        const picked = new Date(year, month, day);
+        setSelectedDate(picked);
+        const formatted = picked.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
         onSelectDate(formatted);
+        onClose();
+    };
+
+    const isSelected = (day: number) => {
+        return (
+            selectedDate.getDate() === day &&
+            selectedDate.getMonth() === month &&
+            selectedDate.getFullYear() === year
+        );
+    };
+
+    const isToday = (day: number) => {
+        const today = new Date();
+        return (
+            today.getDate() === day &&
+            today.getMonth() === month &&
+            today.getFullYear() === year
+        );
     };
 
     return (
-        <div className="space-y-3" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-[var(--accent-color)]" />
-                    <span>Collab Started Date</span>
-                </span>
-                <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
-            </div>
-
-            {/* Navigation Header */}
-            <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-xl border border-slate-200 select-none">
-                <div className="flex items-center gap-0.5">
-                    <button type="button" onClick={handlePrevYear} title="Previous Year" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
-                        <ChevronsLeft className="w-4 h-4" />
+        <div className="w-64 select-none font-sans" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-1">
+                    <button onClick={handlePrevYear} className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800" title="Previous Year">
+                        <ChevronsLeft className="w-3.5 h-3.5" />
                     </button>
-                    <button type="button" onClick={handlePrevMonth} title="Previous Month" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
-                        <ChevronLeft className="w-4 h-4" />
+                    <button onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800" title="Previous Month">
+                        <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
                 </div>
-                <span className="text-xs font-semibold text-slate-800">
-                    {monthNames[viewMonth]} {viewYear}
-                </span>
-                <div className="flex items-center gap-0.5">
-                    <button type="button" onClick={handleNextMonth} title="Next Month" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
-                        <ChevronRight className="w-4 h-4" />
+                <div className="text-xs font-semibold text-slate-800">
+                    {monthNames[month]} {year}
+                </div>
+                <div className="flex items-center gap-1">
+                    <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800" title="Next Month">
+                        <ChevronRight className="w-3.5 h-3.5" />
                     </button>
-                    <button type="button" onClick={handleNextYear} title="Next Year" className="p-1 hover:bg-slate-200/80 rounded-lg text-slate-600 transition-colors">
-                        <ChevronsRight className="w-4 h-4" />
+                    <button onClick={handleNextYear} className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800" title="Next Year">
+                        <ChevronsRight className="w-3.5 h-3.5" />
                     </button>
                 </div>
             </div>
 
-            {/* Days Grid */}
-            <div>
-                <div className="grid grid-cols-7 gap-1 text-center mb-1 select-none">
-                    {dayHeaders.map(dh => (
-                        <div key={dh} className="text-[10px] font-semibold text-slate-400 uppercase py-0.5">{dh}</div>
-                    ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1 text-center">
-                    {daysGrid.map((day, idx) => {
-                        if (day === null) {
-                            return <div key={idx} className="h-7" />;
-                        }
-                        return (
-                            <button
-                                type="button"
-                                key={idx}
-                                onClick={() => handleSelectDay(day)}
-                                className="h-7 w-7 mx-auto flex items-center justify-center rounded-lg text-xs font-medium text-slate-700 hover:bg-[var(--accent-color)] hover:text-white transition-colors"
-                            >
-                                {day}
-                            </button>
-                        );
-                    })}
-                </div>
+            <div className="grid grid-cols-7 gap-1 text-center mb-1">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
+                    <div key={i} className="text-[10px] font-semibold text-slate-400 uppercase py-0.5">
+                        {d}
+                    </div>
+                ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                {Array.from({ length: firstDayIndex }).map((_, i) => {
+                    const prevDay = prevMonthDays - firstDayIndex + i + 1;
+                    return (
+                        <div key={`prev-${i}`} className="py-1 text-slate-300 text-[11px]">
+                            {prevDay}
+                        </div>
+                    );
+                })}
+
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const selected = isSelected(day);
+                    const today = isToday(day);
+
+                    return (
+                        <button
+                            key={day}
+                            type="button"
+                            onClick={() => handleDateClick(day)}
+                            className={`py-1 text-xs rounded-lg transition-all font-medium ${
+                                selected
+                                    ? 'bg-[var(--accent-color)] text-white shadow-xs font-bold'
+                                    : today
+                                    ? 'bg-emerald-50 text-emerald-700 font-semibold border border-emerald-300'
+                                    : 'hover:bg-slate-100 text-slate-700'
+                            }`}
+                        >
+                            {day}
+                        </button>
+                    );
+                })}
+            </div>
+
+            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                <button
+                    type="button"
+                    onClick={() => {
+                        const now = new Date();
+                        setSelectedDate(now);
+                        setViewDate(now);
+                        const formatted = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+                        onSelectDate(formatted);
+                        onClose();
+                    }}
+                    className="text-[11px] font-medium text-emerald-600 hover:text-emerald-700 hover:underline"
+                >
+                    Today
+                </button>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="text-[11px] font-medium text-slate-400 hover:text-slate-600"
+                >
+                    Close
+                </button>
             </div>
         </div>
     );
@@ -264,13 +345,14 @@ const InfluencerProgress: React.FC = () => {
         } catch (e) {
             console.error('Failed to load tagOptions from localStorage:', e);
         }
-        return DEFAULT_PROGRESS_TAGS;
+        return SYSTEM_DEFAULT_PROGRESS_TAGS;
     });
 
     const updateTagOptionsState = (newTags: string[]) => {
         setTagOptions(newTags);
         try {
             localStorage.setItem('tp_custom_progress_tags_v2', JSON.stringify(newTags));
+            localStorage.removeItem('tp_custom_progress_tags');
         } catch (e) {
             console.error('Failed to save tagOptions to localStorage:', e);
         }
@@ -290,12 +372,31 @@ const InfluencerProgress: React.FC = () => {
     const [editingAgreementIdx, setEditingAgreementIdx] = useState<number | null>(null);
     const [editingAgreementVal, setEditingAgreementVal] = useState('');
 
-    // Filter & Search states
+    // Filter & Search states - default to system-defined tags
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+    const [selectedStatuses, setSelectedStatuses] = useState<string[]>(() => [
+        'Not Started',
+        'In Progress',
+        'All Done'
+    ]);
     const [showStatusFilterPopover, setShowStatusFilterPopover] = useState(false);
     const [sortField, setSortField] = useState<'start_month' | 'kol_name' | 'progress_status' | 'total_package' | 'payment_percent'>('start_month');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+    // All available tags across system defaults, user created tags, and active rows
+    const allAvailableTags = useMemo(() => {
+        const set = new Set<string>();
+        SYSTEM_DEFAULT_PROGRESS_TAGS.forEach(t => set.add(t));
+        tagOptions.forEach(t => {
+            if (t && t.trim()) set.add(t.trim());
+        });
+        collaborations.forEach(c => {
+            if (c.progress_status && c.progress_status.trim()) {
+                set.add(c.progress_status.trim());
+            }
+        });
+        return Array.from(set);
+    }, [tagOptions, collaborations]);
 
     // Delete deal confirmation modal state
     const [deleteConfirmCollab, setDeleteConfirmCollab] = useState<CollaborationRow | null>(null);
@@ -333,118 +434,141 @@ const InfluencerProgress: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [collabRes, kolsRes, videosRes] = await Promise.all([
-                supabaseClient
-                    .from('collaborations')
-                    .select('*, kols(*)')
-                    .order('created_at', { ascending: false }),
-                supabaseClient
-                    .from('kols')
-                    .select('*')
-                    .order('name'),
-                supabaseClient
-                    .from('videos')
-                    .select('id, kol_id, video_url, title, released_date, current_views')
-            ]);
-            
-            if (collabRes.error) throw collabRes.error;
-            if (kolsRes.error) throw kolsRes.error;
-            
-            const rawCollabs = collabRes.data as unknown as CollaborationRow[];
-            const videosData = (videosRes.data || []) as VideoRecord[];
+            const { data: collabData, error: collabErr } = await supabaseClient
+                .from('collaborations')
+                .select(`
+                    *,
+                    kols (*)
+                `)
+                .order('created_at', { ascending: false });
 
-            // Map videos to collaborations by report_links / kol_id
-            const collabsWithVideos = rawCollabs.map(c => {
-                const reportLinks = c.report_links || '';
-                const foundUrls = reportLinks.match(/(https?:\/\/[^\s,]+)/g) || [];
+            if (collabErr) throw collabErr;
+
+            const { data: kolData, error: kolErr } = await supabaseClient
+                .from('kols')
+                .select('*')
+                .order('name', { ascending: true });
+
+            if (kolErr) throw kolErr;
+            setAllKols(kolData || []);
+
+            const { data: vidData, error: vidErr } = await supabaseClient
+                .from('videos')
+                .select('*');
+
+            if (vidErr) {
+                console.error('Error fetching videos:', vidErr);
+            }
+
+            const videoMap: Record<string, VideoRecord[]> = {};
+            (vidData || []).forEach(v => {
+                if (v.kol_id) {
+                    if (!videoMap[v.kol_id]) videoMap[v.kol_id] = [];
+                    videoMap[v.kol_id].push(v);
+                }
+            });
+
+            // Map collaboration rows
+            const mappedRows: CollaborationRow[] = (collabData || []).map(row => {
+                const manualUrls: string[] = (row.report_links || '').match(/(https?:\/\/[^\s,]+)/g) || [];
+                const kolVideos = row.kol_id && videoMap[row.kol_id] ? videoMap[row.kol_id] : [];
                 
-                const matchedVids: VideoRecord[] = foundUrls.map(url => {
-                    const ytId = getYouTubeVideoId(url);
-                    const found = videosData.find(v => {
-                        if (v.video_url === url) return true;
-                        if (ytId && v.video_url && getYouTubeVideoId(v.video_url) === ytId) return true;
-                        if (ytId && v.id === `yt_${ytId}`) return true;
-                        return false;
-                    });
-                    return {
-                        id: found?.id || url,
-                        video_url: url,
-                        title: found?.title || null,
-                        released_date: found?.released_date || null,
-                        current_views: found?.current_views || null
-                    };
+                let combinedVideos: VideoRecord[] = [...kolVideos];
+                manualUrls.forEach((mUrl: string, idx: number) => {
+                    if (!combinedVideos.some(v => v.video_url === mUrl)) {
+                        combinedVideos.push({
+                            id: `manual_${row.id}_${idx}`,
+                            video_url: mUrl,
+                            title: null,
+                            released_date: null,
+                            current_views: null
+                        });
+                    }
                 });
 
-                // AUTO-SORT REPORTED VIDEOS LATEST (TOP) TO OLDEST (BOTTOM)
-                matchedVids.sort((a, b) => {
-                    const timeA = a.released_date ? (Date.parse(a.released_date) || 0) : 0;
-                    const timeB = b.released_date ? (Date.parse(b.released_date) || 0) : 0;
-                    if (timeA === 0 && timeB === 0) return 0;
-                    if (timeA === 0) return 1; // undated videos to the bottom
-                    if (timeB === 0) return -1;
-                    return timeB - timeA;
-                });
+                // Auto-sync status based on tracked state if not custom override
+                let effectiveProgressStatus = row.progress_status || 'Not Started';
+                if (!row.is_custom_status) {
+                    const hasVideos = combinedVideos.length > 0;
+                    const countAgreed = row.content_count || 1;
+                    const pkgNum = parsePackageNumber(row.total_package);
+                    const isFullyPaid = (row.actual_spent || 0) >= pkgNum && pkgNum > 0;
 
-                const latestRelDate = matchedVids.map(v => v.released_date).filter(Boolean)[0] || c.released_date;
-
-                // Auto-evaluate system-defined status tags
-                const totalPkgNum = parsePackageNumber(c.total_package);
-                const actualSpent = c.actual_spent || 0;
-                const paymentPercent = totalPkgNum > 0 ? Math.min(100, Math.round((actualSpent / totalPkgNum) * 100)) : 0;
-                const agreedCount = c.content_count || 1;
-                const recordedCount = matchedVids.length;
-                const contentPercent = Math.min(100, Math.round((recordedCount / agreedCount) * 100));
-
-                let systemStatus = 'Not started';
-                if (paymentPercent === 100 && contentPercent === 100) {
-                    systemStatus = 'All done';
-                } else if (paymentPercent > 0 || contentPercent > 0 || recordedCount > 0 || actualSpent > 0) {
-                    systemStatus = 'In Progress';
+                    if (hasVideos && combinedVideos.length >= countAgreed && isFullyPaid) {
+                        effectiveProgressStatus = 'All Done';
+                    } else if (hasVideos || (row.actual_spent || 0) > 0) {
+                        effectiveProgressStatus = 'In Progress';
+                    } else {
+                        effectiveProgressStatus = 'Not Started';
+                    }
                 }
 
-                // Respect user-applied custom status over system status
-                const displayStatus = (c.is_custom_status && (c.custom_status || c.progress_status)) 
-                    ? (c.custom_status || c.progress_status) 
-                    : systemStatus;
+                // Payment Status percentage auto calculation
+                const pkgNum = parsePackageNumber(row.total_package);
+                const spent = row.actual_spent || 0;
+                let autoPaymentStatus = '0%';
+                if (pkgNum > 0) {
+                    const percent = Math.min(100, Math.round((spent / pkgNum) * 100));
+                    autoPaymentStatus = `${percent}%`;
+                }
+
+                // Find newest release date
+                let latestDate = row.released_date || null;
+                combinedVideos.forEach(v => {
+                    if (v.released_date) {
+                        if (!latestDate || new Date(v.released_date) > new Date(latestDate)) {
+                            latestDate = v.released_date;
+                        }
+                    }
+                });
 
                 return {
-                    ...c,
-                    system_status: systemStatus,
-                    progress_status: displayStatus,
-                    released_date: latestRelDate,
-                    videosList: matchedVids
+                    ...row,
+                    progress_status: effectiveProgressStatus,
+                    payment_status: autoPaymentStatus,
+                    released_date: latestDate,
+                    videosList: combinedVideos
                 };
             });
 
-            setCollaborations(collabsWithVideos);
-            setAllKols(kolsRes.data as KolData[]);
+            setCollaborations(mappedRows);
 
-            // Async background title fetcher for missing YouTube titles (e.g. youtu.be links)
-            const missingTitleVids = collabsWithVideos.flatMap(c => c.videosList || []).filter(v => !v.title && getYouTubeVideoId(v.video_url));
-            if (missingTitleVids.length > 0) {
+            // Trigger async YouTube video details fetch
+            const missingDetailsList: { collabId: string; vidIndex: number; video_url: string }[] = [];
+            mappedRows.forEach(c => {
+                (c.videosList || []).forEach((vid, idx) => {
+                    if (!vid.title && vid.video_url) {
+                        missingDetailsList.push({ collabId: c.id, vidIndex: idx, video_url: vid.video_url });
+                    }
+                });
+            });
+
+            if (missingDetailsList.length > 0) {
                 (async () => {
-                    for (const vid of missingTitleVids) {
-                        const ytId = getYouTubeVideoId(vid.video_url);
-                        if (!ytId) continue;
+                    for (const item of missingDetailsList.slice(0, 8)) {
                         try {
-                            const details = await fetchYouTubeVideoDetails(vid.video_url);
+                            const ytId = getYouTubeVideoId(item.video_url);
+                            if (!ytId) continue;
+                            const details = await fetchYouTubeVideoDetails(ytId);
                             if (details && details.title) {
                                 setCollaborations(prev => prev.map(c => {
+                                    if (c.id !== item.collabId) return c;
                                     const nextVids = (c.videosList || []).map(v => {
-                                        if (v.video_url === vid.video_url || getYouTubeVideoId(v.video_url) === ytId) {
-                                            return { ...v, title: details.title, released_date: v.released_date || details.publishedAt };
+                                        if (v.video_url === item.video_url) {
+                                            return {
+                                                ...v,
+                                                title: details.title,
+                                                released_date: details.publishedAt || v.released_date
+                                            };
                                         }
                                         return v;
                                     });
-                                    nextVids.sort((a, b) => {
-                                        const timeA = a.released_date ? (Date.parse(a.released_date) || 0) : 0;
-                                        const timeB = b.released_date ? (Date.parse(b.released_date) || 0) : 0;
-                                        if (timeA === 0 && timeB === 0) return 0;
-                                        if (timeA === 0) return 1;
-                                        if (timeB === 0) return -1;
-                                        return timeB - timeA;
-                                    });
-                                    const latestRel = nextVids.map(v => v.released_date).filter(Boolean)[0] || c.released_date;
+                                    let latestRel = c.released_date;
+                                    if (details.publishedAt) {
+                                        if (!latestRel || new Date(details.publishedAt) > new Date(latestRel)) {
+                                            latestRel = details.publishedAt;
+                                        }
+                                    }
                                     return {
                                         ...c,
                                         released_date: latestRel,
@@ -453,7 +577,7 @@ const InfluencerProgress: React.FC = () => {
                                 }));
                                 await supabaseClient.from('videos').upsert({
                                     new_id: `yt_${ytId}`,
-                                    video_url: vid.video_url,
+                                    video_url: item.video_url,
                                     title: details.title,
                                     released_date: details.publishedAt || null,
                                     status: 'HEALTHY'
@@ -465,17 +589,6 @@ const InfluencerProgress: React.FC = () => {
                     }
                 })();
             }
-
-            setTagOptions(prev => {
-                const saved = localStorage.getItem('tp_custom_progress_tags');
-                if (saved) {
-                    try {
-                        const parsed = JSON.parse(saved);
-                        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-                    } catch {}
-                }
-                return prev;
-            });
 
         } catch (e) {
             console.error('Error fetching progress data:', e);
@@ -549,7 +662,7 @@ const InfluencerProgress: React.FC = () => {
     };
 
     const handleResetToAutoStatus = async (rowId: string, sysStatus?: string) => {
-        const resetStatus = sysStatus || 'Awaiting Content';
+        const resetStatus = sysStatus || 'Not Started';
         setCollaborations(prev => prev.map(c => c.id === rowId ? { 
             ...c, 
             progress_status: resetStatus, 
@@ -639,7 +752,6 @@ const InfluencerProgress: React.FC = () => {
                 }
             }
         }
-
         setActivePopover(null);
         fetchData();
     };
@@ -659,9 +771,10 @@ const InfluencerProgress: React.FC = () => {
     const handleAddCustomTag = () => {
         if (!newCustomTagInput.trim()) return;
         const tag = newCustomTagInput.trim();
-        if (!tagOptions.includes(tag)) {
+        if (!tagOptions.some(t => t.toLowerCase() === tag.toLowerCase())) {
             const nextTags = [...tagOptions, tag];
             updateTagOptionsState(nextTags);
+            setSelectedStatuses(prev => [...prev, tag]);
         }
         if (activePopover?.rowId) {
             updateCollaborationField(activePopover.rowId, 'progress_status', tag);
@@ -696,19 +809,32 @@ const InfluencerProgress: React.FC = () => {
     // Delete tag option & BULK UPDATE database records to null so it never resurrects
     const handleDeleteTag = async (idx: number) => {
         const tagToDelete = tagOptions[idx];
+        if (!tagToDelete) return;
         const nextTags = tagOptions.filter((_, i) => i !== idx);
         updateTagOptionsState(nextTags);
 
         // Update local state immediately for all rows having this tag
-        setCollaborations(prev => prev.map(c => c.progress_status === tagToDelete ? { ...c, progress_status: null } : c));
-        setSelectedStatuses(prev => prev.filter(s => s !== tagToDelete));
+        setCollaborations(prev => prev.map(c => {
+            const currentTag = (c.progress_status || '').trim().toLowerCase();
+            const deletedTag = tagToDelete.trim().toLowerCase();
+            if (currentTag === deletedTag || (c.custom_status || '').trim().toLowerCase() === deletedTag) {
+                return { ...c, progress_status: null, custom_status: null, is_custom_status: false };
+            }
+            return c;
+        }));
+        setSelectedStatuses(prev => prev.filter(s => s.trim().toLowerCase() !== tagToDelete.trim().toLowerCase()));
 
         // Bulk update database to clear this tag from all collaborations in Supabase
         try {
             await supabaseClient
                 .from('collaborations')
-                .update({ progress_status: null, updated_at: new Date().toISOString() })
+                .update({ progress_status: null, custom_status: null, is_custom_status: false, updated_at: new Date().toISOString() })
                 .eq('progress_status', tagToDelete);
+
+            await supabaseClient
+                .from('collaborations')
+                .update({ progress_status: null, custom_status: null, is_custom_status: false, updated_at: new Date().toISOString() })
+                .eq('custom_status', tagToDelete);
         } catch (err) {
             console.error('Failed to bulk delete status tag in DB:', err);
         }
@@ -796,8 +922,10 @@ const InfluencerProgress: React.FC = () => {
                     kol_id: kolIdToUse,
                     start_month: newStartMonth || formatDateDisplay(new Date().toISOString()),
                     total_package: newPackage,
-                    progress_status: 'Awaiting Content',
-                    payment_status: 'Awaiting Payment',
+                    progress_status: 'Not Started',
+                    custom_status: 'Not Started',
+                    is_custom_status: true,
+                    payment_status: '0%',
                     content_count: 1,
                     actual_spent: 0
                 });
@@ -830,10 +958,10 @@ const InfluencerProgress: React.FC = () => {
     const processedCollaborations = collaborations
         .filter(c => {
             const kolName = (c.kols?.name || '').toLowerCase();
-            const tag = c.progress_status || '';
+            const tag = (c.progress_status || 'Not Started').trim().toLowerCase();
 
             const matchesSearch = !searchQuery || kolName.includes(searchQuery.toLowerCase());
-            const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes('All') || selectedStatuses.includes(tag);
+            const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.some(s => s.trim().toLowerCase() === tag);
 
             return matchesSearch && matchesStatus;
         })
@@ -883,9 +1011,14 @@ const InfluencerProgress: React.FC = () => {
 
                     {/* Multi-Select Status Filter Button & Dropdown */}
                     {(() => {
-                        const allActiveStatuses = tagOptions;
+                        const allActiveStatuses = allAvailableTags;
                         const isAllOrNone = selectedStatuses.length === 0 || selectedStatuses.length === allActiveStatuses.length;
-                        const statusBtnLabel = isAllOrNone 
+                        const isDefaultSystem = selectedStatuses.length === SYSTEM_DEFAULT_PROGRESS_TAGS.length && 
+                            SYSTEM_DEFAULT_PROGRESS_TAGS.every(t => selectedStatuses.includes(t));
+
+                        const statusBtnLabel = isDefaultSystem
+                            ? 'Default Statuses'
+                            : isAllOrNone 
                             ? 'All Statuses' 
                             : selectedStatuses.length === 1 
                             ? `Status: ${selectedStatuses[0]}` 
@@ -896,7 +1029,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowStatusFilterPopover(!showStatusFilterPopover)}
-                                    className="flex items-center gap-2 px-3.5 py-1.5 border border-slate-200 rounded-xl text-sm bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors"
+                                    className="flex items-center gap-2 px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors shadow-2xs"
                                 >
                                     <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                     <span>{statusBtnLabel}</span>
@@ -907,42 +1040,59 @@ const InfluencerProgress: React.FC = () => {
                                     <div className="absolute top-full left-0 mt-1.5 bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-3 w-64 z-50 space-y-2">
                                         <div className="flex justify-between items-center pb-2 border-b border-slate-100 text-xs font-semibold text-slate-800">
                                             <span>Filter by Status</span>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1.5">
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setSelectedStatuses([...SYSTEM_DEFAULT_PROGRESS_TAGS])} 
+                                                    className="text-[11px] font-medium text-slate-500 hover:text-slate-800 hover:underline"
+                                                    title="Filter system defaults: Not Started, In Progress, All Done"
+                                                >
+                                                    Defaults
+                                                </button>
+                                                <span className="text-slate-300">|</span>
                                                 <button 
                                                     type="button"
                                                     onClick={() => setSelectedStatuses([...allActiveStatuses])} 
-                                                className="text-xs font-medium text-emerald-600 hover:underline"
+                                                    className="text-[11px] font-medium text-emerald-600 hover:underline"
                                                 >
-                                                    Check all
+                                                    All
                                                 </button>
                                                 <span className="text-slate-300">|</span>
                                                 <button 
                                                     type="button"
                                                     onClick={() => setSelectedStatuses([])} 
-                                                    className="text-xs font-medium text-slate-500 hover:underline"
+                                                    className="text-[11px] font-medium text-slate-500 hover:underline"
                                                 >
-                                                    Reset all
+                                                    Reset
                                                 </button>
                                             </div>
                                         </div>
-                                        <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-                                            {allActiveStatuses.map(t => (
-                                                <label key={t} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700">
-                                                    <input 
-                                                        type="checkbox"
-                                                        checked={selectedStatuses.includes(t)}
-                                                        onChange={() => {
-                                                            if (selectedStatuses.includes(t)) {
-                                                                setSelectedStatuses(selectedStatuses.filter(s => s !== t));
-                                                            } else {
-                                                                setSelectedStatuses([...selectedStatuses, t]);
-                                                            }
-                                                        }}
-                                                        className="rounded text-[var(--accent-color)] focus:ring-[var(--accent-color)] h-3.5 w-3.5"
-                                                    />
-                                                    <span>{t}</span>
-                                                </label>
-                                            ))}
+                                        <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                                            {allActiveStatuses.map(t => {
+                                                const isSystem = SYSTEM_DEFAULT_PROGRESS_TAGS.includes(t);
+                                                return (
+                                                    <label key={t} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700">
+                                                        <div className="flex items-center gap-2">
+                                                            <input 
+                                                                type="checkbox"
+                                                                checked={selectedStatuses.includes(t)}
+                                                                onChange={() => {
+                                                                    if (selectedStatuses.includes(t)) {
+                                                                        setSelectedStatuses(selectedStatuses.filter(s => s !== t));
+                                                                    } else {
+                                                                        setSelectedStatuses([...selectedStatuses, t]);
+                                                                    }
+                                                                }}
+                                                                className="rounded text-[var(--accent-color)] focus:ring-[var(--accent-color)] h-3.5 w-3.5"
+                                                            />
+                                                            <span>{t}</span>
+                                                        </div>
+                                                        {isSystem && (
+                                                            <span className="text-[10px] text-slate-400 font-normal">System</span>
+                                                        )}
+                                                    </label>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -1162,107 +1312,75 @@ const InfluencerProgress: React.FC = () => {
                                                                     e.stopPropagation();
                                                                     setExpandedVideoRows(prev => ({ ...prev, [c.id]: !prev[c.id] }));
                                                                 }}
-                                                                className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1 pt-1"
+                                                                className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 pt-1 block"
                                                             >
-                                                                <span>{isExpanded ? 'Show less' : `+${allVids.length - 4} more`}</span>
-                                                                <ChevronRight className={`w-3 h-3 transition-transform ${isExpanded ? '-rotate-90' : 'rotate-90'}`} />
+                                                                {isExpanded ? '▲ Show less' : `▼ +${allVids.length - 4} more video${allVids.length - 4 > 1 ? 's' : ''}`}
                                                             </button>
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
-                                                        <Plus className="w-3.5 h-3.5" />
-                                                        <span>Add</span>
+                                                    <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                        <Plus className="w-3.5 h-3.5" /> Add videos...
                                                     </span>
                                                 )}
                                             </div>
                                         </td>
 
-                                        {/* 8. Released Date Column (Exact 1:1 Horizontal Alignment with Reported Videos) */}
-                                        <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-700 font-normal">
-                                            <div className="p-2 border border-transparent min-h-[42px] flex flex-col justify-center">
-                                                {allVids.length > 0 ? (
-                                                    <div className="space-y-1.5">
-                                                        {displayedVids.map((vid, idx) => (
-                                                            <div key={idx} className="h-6 flex items-center truncate text-slate-700">
-                                                                {vid.released_date ? formatDateDisplay(vid.released_date) : '—'}
-                                                            </div>
-                                                        ))}
-                                                        {allVids.length > 4 && (
-                                                            <div className="text-[11px] font-semibold text-transparent mt-1 pt-1 border-t border-transparent select-none">
-                                                                &nbsp;
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="h-6 flex items-center">{c.released_date ? formatDateDisplay(c.released_date) : '—'}</div>
-                                                )}
-                                            </div>
+                                        {/* 8. Released Date Column */}
+                                        <td className="px-4 py-3 whitespace-nowrap text-xs font-normal text-slate-600">
+                                            {formatDateDisplay(c.released_date)}
                                         </td>
 
-                                        {/* 9. Contract Column (No FileText icon) */}
-                                        <td className="px-4 py-3 max-w-[200px]">
+                                        {/* 9. Agreement / Contract Documents Column */}
+                                        <td className="px-4 py-3 max-w-[180px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'agreement')}
-                                                className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px] flex flex-col justify-center"
-                                                title="Click to manage contract documents & links"
+                                                className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px]"
+                                                title="Click to manage agreement documents"
                                             >
                                                 {(() => {
-                                                    const docUrls = (c.agreement_link || '').match(/(https?:\/\/[^\s,]+)/g) || [];
-                                                    if (docUrls.length > 0) {
+                                                    const urls: string[] = (c.agreement_link || '').match(/(https?:\/\/[^\s,]+)/g) || [];
+                                                    if (urls.length === 0 && c.agreement_link) urls.push(c.agreement_link);
+
+                                                    if (urls.length > 0) {
                                                         return (
                                                             <div className="space-y-1">
-                                                                {docUrls.map((url, idx) => {
-                                                                    const title = docUrls.length > 1 ? `Contract #${idx + 1}` : 'View Contract';
+                                                                {urls.map((url, idx) => {
+                                                                    const docName = url.replace(/^https?:\/\/([^\/]+)\/.*?([^\/\?#]+)$/, '$2') || `Doc #${idx + 1}`;
                                                                     return (
-                                                                        <div key={idx} className="text-xs">
-                                                                            <a 
-                                                                                href={url} 
-                                                                                target="_blank" 
-                                                                                rel="noopener noreferrer" 
+                                                                        <div key={idx} className="h-6 flex items-center text-xs">
+                                                                            <a
+                                                                                href={url}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
                                                                                 onClick={e => e.stopPropagation()}
-                                                                                className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 truncate max-w-[180px] py-0.5"
+                                                                                className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 truncate max-w-[160px]"
                                                                                 title={url}
                                                                             >
-                                                                                <span className="truncate">{title}</span>
+                                                                                <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                                                                <span className="truncate">{docName.length > 20 ? `${docName.substring(0, 18)}...` : docName}</span>
                                                                             </a>
                                                                         </div>
                                                                     );
                                                                 })}
                                                             </div>
                                                         );
-                                                    } else if (c.agreement_link && c.agreement_link.trim()) {
-                                                        return (
-                                                            <a 
-                                                                href={c.agreement_link} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer" 
-                                                                onClick={e => e.stopPropagation()}
-                                                                className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 truncate max-w-[180px] text-xs py-0.5"
-                                                            >
-                                                                <span className="truncate">View Contract</span>
-                                                            </a>
-                                                        );
                                                     }
                                                     return (
-                                                        <span className="text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600">
-                                                            <Plus className="w-3.5 h-3.5" />
-                                                            <span>Add</span>
+                                                        <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                            <Plus className="w-3.5 h-3.5" /> Add doc...
                                                         </span>
                                                     );
                                                 })()}
                                             </div>
                                         </td>
 
-                                        {/* 10. Action Column (Delete deal record) */}
-                                        <td className="px-4 py-3 text-center whitespace-nowrap align-middle">
-                                            <button
-                                                onClick={e => {
-                                                    e.stopPropagation();
-                                                    setDeleteConfirmCollab(c);
-                                                }}
-                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center justify-center"
-                                                title="Remove deal record"
+                                        {/* 10. Action Column: Delete Deal Record */}
+                                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                                            <button 
+                                                onClick={() => setDeleteConfirmCollab(c)}
+                                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-70 hover:opacity-100"
+                                                title="Delete Deal"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -1280,13 +1398,8 @@ const InfluencerProgress: React.FC = () => {
                 <div 
                     ref={popoverRef}
                     onClick={e => e.stopPropagation()}
-                    style={{
-                        position: 'fixed',
-                        top: `${Math.min(window.innerHeight - 320, activePopover.anchorRect.bottom + 4)}px`,
-                        left: `${Math.min(window.innerWidth - 340, Math.max(16, activePopover.anchorRect.left))}px`,
-                        zIndex: 99999
-                    }}
-                    className="bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-xs p-4 w-80 font-sans"
+                    style={calcPopoverPosition(activePopover.anchorRect, 320, 360)}
+                    className="bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-4 w-80 font-sans"
                 >
                     {/* 1. Date Single Mini Calendar Popover */}
                     {activePopover.type === 'date' && (
@@ -1307,7 +1420,8 @@ const InfluencerProgress: React.FC = () => {
 
                             {/* Tag Options List */}
                             <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                                {tagOptions.map((t, idx) => {
+                                {allAvailableTags.map((t, idx) => {
+                                    const isSystem = SYSTEM_DEFAULT_PROGRESS_TAGS.includes(t);
                                     if (editingTagIdx === idx) {
                                         return (
                                             <div key={idx} className="flex items-center gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-300">
@@ -1340,22 +1454,24 @@ const InfluencerProgress: React.FC = () => {
                                             >
                                                 <span>{t}</span>
                                             </button>
-                                            <div className="opacity-0 group-hover/tag:opacity-100 flex items-center gap-0.5 ml-1 transition-opacity">
-                                                <button 
-                                                    onClick={e => { e.stopPropagation(); setEditingTagIdx(idx); setEditingTagVal(t); }} 
-                                                    className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 rounded-md"
-                                                    title="Rename tag"
-                                                >
-                                                    <Edit2 className="w-3.5 h-3.5" />
-                                                </button>
-                                                <button 
-                                                    onClick={e => { e.stopPropagation(); handleDeleteTag(idx); }} 
-                                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md"
-                                                    title="Delete tag option"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
+                                            {!isSystem && (
+                                                <div className="opacity-0 group-hover/tag:opacity-100 flex items-center gap-0.5 ml-1 transition-opacity">
+                                                    <button 
+                                                        onClick={e => { e.stopPropagation(); setEditingTagIdx(idx); setEditingTagVal(t); }} 
+                                                        className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 rounded-md"
+                                                        title="Rename tag"
+                                                    >
+                                                        <Edit2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={e => { e.stopPropagation(); handleDeleteTag(idx); }} 
+                                                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md"
+                                                        title="Delete tag option"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -1379,146 +1495,141 @@ const InfluencerProgress: React.FC = () => {
                                 </button>
                             </div>
 
-                            {/* Reset to Automatic Status */}
-                            <div className="pt-2 border-t border-slate-100">
+                            {/* Reset to Auto Status helper */}
+                            <div className="pt-1 text-center">
                                 <button
-                                    onClick={() => {
-                                        const row = collaborations.find(c => c.id === activePopover.rowId);
-                                        handleResetToAutoStatus(activePopover.rowId, row?.system_status);
-                                    }}
-                                    className="w-full text-center py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                                    onClick={() => handleResetToAutoStatus(activePopover.rowId)}
+                                    className="text-[11px] text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1 w-full"
                                 >
-                                    <RotateCcw className="w-3.5 h-3.5" />
-                                    <span>Reset to automatic status</span>
+                                    <RotateCcw className="w-3 h-3" />
+                                    <span>Reset to auto status</span>
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* 3. Payment Actual Spent Sticky Popover */}
+                    {/* 3. Actual Spent (Payment) Popover */}
                     {activePopover.type === 'payment' && (
-                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
+                        <div className="space-y-3">
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Actual Spent Budget</span>
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Update Budget Spent</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
-
-                            <div>
-                                <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                                    Actual Budget Spent ($ USD)
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-2 text-slate-400 font-semibold">$</span>
-                                    <input 
-                                        type="number"
-                                        min="0"
-                                        step="any"
-                                        autoFocus
-                                        value={spentInputVal}
-                                        onChange={e => setSpentInputVal(e.target.value)}
-                                        className="w-full pl-7 pr-3 py-1.5 border border-slate-300 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
-                                        placeholder="0"
-                                    />
-                                </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold text-slate-600">Actual Spent ($)</label>
+                                <input 
+                                    type="number" 
+                                    value={spentInputVal} 
+                                    onChange={e => setSpentInputVal(e.target.value)}
+                                    className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
+                                    placeholder="0"
+                                    autoFocus
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            updateCollaborationField(activePopover.rowId, 'actual_spent', parseFloat(spentInputVal) || 0);
+                                        }
+                                    }}
+                                />
                             </div>
-
-                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                            <div className="flex justify-end gap-2 pt-1">
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'actual_spent', parseFloat(spentInputVal) || 0)} 
                                     className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
                                 >
-                                    Save Spent
+                                    Save
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* 4. Package Amount Sticky Popover */}
+                    {/* 4. Package Amount Popover */}
                     {activePopover.type === 'package' && (
-                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
+                        <div className="space-y-3">
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Contract Package</span>
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Update Package Amount</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
-
-                            <div>
-                                <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                                    Package Amount ($ USD)
-                                </label>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold text-slate-600">Package Amount ($)</label>
                                 <input 
-                                    type="text"
-                                    autoFocus
-                                    value={pkgInputVal}
+                                    type="text" 
+                                    value={pkgInputVal} 
                                     onChange={e => setPkgInputVal(e.target.value)}
-                                    className="w-full p-2 border border-slate-300 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                                    className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
                                     placeholder="$5,000"
+                                    autoFocus
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            updateCollaborationField(activePopover.rowId, 'total_package', pkgInputVal);
+                                        }
+                                    }}
                                 />
                             </div>
-
-                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                            <div className="flex justify-end gap-2 pt-1">
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'total_package', pkgInputVal)} 
                                     className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
                                 >
-                                    Save Package
+                                    Save
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* 5. Content Count Sticky Popover */}
+                    {/* 5. Agreed Content Count Popover */}
                     {activePopover.type === 'count' && (
-                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
+                        <div className="space-y-3">
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Agreed Content Count</span>
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Agreed Videos Count</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
-
-                            <div>
-                                <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                                    Target Number of Contents
-                                </label>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold text-slate-600">Expected Total Videos</label>
                                 <input 
-                                    type="number"
+                                    type="number" 
                                     min="1"
-                                    autoFocus
-                                    value={countInputVal}
+                                    value={countInputVal} 
                                     onChange={e => setCountInputVal(parseInt(e.target.value) || 1)}
-                                    className="w-full p-2 border border-slate-300 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                                    className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
+                                    autoFocus
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            updateCollaborationField(activePopover.rowId, 'content_count', countInputVal);
+                                        }
+                                    }}
                                 />
                             </div>
-
-                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                            <div className="flex justify-end gap-2 pt-1">
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'content_count', countInputVal)} 
                                     className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
                                 >
-                                    Save Count
+                                    Save
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* 6. Video Links Manager Popover (With Platform Icons & Link Editing) */}
+                    {/* 6. Videos Manager Popover */}
                     {activePopover.type === 'videos' && (
-                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
+                        <div className="space-y-3">
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Manage Video Links</span>
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Reported Videos</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
 
-                            {/* Existing Video Links List */}
+                            {/* Existing Video URLs List */}
                             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                                 {videoUrlsList.map((url, idx) => {
                                     if (editingUrlIdx === idx) {
                                         return (
-                                            <div key={idx} className="flex items-center gap-1.5 p-1.5 bg-slate-50 rounded-xl border border-slate-300">
+                                            <div key={idx} className="flex items-center gap-1 p-1 bg-slate-50 rounded-xl border border-slate-200">
                                                 <input 
                                                     type="text" 
-                                                    autoFocus 
+                                                    autoFocus
                                                     value={editingUrlVal} 
                                                     onChange={e => setEditingUrlVal(e.target.value)}
                                                     className="w-full text-xs p-1 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
@@ -1531,7 +1642,7 @@ const InfluencerProgress: React.FC = () => {
                                                         setEditingUrlIdx(null);
                                                     }} 
                                                     className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0"
-                                                    title="Save URL link"
+                                                    title="Save URL"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
                                                 </button>
@@ -1547,7 +1658,7 @@ const InfluencerProgress: React.FC = () => {
                                             </div>
                                             <div className="flex items-center gap-0.5">
                                                 <button 
-                                                    onClick={() => { setEditingUrlIdx(idx); setEditingUrlVal(url); }}
+                                                    onClick={() => { setEditingUrlIdx(idx); setEditingUrlVal(url); }} 
                                                     className="text-slate-400 hover:text-slate-700 p-1 rounded-md"
                                                     title="Edit video URL"
                                                 >
@@ -1556,7 +1667,7 @@ const InfluencerProgress: React.FC = () => {
                                                 <button 
                                                     onClick={() => setVideoUrlsList(prev => prev.filter((_, i) => i !== idx))} 
                                                     className="text-slate-400 hover:text-rose-600 p-1 rounded-md"
-                                                    title="Delete video link"
+                                                    title="Delete video"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
@@ -1568,12 +1679,12 @@ const InfluencerProgress: React.FC = () => {
 
                             {/* Add New Video Link Input */}
                             <div className="pt-2 border-t border-slate-100 space-y-2">
-                                <label className="block text-[11px] font-semibold text-slate-600 uppercase">Add New Video URL</label>
+                                <label className="block text-[11px] font-semibold text-slate-600 uppercase">Add Video Link</label>
                                 <input 
                                     type="text" 
                                     value={newVideoUrlInput} 
                                     onChange={e => setNewVideoUrlInput(e.target.value)} 
-                                    placeholder="https://..."
+                                    placeholder="https://www.youtube.com/watch?v=..."
                                     className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-normal"
                                     onKeyDown={e => { if (e.key === 'Enter') handleSaveVideosPopover(activePopover.rowId); }}
                                 />
@@ -1585,29 +1696,29 @@ const InfluencerProgress: React.FC = () => {
                                     onClick={() => handleSaveVideosPopover(activePopover.rowId)} 
                                     className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
                                 >
-                                    Save Video Links
+                                    Save Videos
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* 7. Agreement Links Manager Popover */}
+                    {/* 7. Agreement Documents Popover */}
                     {activePopover.type === 'agreement' && (
-                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
+                        <div className="space-y-3">
                             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Manage Contract Documents</span>
+                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Agreement &amp; Contracts</span>
                                 <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                             </div>
 
-                            {/* Existing Document Links List */}
+                            {/* Existing Documents URLs List */}
                             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                                 {agreementUrlsList.map((url, idx) => {
                                     if (editingAgreementIdx === idx) {
                                         return (
-                                            <div key={idx} className="flex items-center gap-1.5 p-1.5 bg-slate-50 rounded-xl border border-slate-300">
+                                            <div key={idx} className="flex items-center gap-1 p-1 bg-slate-50 rounded-xl border border-slate-200">
                                                 <input 
                                                     type="text" 
-                                                    autoFocus 
+                                                    autoFocus
                                                     value={editingAgreementVal} 
                                                     onChange={e => setEditingAgreementVal(e.target.value)}
                                                     className="w-full text-xs p-1 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
@@ -1686,10 +1797,9 @@ const InfluencerProgress: React.FC = () => {
             {/* ENHANCED ADD NEW DEAL MODAL — Rendered via Portal to escape parent container scroll */}
             {showAddModal && createPortal(
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
-                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-visible animate-in fade-in zoom-in-95 duration-200 my-auto border border-slate-200">
+                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 rounded-t-2xl">
                             <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
-                                <Plus className="w-5 h-5 text-[var(--accent-color)]" />
                                 <span>Add New Influencer Deal</span>
                             </h3>
                             <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
@@ -1730,16 +1840,21 @@ const InfluencerProgress: React.FC = () => {
                                     <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
                                         Select Creator
                                     </label>
-                                    <select 
-                                        value={newKolId}
-                                        onChange={e => setNewKolId(e.target.value)}
-                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-sm font-medium"
-                                    >
-                                        <option value="">-- Choose from existing KOLs --</option>
-                                        {allKols.map(k => (
-                                            <option key={k.id} value={k.id}>{k.name} ({k.country || 'United States'})</option>
-                                        ))}
-                                    </select>
+                                    <div className="relative">
+                                        <select 
+                                            value={newKolId}
+                                            onChange={e => setNewKolId(e.target.value)}
+                                            className="w-full p-2.5 pr-8 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs font-medium text-slate-800 appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Choose creator from existing KOLs...</option>
+                                            {allKols.map(k => (
+                                                <option key={k.id} value={k.id}>{k.name} ({k.country || 'United States'})</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <ChevronRight className="w-4 h-4 rotate-90" />
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
@@ -1751,7 +1866,7 @@ const InfluencerProgress: React.FC = () => {
                                     </label>
                                     <div className="flex gap-2">
                                         <div className="relative flex-1">
-                                            <Youtube className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                                            <Youtube className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                                             <input 
                                                 type="text" 
                                                 value={ytChannelUrlInput}
@@ -1831,7 +1946,15 @@ const InfluencerProgress: React.FC = () => {
                                     <input 
                                         type="text" 
                                         value={newPackage}
-                                        onChange={e => setNewPackage(e.target.value)}
+                                        onChange={e => {
+                                            const raw = e.target.value.replace(/[^\d]/g, '');
+                                            if (!raw) {
+                                                setNewPackage('');
+                                            } else {
+                                                const num = parseInt(raw, 10);
+                                                setNewPackage(`$${num.toLocaleString('en-US')}`);
+                                            }
+                                        }}
                                         placeholder="$5,000"
                                         className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-medium"
                                     />

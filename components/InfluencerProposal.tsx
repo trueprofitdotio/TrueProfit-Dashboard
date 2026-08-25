@@ -127,6 +127,44 @@ const renderRichText = (text?: string | null) => {
     );
 };
 
+const calcPopoverPosition = (
+    anchorRect?: DOMRect | null,
+    width = 300,
+    height = 320,
+    margin = 12
+): React.CSSProperties => {
+    if (!anchorRect) return { position: 'fixed', zIndex: 99999 };
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
+
+    const spaceBelow = vh - anchorRect.bottom;
+    const spaceAbove = anchorRect.top;
+
+    const openUpward = spaceBelow < height && spaceAbove > spaceBelow;
+
+    let top: number;
+    if (openUpward) {
+        top = Math.max(margin, anchorRect.top - height - 6);
+    } else {
+        top = Math.min(vh - height - margin, anchorRect.bottom + 6);
+    }
+    top = Math.max(margin, top);
+
+    let left = anchorRect.left;
+    if (left + width > vw - margin) {
+        left = Math.max(margin, vw - width - margin);
+    }
+    left = Math.max(margin, left);
+
+    return {
+        position: 'fixed',
+        top: `${top}px`,
+        left: `${left}px`,
+        maxHeight: `${Math.min(height, vh - 2 * margin)}px`,
+        zIndex: 99999,
+    };
+};
+
 const parseInitialProposalFromUrl = (): string | null => {
     try {
         const savedPropId = sessionStorage.getItem('tp_oauth_return_proposal_id');
@@ -765,6 +803,58 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 p_source: triggerSystemMsg ? 'Action Column' : 'Reset Action (No Msg)'
             });
             if (error) throw error;
+
+            // When creator status is switched to Approved -> sync/create deal in Influencer Progress (collaborations table)
+            if (newStatus.trim().toLowerCase() === 'approved') {
+                try {
+                    const targetProposal = proposals.find(p => p.id === proposalId);
+                    const targetPk = targetProposal?.proposal_kols?.find(pk => pk.kol_id === kolId);
+
+                    const formattedPkg = targetPk?.est_rate !== undefined && targetPk?.est_rate !== null && targetPk?.est_rate !== ''
+                        ? (typeof targetPk.est_rate === 'number' ? `$${targetPk.est_rate.toLocaleString()}` : String(targetPk.est_rate))
+                        : null;
+                    const contractLink = targetPk?.contract_link || null;
+                    const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+
+                    // Check if already in collaborations for this kol_id
+                    const { data: existingCollab } = await supabaseClient
+                        .from('collaborations')
+                        .select('id')
+                        .eq('kol_id', kolId)
+                        .maybeSingle();
+
+                    if (existingCollab) {
+                        await supabaseClient
+                            .from('collaborations')
+                            .update({
+                                total_package: formattedPkg,
+                                agreement_link: contractLink,
+                                progress_status: 'Not Started',
+                                custom_status: 'Not Started',
+                                is_custom_status: true,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', existingCollab.id);
+                    } else {
+                        await supabaseClient
+                            .from('collaborations')
+                            .insert({
+                                kol_id: kolId,
+                                start_month: todayStr,
+                                total_package: formattedPkg,
+                                agreement_link: contractLink,
+                                progress_status: 'Not Started',
+                                custom_status: 'Not Started',
+                                is_custom_status: true,
+                                payment_status: '0%',
+                                content_count: 1,
+                                actual_spent: 0
+                            });
+                    }
+                } catch (syncErr) {
+                    console.error('Failed to sync approved creator to collaborations table:', syncErr);
+                }
+            }
         } catch (err) {
             console.error('Failed to update creator status via RPC:', err);
             fetchData();
@@ -1088,7 +1178,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                                     return (
                                                                         <div 
                                                                             key={k.id || idx} 
-                                                                            className="relative group/avatar cursor-pointer"
+                                                                            className="relative group/avatar cursor-pointer group-hover/avatar:z-[60]"
                                                                             style={{ zIndex: 10 - idx }}
                                                                         >
                                                                             {k.avatar_url ? (
@@ -1105,7 +1195,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                                             )}
 
                                                                             {/* Hover Rich Creator Card Tooltip */}
-                                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/avatar:flex flex-col gap-1 p-2.5 bg-slate-900 text-white rounded-xl shadow-xl z-50 min-w-[180px] pointer-events-none animate-in fade-in zoom-in-95">
+                                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/avatar:flex flex-col gap-1 p-2.5 bg-slate-900 text-white rounded-xl shadow-xl z-[70] min-w-[180px] pointer-events-none animate-in fade-in zoom-in-95">
                                                                                 <div className="flex items-center gap-2">
                                                                                     {k.avatar_url ? (
                                                                                         <img src={k.avatar_url} alt={k.name} referrerPolicy="no-referrer" className="w-6 h-6 rounded-full object-cover" />
@@ -1200,10 +1290,14 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                 onClick={() => {
                                     setActiveView('list');
                                     setSelectedProposalId(null);
+                                    if (onSelectProposalTitle) onSelectProposalTitle(null);
+                                    try {
+                                        window.history.pushState({}, '', '/influencer/proposal');
+                                    } catch (e) {}
                                 }}
-                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors mb-1.5"
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors mb-1.5 group"
                             >
-                                <ArrowLeft className="w-3.5 h-3.5" />
+                                <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
                                 <span>Back to Proposals List</span>
                             </button>
 
@@ -1301,14 +1395,19 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     <KOLCell kol={kol} />
                                                 </td>
 
-                                                {/* 2. Read-Only Status Cell */}
-                                                <td className="px-4 py-3 align-middle">
+                                                {/* 2. Interactive Status Cell */}
+                                                <td className="px-4 py-3 align-middle" onClick={e => e.stopPropagation()}>
                                                     <div className="flex items-center min-h-[36px]">
-                                                        <span
-                                                            className={`px-3 py-1 rounded-full text-xs border inline-block shadow-2xs ${getCreatorStatusStyle(pk.status)}`}
+                                                        <button
+                                                            onClick={e => {
+                                                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                                                setActiveActionMenu({ proposalId: selectedProposal.id, kolId: pk.kol_id, anchorRect: rect });
+                                                            }}
+                                                            className={`px-3 py-1 rounded-full text-xs border inline-flex items-center gap-1 shadow-2xs hover:scale-105 transition-transform ${getCreatorStatusStyle(pk.status)}`}
+                                                            title="Click to change creator status"
                                                         >
-                                                            {pk.status || 'Active'}
-                                                        </span>
+                                                            <span>{pk.status || 'Active'}</span>
+                                                        </button>
                                                     </div>
                                                 </td>
 
@@ -1488,12 +1587,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 <div 
                     ref={statusPopoverRef}
                     onClick={e => e.stopPropagation()}
-                    style={{
-                        position: 'fixed',
-                        top: `${Math.min(window.innerHeight - 320, activeStatusPopover.anchorRect.bottom + 4)}px`,
-                        left: `${Math.min(window.innerWidth - 300, Math.max(16, activeStatusPopover.anchorRect.left))}px`,
-                        zIndex: 99999
-                    }}
+                    style={calcPopoverPosition(activeStatusPopover.anchorRect, 288, 340)}
                     className="app-popover bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-4 w-72 font-sans"
                 >
                     <div className="space-y-3">
@@ -1585,12 +1679,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 <div 
                     ref={cellPopoverRef}
                     onClick={e => e.stopPropagation()}
-                    style={{
-                        position: 'fixed',
-                        top: `${Math.min(window.innerHeight - 300, activeCellPopover.anchorRect.bottom + 4)}px`,
-                        left: `${Math.min(window.innerWidth - 320, Math.max(16, activeCellPopover.anchorRect.left))}px`,
-                        zIndex: 99999
-                    }}
+                    style={calcPopoverPosition(activeCellPopover.anchorRect, 320, 360)}
                     className="app-popover bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-4 w-80 font-sans"
                 >
                     {/* 1. Rate Popover */}

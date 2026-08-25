@@ -99,50 +99,40 @@ const InfluencerWorkspace: React.FC = () => {
 
     return (
         <div className="workspace-page influencer-workspace">
-            <div className="workspace-context select-none">
-                <div className="workspace-crumbs">
-                    <button 
-                        onClick={() => handleSelectTab('dashboard')} 
-                        className="workspace-root-link"
-                    >
-                        <span>Influencer</span>
-                    </button>
-                    <span className="workspace-slash">/</span>
-                    <button 
-                        onClick={handleProposalBreadcrumbClick} 
-                        className={`workspace-current-link ${
-                            !selectedProposalTitle ? 'is-current' : ''
-                        }`}
-                    >
-                        {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'progress' ? 'Progress' : 'Proposal'}
-                    </button>
-
-                    {activeTab === 'proposal' && selectedProposalTitle && (
-                        <>
-                            <span className="workspace-slash">/</span>
-                            <span className="workspace-current-title">
-                                {selectedProposalTitle}
-                            </span>
-                        </>
-                    )}
+            {/* Breadcrumb Context: Only shown when drilled down into a specific proposal */}
+            {activeTab === 'proposal' && selectedProposalTitle ? (
+                <div className="workspace-context select-none mb-6">
+                    <div className="workspace-crumbs flex items-center gap-2 text-xs font-medium text-slate-500">
+                        <button 
+                            onClick={handleProposalBreadcrumbClick} 
+                            className="workspace-root-link text-slate-600 hover:text-[var(--accent-color)] flex items-center gap-1 transition-colors"
+                        >
+                            <span>Proposals</span>
+                        </button>
+                        <span className="workspace-slash text-slate-300">/</span>
+                        <span className="workspace-current-title text-slate-900 font-semibold max-w-sm truncate">
+                            {selectedProposalTitle}
+                        </span>
+                    </div>
                 </div>
-            </div>
-
-            <div className="workspace-tabs" role="tablist" aria-label="Influencer views">
-                {tabs.map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => handleSelectTab(tab.id)}
-                        className={`workspace-tab ${
-                            activeTab === tab.id
-                                ? 'is-active'
-                                : ''
-                        }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            ) : (
+                /* Sub-tabs row with crisp spacing */
+                <div className="workspace-tabs mb-6" role="tablist" aria-label="Influencer views">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => handleSelectTab(tab.id)}
+                            className={`workspace-tab ${
+                                activeTab === tab.id
+                                    ? 'is-active'
+                                    : ''
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+            )}
             
             <div className="workspace-view">
                 {renderContent()}
