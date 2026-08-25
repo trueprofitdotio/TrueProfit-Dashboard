@@ -7,6 +7,10 @@ type SubTab = 'dashboard' | 'progress' | 'proposal';
 
 const parseSubTabFromUrl = (): { subtab: SubTab; proposalId?: string } => {
     try {
+        const savedPropId = localStorage.getItem('tp_oauth_return_proposal_id') || sessionStorage.getItem('tp_oauth_return_proposal_id');
+        if (savedPropId) {
+            return { subtab: 'proposal', proposalId: savedPropId };
+        }
         const path = window.location.pathname;
         const parts = path.split('/').filter(Boolean);
         if (parts[0] === 'influencer') {
@@ -14,6 +18,11 @@ const parseSubTabFromUrl = (): { subtab: SubTab; proposalId?: string } => {
             if (['dashboard', 'progress', 'proposal'].includes(sub)) {
                 return { subtab: sub, proposalId: parts[2] };
             }
+        }
+        const params = new URLSearchParams(window.location.search);
+        const qPropId = params.get('proposalId');
+        if (qPropId) {
+            return { subtab: 'proposal', proposalId: qPropId };
         }
     } catch (e) {}
     return { subtab: 'dashboard' };

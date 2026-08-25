@@ -142,7 +142,46 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     const handleGoogleLogin = async () => {
         setAuthError(null);
         try {
-            const redirectUrl = typeof window !== 'undefined' ? window.location.href : undefined;
+            const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+            const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+            
+            // Build accurate deep link URL
+            let exactReturnUrl = currentUrl;
+            if (proposalId && typeof window !== 'undefined') {
+                try {
+                    const urlObj = new URL(currentUrl || `${currentOrigin}/influencer/proposal/${proposalId}`);
+                    urlObj.pathname = `/influencer/proposal/${proposalId}`;
+                    if (kolId) urlObj.searchParams.set('kolId', kolId);
+                    exactReturnUrl = urlObj.toString();
+                } catch (e) {}
+            }
+
+            // Persist full return context in both localStorage and sessionStorage
+            try {
+                if (exactReturnUrl) {
+                    localStorage.setItem('tp_oauth_return_url', exactReturnUrl);
+                    sessionStorage.setItem('tp_oauth_return_url', exactReturnUrl);
+                }
+                localStorage.setItem('tp_oauth_return_tab', 'influencer');
+                sessionStorage.setItem('tp_oauth_return_tab', 'influencer');
+
+                if (proposalId) {
+                    localStorage.setItem('tp_oauth_return_proposal_id', proposalId);
+                    sessionStorage.setItem('tp_oauth_return_proposal_id', proposalId);
+                }
+                if (kolId) {
+                    localStorage.setItem('tp_oauth_return_kol_id', kolId);
+                    sessionStorage.setItem('tp_oauth_return_kol_id', kolId);
+                }
+                if (kolName) {
+                    localStorage.setItem('tp_oauth_return_kol_name', kolName);
+                    sessionStorage.setItem('tp_oauth_return_kol_name', kolName);
+                }
+            } catch (e) {
+                console.error('Failed to save oauth return context:', e);
+            }
+
+            const redirectUrl = exactReturnUrl || (typeof window !== 'undefined' ? window.location.href : undefined);
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {

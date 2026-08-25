@@ -62,9 +62,17 @@ export interface KpiData {
 
 const getInitialTab = (): Tab => {
     try {
-        const returnTab = sessionStorage.getItem('tp_oauth_return_tab') as Tab;
+        const returnTab = (localStorage.getItem('tp_oauth_return_tab') || sessionStorage.getItem('tp_oauth_return_tab')) as Tab;
         if (returnTab && ['affiliate', 'influencer', 'kpi'].includes(returnTab)) {
             return returnTab;
+        }
+        const returnUrl = localStorage.getItem('tp_oauth_return_url') || sessionStorage.getItem('tp_oauth_return_url');
+        if (returnUrl) {
+            try {
+                const parsedUrl = new URL(returnUrl, window.location.origin);
+                if (parsedUrl.pathname.startsWith('/influencer')) return 'influencer';
+                if (parsedUrl.pathname.startsWith('/kpi')) return 'kpi';
+            } catch (e) {}
         }
         const path = window.location.pathname;
         if (path.startsWith('/influencer')) return 'influencer';
@@ -91,6 +99,27 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+      // Check for OAuth return URL restoration
+      try {
+          const savedUrl = localStorage.getItem('tp_oauth_return_url') || sessionStorage.getItem('tp_oauth_return_url');
+          const savedPropId = localStorage.getItem('tp_oauth_return_proposal_id') || sessionStorage.getItem('tp_oauth_return_proposal_id');
+
+          if (savedUrl) {
+              const urlObj = new URL(savedUrl, window.location.origin);
+              if (urlObj.origin === window.location.origin && window.location.pathname === '/') {
+                  const targetPath = urlObj.pathname + urlObj.search + window.location.hash;
+                  window.history.replaceState({}, '', targetPath);
+                  if (urlObj.pathname.startsWith('/influencer')) {
+                      setActiveTabState('influencer');
+                  }
+              }
+          } else if (savedPropId && window.location.pathname === '/') {
+              const targetPath = `/influencer/proposal/${savedPropId}` + window.location.hash;
+              window.history.replaceState({}, '', targetPath);
+              setActiveTabState('influencer');
+          }
+      } catch (e) {}
+
       const handlePopState = () => {
           const path = window.location.pathname;
           if (path.startsWith('/influencer')) {
@@ -230,7 +259,6 @@ const App: React.FC = () => {
       return { currentQuarterProgress, pastQuartersProgress };
   }, []);
 
-
   const loadKpiData = useCallback(async () => {
     setKpiLoading(true);
     setKpiError(null);
@@ -253,8 +281,6 @@ const App: React.FC = () => {
   useEffect(() => {
     loadKpiData();
   }, [loadKpiData]);
-
-
 
   const renderContent = () => {
     switch (activeTab) {

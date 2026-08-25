@@ -167,7 +167,7 @@ const calcPopoverPosition = (
 
 const parseInitialProposalFromUrl = (): string | null => {
     try {
-        const savedPropId = sessionStorage.getItem('tp_oauth_return_proposal_id');
+        const savedPropId = localStorage.getItem('tp_oauth_return_proposal_id') || sessionStorage.getItem('tp_oauth_return_proposal_id');
         if (savedPropId) return savedPropId;
         const path = window.location.pathname;
         const parts = path.split('/').filter(Boolean);
@@ -358,9 +358,9 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
 
             // Check for OAuth return state or initial proposalId in URL path or query params
             try {
-                const savedPropId = sessionStorage.getItem('tp_oauth_return_proposal_id');
-                const savedKolId = sessionStorage.getItem('tp_oauth_return_kol_id');
-                const savedKolName = sessionStorage.getItem('tp_oauth_return_kol_name') || 'Creator';
+                const savedPropId = localStorage.getItem('tp_oauth_return_proposal_id') || sessionStorage.getItem('tp_oauth_return_proposal_id');
+                const savedKolId = localStorage.getItem('tp_oauth_return_kol_id') || sessionStorage.getItem('tp_oauth_return_kol_id');
+                const savedKolName = localStorage.getItem('tp_oauth_return_kol_name') || sessionStorage.getItem('tp_oauth_return_kol_name') || 'Creator';
 
                 if (savedPropId && rawProps.some(p => p.id === savedPropId)) {
                     setSelectedProposalId(savedPropId);
@@ -372,6 +372,12 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                             kolName: savedKolName
                         });
                     }
+                    localStorage.removeItem('tp_oauth_return_url');
+                    localStorage.removeItem('tp_oauth_return_tab');
+                    localStorage.removeItem('tp_oauth_return_proposal_id');
+                    localStorage.removeItem('tp_oauth_return_kol_id');
+                    localStorage.removeItem('tp_oauth_return_kol_name');
+                    sessionStorage.removeItem('tp_oauth_return_url');
                     sessionStorage.removeItem('tp_oauth_return_tab');
                     sessionStorage.removeItem('tp_oauth_return_proposal_id');
                     sessionStorage.removeItem('tp_oauth_return_kol_id');
