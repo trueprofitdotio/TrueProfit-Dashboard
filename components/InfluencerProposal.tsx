@@ -7,7 +7,7 @@ import ActionMenu, { ActionMenuItem } from './ActionMenu';
 import { fetchYouTubeChannelDetails } from '../services/youtubeService';
 import {
     Plus, Search, Edit2, Trash2, X, Calendar, DollarSign, Filter, ArrowUpDown, Check,
-    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight, MessageCircle, RefreshCw, RotateCcw, Link as LinkIcon,
+    Users, FileText, ArrowLeft, Upload, Image as ImageIcon, ExternalLink, Loader2, Youtube, Eye, ChevronRight, MessageCircle, RotateCcw, Link as LinkIcon,
     MoreVertical, ArrowRightLeft
 } from 'lucide-react';
 
@@ -45,8 +45,7 @@ interface InfluencerProposalProps {
 
 const CREATOR_STATUS_OPTIONS = [
     'Approved',
-    'Not Approved',
-    'Re-negotiate'
+    'Not Approved'
 ] as const;
 
 const getCreatorStatusStyle = (status?: string | null) => {
@@ -1505,13 +1504,13 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                     <th className="px-4 py-3.5 min-w-[220px] font-normal">Deliverables</th>
                                     <th className="px-4 py-3.5 min-w-[200px] font-normal">Terms & Conditions</th>
                                     <th className="px-4 py-3.5 min-w-[140px] font-normal">Contract Link</th>
-                                    <th onClick={() => handleCreatorSort('log')} className="px-4 py-3.5 min-w-[200px] font-normal border-l border-[#bfdbfe]/50 cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                    <th className="px-4 py-3.5 min-w-[150px] font-normal border-l border-[#bfdbfe]/50">Discussion</th>
+                                    <th onClick={() => handleCreatorSort('log')} className="px-4 py-3.5 min-w-[150px] font-normal cursor-pointer hover:bg-slate-100/80 transition-colors">
                                         <div className="flex items-center gap-1">
                                             <span>Log</span>
                                             <ArrowUpDown className={`w-3 h-3 ${creatorSortField === 'log' ? 'text-slate-600' : 'text-slate-400'}`} />
                                         </div>
                                     </th>
-                                    <th className="px-4 py-3.5 min-w-[150px] font-normal">Discussion</th>
                                     <th className="px-4 py-3.5 text-center min-w-[70px] font-normal">Action</th>
                                 </tr>
                             </thead>
@@ -1686,26 +1685,8 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </div>
                                                 </td>
 
-                                                {/* 8. Log Column — latest action record */}
+                                                {/* 8. Discussion Column (controls cluster starts here, separated from deal-data columns) */}
                                                 <td className="px-4 py-3 align-middle border-l border-slate-100">
-                                                    {activity?.lastMessageAt ? (
-                                                        <span className="text-[11px] text-slate-500 leading-snug block whitespace-nowrap">
-                                                            Last message from <span className="font-semibold text-slate-700">{activity.lastMessageBy || 'Unknown'}</span>
-                                                            {' at '}
-                                                            {(() => {
-                                                                const dt = new Date(activity.lastMessageAt);
-                                                                const time = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                                                                const date = dt.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-                                                                return `${time} - ${date}`;
-                                                            })()}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[11px] text-slate-400 italic">No activity yet</span>
-                                                    )}
-                                                </td>
-
-                                                {/* 9. Discussion Column (controls cluster starts here, separated from deal-data columns) */}
-                                                <td className="px-4 py-3 align-middle">
                                                     <button
                                                         onClick={() => setActiveDiscussion({
                                                             proposalId: selectedProposal.id,
@@ -1717,6 +1698,27 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                         <MessageCircle className="w-3.5 h-3.5" />
                                                         <span>See discussion</span>
                                                     </button>
+                                                </td>
+
+                                                {/* 9. Log Column — latest activity, kept to two short lines */}
+                                                <td className="px-4 py-3 align-middle">
+                                                    {activity?.lastMessageAt ? (
+                                                        <div className="text-[11px] leading-snug">
+                                                            <div className="text-slate-500 whitespace-nowrap truncate max-w-[150px]">
+                                                                Last message from <span className="font-semibold text-slate-700">{activity.lastMessageBy || 'Unknown'}</span>
+                                                            </div>
+                                                            <div className="text-slate-400 whitespace-nowrap">
+                                                                {(() => {
+                                                                    const dt = new Date(activity.lastMessageAt);
+                                                                    const time = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                                                    const date = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                                                    return `${date} · ${time}`;
+                                                                })()}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[11px] text-slate-400 italic">No activity yet</span>
+                                                    )}
                                                 </td>
 
                                                 {/* 10. Actions Column — single dropdown menu */}
@@ -2053,7 +2055,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                 document.body
             )}
 
-            {/* CREATOR ROW ACTION DROPDOWN MENU (Approve / Reject / Re-negotiate / Reset / Move / Remove) */}
+            {/* CREATOR ROW ACTION DROPDOWN MENU (Approve / Reject / Reset / Move / Remove) */}
             {activeActionMenu && (() => {
                 const menuProposal = proposals.find(p => p.id === activeActionMenu.proposalId);
                 const menuPk = menuProposal?.proposal_kols?.find(pk => pk.kol_id === activeActionMenu.kolId);
@@ -2073,13 +2075,6 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                         icon: <X className="w-4 h-4 text-rose-600" />,
                         activeWhen: menuPk.status === 'Rejected',
                         onClick: () => updateCreatorStatus(activeActionMenu.proposalId, activeActionMenu.kolId, 'Rejected', true)
-                    },
-                    {
-                        key: 'renegotiate',
-                        label: 'Re-negotiate',
-                        icon: <RefreshCw className="w-4 h-4 text-amber-600" />,
-                        activeWhen: menuPk.status === 'Re-negotiate',
-                        onClick: () => updateCreatorStatus(activeActionMenu.proposalId, activeActionMenu.kolId, 'Re-negotiate', true)
                     },
                     {
                         key: 'reset',
