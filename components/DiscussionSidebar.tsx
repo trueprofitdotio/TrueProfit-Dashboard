@@ -807,13 +807,19 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     if (!isOpen) return null;
 
     return createPortal(
-        <div
-            className="discussion-sidebar fixed top-0 right-0 z-[999999] flex h-screen w-[540px] max-w-[95vw] animate-in flex-col border-l border-[var(--tp-rule)] bg-white font-sans pointer-events-auto slide-in-from-right duration-200 shadow-2xl"
-            onDragEnter={handleDragEnter}
-            onDragOver={e => { if (isDraggingFile) e.preventDefault(); }}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-        >
+        <>
+            <div
+                className="discussion-sidebar-backdrop fixed inset-0 z-[999998] bg-slate-900/30 animate-in fade-in duration-200"
+                onClick={onClose}
+                aria-hidden="true"
+            />
+            <div
+                className="discussion-sidebar fixed top-0 right-0 z-[999999] flex h-screen w-[540px] max-w-[95vw] animate-in flex-col border-l border-[var(--tp-rule)] bg-white font-sans pointer-events-auto slide-in-from-right duration-200 shadow-2xl"
+                onDragEnter={handleDragEnter}
+                onDragOver={e => { if (isDraggingFile) e.preventDefault(); }}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
             {isDraggingFile && user && (
                 <div className="pointer-events-none absolute inset-3 z-50 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--accent-color)] bg-emerald-50/95 text-[var(--accent-color)]">
                     <ImagePlus className="h-7 w-7 stroke-[1.5]" />
@@ -1094,7 +1100,8 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     </div>
                 </>
             )}
-        </div>,
+            </div>
+        </>,
         document.body
     );
 };

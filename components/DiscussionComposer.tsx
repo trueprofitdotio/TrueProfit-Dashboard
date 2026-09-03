@@ -265,7 +265,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
             </div>
 
             <div className="flex items-end gap-2">
-                <div className="discussion-editor-shell max-h-[180px] min-h-[44px] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs transition-all focus-within:border-[var(--accent-color)] focus-within:ring-2 focus-within:ring-[var(--accent-color)]/20">
+                <div className="discussion-editor-shell max-h-[180px] min-h-[44px] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs transition-colors focus-within:border-[var(--accent-color)]">
                     <EditorContent editor={editor} />
                 </div>
                 <button
