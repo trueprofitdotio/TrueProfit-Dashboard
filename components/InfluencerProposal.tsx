@@ -387,8 +387,8 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     const [movingCreator, setMovingCreator] = useState(false);
 
     // Creators Table Sort state (independent from the top-level proposals list sort)
-    const [creatorSortField, setCreatorSortField] = useState<'name' | 'status' | 'est_rate' | null>(null);
-    const [creatorSortDirection, setCreatorSortDirection] = useState<'asc' | 'desc'>('asc');
+    const [creatorSortField, setCreatorSortField] = useState<'name' | 'status' | 'est_rate' | 'log' | null>('log');
+    const [creatorSortDirection, setCreatorSortDirection] = useState<'asc' | 'desc'>('desc');
 
     // Popover input temporary values
     const [cellRateVal, setCellRateVal] = useState('');
@@ -536,7 +536,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
     const selectedProposal = proposals.find(p => p.id === selectedProposalId);
 
     // Sort creators within the open proposal's detailed table (independent of the proposals-list sort)
-    const handleCreatorSort = (field: 'name' | 'status' | 'est_rate') => {
+    const handleCreatorSort = (field: 'name' | 'status' | 'est_rate' | 'log') => {
         if (creatorSortField === field) {
             setCreatorSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
         } else {
@@ -559,6 +559,11 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             } else if (creatorSortField === 'status') {
                 valA = (a.status || 'Active').toLowerCase();
                 valB = (b.status || 'Active').toLowerCase();
+            } else if (creatorSortField === 'log') {
+                const actA = threadActivities[a.kol_id];
+                const actB = threadActivities[b.kol_id];
+                valA = actA?.lastMessageAt ? new Date(actA.lastMessageAt).getTime() : 0;
+                valB = actB?.lastMessageAt ? new Date(actB.lastMessageAt).getTime() : 0;
             } else {
                 valA = parseFloat(String(a.est_rate || '0')) || 0;
                 valB = parseFloat(String(b.est_rate || '0')) || 0;
@@ -568,7 +573,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
             if (valA > valB) return creatorSortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [selectedProposal?.proposal_kols, creatorSortField, creatorSortDirection]);
+    }, [selectedProposal?.proposal_kols, creatorSortField, creatorSortDirection, threadActivities]);
 
     // Move Creator To Another Proposal (keeps est_rate, deliverables, terms, contract_link,
     // audience_screenshots, and status intact, and re-points the discussion thread so all
@@ -1500,14 +1505,20 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                     <th className="px-4 py-3.5 min-w-[220px] font-normal">Deliverables</th>
                                     <th className="px-4 py-3.5 min-w-[200px] font-normal">Terms & Conditions</th>
                                     <th className="px-4 py-3.5 min-w-[140px] font-normal">Contract Link</th>
-                                    <th className="px-4 py-3.5 min-w-[150px] font-normal border-l border-[#bfdbfe]/50">Discussion</th>
+                                    <th onClick={() => handleCreatorSort('log')} className="px-4 py-3.5 min-w-[200px] font-normal border-l border-[#bfdbfe]/50 cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                        <div className="flex items-center gap-1">
+                                            <span>Log</span>
+                                            <ArrowUpDown className={`w-3 h-3 ${creatorSortField === 'log' ? 'text-slate-600' : 'text-slate-400'}`} />
+                                        </div>
+                                    </th>
+                                    <th className="px-4 py-3.5 min-w-[150px] font-normal">Discussion</th>
                                     <th className="px-4 py-3.5 text-center min-w-[70px] font-normal">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#bfdbfe]/30">
                                 {(!selectedProposal.proposal_kols || selectedProposal.proposal_kols.length === 0) ? (
                                     <tr>
-                                        <td colSpan={9} className="text-center py-12 text-slate-400">
+                                        <td colSpan={10} className="text-center py-12 text-slate-400">
                                             No creators added to this proposal yet. Use the button below to add your first creator!
                                         </td>
                                     </tr>
@@ -1675,8 +1686,26 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </div>
                                                 </td>
 
-                                                {/* 8. Discussion Column (controls cluster starts here, separated from deal-data columns) */}
+                                                {/* 8. Log Column — latest action record */}
                                                 <td className="px-4 py-3 align-middle border-l border-slate-100">
+                                                    {activity?.lastMessageAt ? (
+                                                        <span className="text-[11px] text-slate-500 leading-snug block whitespace-nowrap">
+                                                            Last message from <span className="font-semibold text-slate-700">{activity.lastMessageBy || 'Unknown'}</span>
+                                                            {' at '}
+                                                            {(() => {
+                                                                const dt = new Date(activity.lastMessageAt);
+                                                                const time = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                                                const date = dt.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+                                                                return `${time} - ${date}`;
+                                                            })()}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[11px] text-slate-400 italic">No activity yet</span>
+                                                    )}
+                                                </td>
+
+                                                {/* 9. Discussion Column (controls cluster starts here, separated from deal-data columns) */}
+                                                <td className="px-4 py-3 align-middle">
                                                     <button
                                                         onClick={() => setActiveDiscussion({
                                                             proposalId: selectedProposal.id,
@@ -1690,7 +1719,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                     </button>
                                                 </td>
 
-                                                {/* 9. Actions Column — single dropdown menu */}
+                                                {/* 10. Actions Column — single dropdown menu */}
                                                 <td className="px-2 py-3 text-center align-middle">
                                                     <div className="flex items-center justify-center min-h-[36px]">
                                                         <button

@@ -235,7 +235,10 @@ body > div.discussion-sidebar { border-radius: 0 !important; }
 
 /* Rich-text composer (Tiptap). The editor shows real formatting rather than
    markdown source, so these rules mirror how the message bubble renders. */
-.discussion-editor-content { outline: none; }
+.discussion-editor-content { outline: none !important; }
+.discussion-editor-shell .tiptap:focus-visible,
+.discussion-editor-shell [contenteditable]:focus-visible,
+.discussion-editor-shell .ProseMirror:focus-visible { outline: none !important; }
 .discussion-editor-content p { margin: 0; line-height: 1.6; }
 .discussion-editor-content p + p { margin-top: 0.25rem; }
 .discussion-editor-content strong { font-weight: 700; }
