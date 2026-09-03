@@ -26,3 +26,7 @@ dist-ssr
 .claude/settings.local.json
 test-results/
 *.xlsx
+
+# Vendored agent skills - reinstall with `npx skills add`, tracked by skills-lock.json
+.agents/
+.claude/skills/

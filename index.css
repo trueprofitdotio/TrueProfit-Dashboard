@@ -9,6 +9,9 @@
   --tp-muted: #687572;
   --tp-rule: #e5eae7;
   --tp-hover: #f1f5f3;
+  /* DESIGN.md rounded scale */
+  --tp-radius-control: 5px;
+  --tp-radius-popup: 6px;
 }
 
 * { box-shadow: none !important; }
@@ -229,6 +232,55 @@ body > div.discussion-sidebar { border-radius: 0 !important; }
 .discussion-message-feed { background: transparent !important; }
 .discussion-composer { border-top-color: transparent !important; }
 .trendline-backdrop { backdrop-filter: none !important; }
+
+/* Rich-text composer (Tiptap). The editor shows real formatting rather than
+   markdown source, so these rules mirror how the message bubble renders. */
+.discussion-editor-content { outline: none; }
+.discussion-editor-content p { margin: 0; line-height: 1.6; }
+.discussion-editor-content p + p { margin-top: 0.25rem; }
+.discussion-editor-content strong { font-weight: 700; }
+.discussion-editor-content em { font-style: italic; }
+.discussion-editor-content s { text-decoration: line-through; opacity: 0.8; }
+.discussion-editor-content code {
+  background: var(--tp-hover);
+  color: var(--tp-ink);
+  padding: 0.05rem 0.3rem;
+  border-radius: var(--tp-radius-control);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+.discussion-editor-content pre {
+  background: var(--tp-ink);
+  color: var(--tp-surface);
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--tp-radius-popup);
+  margin: 0.375rem 0;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+.discussion-editor-content pre code { background: none; color: inherit; padding: 0; }
+.discussion-editor-content ul,
+.discussion-editor-content ol { margin: 0.375rem 0; padding-left: 1.1rem; }
+.discussion-editor-content ul { list-style: disc; }
+.discussion-editor-content ol { list-style: decimal; }
+.discussion-editor-content li { margin: 0.1rem 0; }
+.discussion-editor-content li p { margin: 0; }
+.discussion-editor-content blockquote {
+  border-left: 2px solid rgb(203 213 225);
+  padding-left: 0.625rem;
+  margin: 0.375rem 0;
+  color: rgb(71 85 105);
+  font-style: italic;
+}
+/* Placeholder shown only on a genuinely empty document. */
+.discussion-editor-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: rgb(148 163 184);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
 
 .influencer-performance .space-y-8, .influencer-performance .space-y-12, .influencer-progress, .influencer-proposal, .kpi-runrate { row-gap: 2.5rem; }
 .influencer-performance [class*="bg-emerald-50"], .influencer-performance [class*="bg-slate-50"] { background: transparent !important; }

@@ -1,11 +1,21 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { supabaseClient } from '../services/supabaseClient';
 import { fetchYouTubeVideoDetails, fetchYouTubeChannelDetails, getYouTubeVideoId, YouTubeVideoInfo, YouTubeChannelInfo } from '../services/youtubeService';
 import { sendDiscussionEmailNotification } from '../services/notificationService';
-import { 
-    X, Send, Loader2, Check, RefreshCw, AlertCircle, LogOut, 
-    AtSign, ExternalLink, Youtube, Play, CheckCheck, Users
+import { renderMarkdown, renderPlaintext, extractUrls, extractMentions } from '../services/messageMarkdown';
+import {
+    DiscussionAttachment, parseAttachments, uploadDiscussionAttachment,
+    removeDiscussionAttachment, validateAttachment, displayNameFor, ACCEPTED_MIME_TYPES
+} from '../services/discussionAttachments';
+import { AttachmentGrid, PendingAttachmentStrip, PendingAttachment } from './DiscussionAttachments';
+import type { DiscussionComposerHandle } from './DiscussionComposer';
+// The editor pulls in ProseMirror (~400 kB). Loading it only when a discussion
+// is actually opened keeps it out of the dashboard's initial bundle.
+const DiscussionComposer = lazy(() => import('./DiscussionComposer'));
+import {
+    X, Loader2, Check, RefreshCw, AlertCircle, LogOut,
+    Youtube, Play, CheckCheck, Users, ImagePlus, ChevronDown
 } from 'lucide-react';
 
 interface DiscussionSidebarProps {
@@ -25,6 +35,10 @@ interface Message {
     actor: string;
     type: 'user' | 'system' | 'advisor';
     created_at: string;
+    attachments?: DiscussionAttachment[] | string | null;
+    mentions?: Array<{ name: string; email: string }> | string | null;
+    /** Absent on rows written before the markdown composer shipped. */
+    body_format?: 'plaintext' | 'markdown' | null;
 }
 
 interface ReadReceipt {
@@ -170,67 +184,29 @@ const YouTubeCardPreview: React.FC<{ url: string; isUser: boolean }> = ({ url, i
     return null;
 };
 
-// Render Rich Message Body with Clickable Links & Styled @Mentions
-const RichMessageBody: React.FC<{ body: string; isUser: boolean }> = ({ body, isUser }) => {
-    const urlMatches = useMemo(() => {
-        const matches = body.match(/(https?:\/\/[^\s,]+)/g) || [];
-        return Array.from(new Set(matches));
-    }, [body]);
+// Renders a message body: markdown subset for new messages, links-and-mentions
+// only for legacy rows, plus YouTube cards for any URLs found.
+const RichMessageBody: React.FC<{
+    body: string;
+    isUser: boolean;
+    format?: 'plaintext' | 'markdown' | null;
+    mentionNames?: string[];
+}> = ({ body, isUser, format, mentionNames }) => {
+    const urlMatches = useMemo(() => extractUrls(body), [body]);
 
-    const renderFormattedText = () => {
-        const tokenRegex = /(@[\w\p{L}\s.-]+?(?=\s@|\shttps?:\/\/|$|\n|[.,!?](\s|$)))|(https?:\/\/[^\s,]+)/gu;
-        const elements: React.ReactNode[] = [];
-        let lastIdx = 0;
-        let match: RegExpExecArray | null;
-
-        while ((match = tokenRegex.exec(body)) !== null) {
-            if (match.index > lastIdx) {
-                elements.push(body.slice(lastIdx, match.index));
-            }
-            const token = match[0];
-            if (token.startsWith('@')) {
-                elements.push(
-                    <span 
-                        key={match.index}
-                        className={`inline-block font-semibold px-1.5 py-0.5 rounded-md text-xs font-mono select-all transition-colors ${
-                            isUser 
-                                ? 'bg-emerald-700/80 text-emerald-100 border border-emerald-500/40' 
-                                : 'bg-[#176b5e]/15 text-[#176b5e] border border-[#176b5e]/30'
-                        }`}
-                    >
-                        {token}
-                    </span>
-                );
-            } else if (token.startsWith('http')) {
-                elements.push(
-                    <a
-                        key={match.index}
-                        href={token}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className={`inline-flex items-center gap-1 underline font-medium hover:opacity-80 transition-opacity break-all ${
-                            isUser ? 'text-emerald-100' : 'text-blue-600'
-                        }`}
-                    >
-                        <span>{token}</span>
-                        <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
-                    </a>
-                );
-            }
-            lastIdx = tokenRegex.lastIndex;
-        }
-        if (lastIdx < body.length) {
-            elements.push(body.slice(lastIdx));
-        }
-        return elements.length > 0 ? elements : body;
-    };
+    // Rows written before this feature have no body_format and contain raw *
+    // and _ that were never intended as syntax, so they stay literal.
+    const content = useMemo(
+        () =>
+            format === 'markdown'
+                ? renderMarkdown(body, { isUser, mentionNames })
+                : renderPlaintext(body, { isUser, mentionNames }),
+        [body, isUser, format, mentionNames]
+    );
 
     return (
         <div>
-            <div className="whitespace-pre-wrap leading-relaxed">
-                {renderFormattedText()}
-            </div>
+            {content}
             {urlMatches.map((url, idx) => (
                 <YouTubeCardPreview key={idx} url={url} isUser={isUser} />
             ))}
@@ -257,12 +233,18 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     const [loading, setLoading] = useState(false);
     const [readReceipts, setReadReceipts] = useState<ReadReceipt[]>([]);
     
-    const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-    const [mentionIndex, setMentionIndex] = useState<number>(0);
-    const [mentionCursorPos, setMentionCursorPos] = useState<number>(0);
+    const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+    const [attachmentError, setAttachmentError] = useState<string | null>(null);
+    const [isDraggingFile, setIsDraggingFile] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    const [showAllSystemMessages, setShowAllSystemMessages] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const messageInputRef = useRef<HTMLTextAreaElement>(null);
+    const composerRef = useRef<DiscussionComposerHandle>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    // Drag events fire per child element; a counter avoids the highlight
+    // flickering off every time the pointer crosses an inner node.
+    const dragDepthRef = useRef(0);
 
     const teamMembersList: TeamMember[] = useMemo(() => {
         const map = new Map<string, TeamMember>();
@@ -282,29 +264,16 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
         return Array.from(map.values());
     }, [messages, user]);
 
-    const filteredMentionMembers = useMemo(() => {
-        if (mentionQuery === null) return [];
-        const q = mentionQuery.toLowerCase();
-        return teamMembersList.filter(m => 
-            m.name.toLowerCase().includes(q) || 
-            m.email.toLowerCase().includes(q)
-        );
-    }, [mentionQuery, teamMembersList]);
-
-    const adjustTextareaHeight = () => {
-        if (messageInputRef.current) {
-            messageInputRef.current.style.height = 'auto';
-            const newHeight = Math.min(Math.max(messageInputRef.current.scrollHeight, 44), 180);
-            messageInputRef.current.style.height = `${newHeight}px`;
-        }
-    };
+    // Passed to the renderer so multi-word names highlight as one mention
+    // instead of running into the following words.
+    const mentionNames = useMemo(
+        () => teamMembersList.map(m => m.name),
+        [teamMembersList]
+    );
 
     useEffect(() => {
         if (!isOpen || authLoading || !user) return;
-        const t = setTimeout(() => {
-            messageInputRef.current?.focus();
-            adjustTextareaHeight();
-        }, 220);
+        const t = setTimeout(() => composerRef.current?.focus(), 220);
         return () => clearTimeout(t);
     }, [isOpen, kolId, user, authLoading]);
 
@@ -572,82 +541,144 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
         }, 100);
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const val = e.target.value;
-        const cursor = e.target.selectionStart;
-        setNewMessage(val);
-        adjustTextareaHeight();
-        const textBeforeCursor = val.slice(0, cursor);
-        const atMatch = textBeforeCursor.match(/@([\w\p{L}]*)$/u);
-        if (atMatch) {
-            setMentionQuery(atMatch[1]);
-            setMentionIndex(0);
-            setMentionCursorPos(cursor);
-        } else {
-            setMentionQuery(null);
+    // ---- Attachments -----------------------------------------------------
+
+    const stageFiles = async (files: File[]) => {
+        if (files.length === 0) return;
+        if (!threadId) {
+            setAttachmentError('Discussion is still loading. Try again in a moment.');
+            return;
         }
+        setAttachmentError(null);
+
+        const accepted: PendingAttachment[] = [];
+        const rejected: string[] = [];
+
+        for (const file of files) {
+            const problem = validateAttachment(file);
+            if (problem) {
+                rejected.push(problem);
+                continue;
+            }
+            // Rename here so the staging strip and the stored name match; a
+            // pasted screenshot otherwise arrives as the useless "image.png".
+            const named = new File([file], displayNameFor(file), { type: file.type });
+            accepted.push({
+                localId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                file: named,
+                previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+                status: 'uploading'
+            });
+        }
+
+        if (rejected.length > 0) setAttachmentError(rejected.join(' '));
+        if (accepted.length === 0) return;
+
+        setPendingAttachments(prev => [...prev, ...accepted]);
+
+        // Upload immediately rather than on send, so the wait happens while the
+        // user is still typing the caption.
+        await Promise.all(
+            accepted.map(async item => {
+                try {
+                    const uploaded = await uploadDiscussionAttachment(item.file, threadId);
+                    setPendingAttachments(prev =>
+                        prev.map(p => (p.localId === item.localId ? { ...p, status: 'done', uploaded } : p))
+                    );
+                } catch (err: any) {
+                    const message = err?.message || 'Upload failed.';
+                    setPendingAttachments(prev =>
+                        prev.map(p => (p.localId === item.localId ? { ...p, status: 'error', error: message } : p))
+                    );
+                    setAttachmentError(message);
+                }
+            })
+        );
     };
 
-    const handleSelectMention = (member: TeamMember) => {
-        if (!messageInputRef.current) return;
-        const cursor = mentionCursorPos;
-        const textBefore = newMessage.slice(0, cursor);
-        const textAfter = newMessage.slice(cursor);
-        const newBefore = textBefore.replace(/@[\w\p{L}]*$/u, `@${member.name} `);
-        const updated = newBefore + textAfter;
-        setNewMessage(updated);
-        setMentionQuery(null);
-        setTimeout(() => {
-            if (messageInputRef.current) {
-                messageInputRef.current.focus();
-                const nextPos = newBefore.length;
-                messageInputRef.current.setSelectionRange(nextPos, nextPos);
-                adjustTextareaHeight();
-            }
-        }, 50);
+    const handleRemovePending = (localId: string) => {
+        setPendingAttachments(prev => {
+            const item = prev.find(p => p.localId === localId);
+            if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+            // Already uploaded, so drop the object too rather than leaving
+            // orphaned files in the bucket.
+            if (item?.uploaded) removeDiscussionAttachment(item.uploaded.path);
+            return prev.filter(p => p.localId !== localId);
+        });
+        setAttachmentError(null);
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (mentionQuery !== null && filteredMentionMembers.length > 0) {
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setMentionIndex(prev => (prev + 1) % filteredMentionMembers.length);
-                return;
-            }
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setMentionIndex(prev => (prev - 1 + filteredMentionMembers.length) % filteredMentionMembers.length);
-                return;
-            }
-            if (e.key === 'Enter' || e.key === 'Tab') {
-                e.preventDefault();
-                handleSelectMention(filteredMentionMembers[mentionIndex]);
-                return;
-            }
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                setMentionQuery(null);
-                return;
-            }
-        }
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSendMessage();
-        }
+    const handleDragEnter = (e: React.DragEvent) => {
+        if (!Array.from(e.dataTransfer?.types || []).includes('Files')) return;
+        e.preventDefault();
+        dragDepthRef.current += 1;
+        setIsDraggingFile(true);
     };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+        if (dragDepthRef.current === 0) setIsDraggingFile(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        dragDepthRef.current = 0;
+        setIsDraggingFile(false);
+        stageFiles(e.dataTransfer ? Array.from(e.dataTransfer.files) : []);
+    };
+
+    const handleFilePicker = (e: React.ChangeEvent<HTMLInputElement>) => {
+        stageFiles(e.target.files ? Array.from(e.target.files) : []);
+        e.target.value = ''; // allow re-picking the same file
+    };
+
+    // Release preview blobs when the sidebar closes or switches creator.
+    useEffect(() => {
+        return () => {
+            pendingAttachments.forEach(p => p.previewUrl && URL.revokeObjectURL(p.previewUrl));
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [threadId]);
+
+    // Composing, mention autocomplete and formatting now live in
+    // DiscussionComposer, which keeps this component holding only the markdown
+    // it will send.
 
     const handleSendMessage = async () => {
-        if (!newMessage.trim() || !threadId || !user) return;
-        const msgText = newMessage.trim();
-        setNewMessage('');
-        setMentionQuery(null);
-        if (messageInputRef.current) {
-            messageInputRef.current.style.height = '44px';
+        if (!threadId || !user || isSending) return;
+
+        const uploadsInFlight = pendingAttachments.some(p => p.status === 'uploading');
+        if (uploadsInFlight) {
+            setAttachmentError('Waiting for uploads to finish…');
+            return;
         }
+
+        const readyAttachments = pendingAttachments
+            .filter(p => p.status === 'done' && p.uploaded)
+            .map(p => p.uploaded as DiscussionAttachment);
+
+        const msgText = newMessage.trim();
+        // A screenshot with no caption is a legitimate message.
+        if (!msgText && readyAttachments.length === 0) return;
+
+        setIsSending(true);
+        // Snapshot the editor state before clearing so a failed send can put
+        // the exact formatted draft back, not a re-parsed approximation.
+        const draftSnapshot = composerRef.current?.getJSON();
+        setNewMessage('');
+        composerRef.current?.clear();
+        setAttachmentError(null);
+        const sentAttachments = pendingAttachments;
+        setPendingAttachments([]);
+
         const actorName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Team Member';
         const senderEmail = user.email || 'user@firegroup.io';
-        const taggedUsers = Array.from(msgText.match(/@([\w\p{L}\s.-]+?)(?=\s@|\shttps?:\/\/|$|\n|[.,!?](\s|$))/gu) || [])
-            .map((t: string) => t.replace(/^@/, '').trim());
+        // Resolved against the real member list, so a mention only counts when
+        // it names someone we can actually notify.
+        const resolvedMentions = extractMentions(msgText, teamMembersList);
+        const taggedUsers = resolvedMentions.map(m => m.name);
+
         const tempId = `temp_${Date.now()}`;
         const tempMsg: Message = {
             id: tempId,
@@ -655,7 +686,10 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
             body: msgText,
             actor: actorName,
             type: 'user',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            attachments: readyAttachments,
+            mentions: resolvedMentions,
+            body_format: 'markdown'
         };
         setMessages(prev => [...prev, tempMsg]);
         scrollToBottom();
@@ -666,7 +700,10 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     thread_id: threadId,
                     body: msgText,
                     actor: actorName,
-                    type: 'user'
+                    type: 'user',
+                    attachments: readyAttachments,
+                    mentions: resolvedMentions,
+                    body_format: 'markdown'
                 })
                 .select()
                 .single();
@@ -674,6 +711,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
             if (data) {
                 setMessages(prev => prev.map(m => m.id === tempId ? (data as Message) : m));
             }
+            sentAttachments.forEach(p => p.previewUrl && URL.revokeObjectURL(p.previewUrl));
             recordReadReceipt(threadId);
             fetchMessages(threadId);
             const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -693,7 +731,13 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
         } catch (err) {
             console.error('Error sending message:', err);
             setMessages(prev => prev.filter(m => m.id !== tempId));
+            // Put the draft and its uploads back so nothing is silently lost.
             setNewMessage(msgText);
+            if (draftSnapshot) composerRef.current?.setJSON(draftSnapshot);
+            setPendingAttachments(sentAttachments);
+            setAttachmentError('Could not send. Your message and attachments were restored.');
+        } finally {
+            setIsSending(false);
         }
     };
 
@@ -720,6 +764,32 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
         }
     };
 
+    /**
+     * System notices ("status changed to…", migration notes) pile up and push
+     * the actual conversation out of view. Consecutive runs collapse to the 3
+     * most recent, with the rest available behind a toggle -- capped, not
+     * discarded, so nothing is silently lost.
+     */
+    const MAX_VISIBLE_SYSTEM_MESSAGES = 3;
+
+    type FeedItem =
+        | { kind: 'message'; msg: Message }
+        | { kind: 'systemGroup'; msgs: Message[] };
+
+    const feedItems: FeedItem[] = useMemo(() => {
+        const items: FeedItem[] = [];
+        for (const msg of messages) {
+            if (msg.type === 'system') {
+                const last = items[items.length - 1];
+                if (last && last.kind === 'systemGroup') last.msgs.push(msg);
+                else items.push({ kind: 'systemGroup', msgs: [msg] });
+            } else {
+                items.push({ kind: 'message', msg });
+            }
+        }
+        return items;
+    }, [messages]);
+
     const latestMessage = messages[messages.length - 1];
     const otherReaders = useMemo(() => {
         if (!latestMessage || !user) return [];
@@ -730,10 +800,27 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
         );
     }, [readReceipts, latestMessage, user]);
 
+    // The composer owns the text side of "can I send?"; this covers the
+    // attachment side, so a screenshot with no caption still enables Send.
+    const hasReadyAttachment = pendingAttachments.some(p => p.status === 'done');
+
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="discussion-sidebar fixed top-0 right-0 z-[999999] flex h-screen w-[540px] max-w-[95vw] animate-in flex-col border-l border-[var(--tp-rule)] bg-white font-sans pointer-events-auto slide-in-from-right duration-200 shadow-2xl">
+        <div
+            className="discussion-sidebar fixed top-0 right-0 z-[999999] flex h-screen w-[540px] max-w-[95vw] animate-in flex-col border-l border-[var(--tp-rule)] bg-white font-sans pointer-events-auto slide-in-from-right duration-200 shadow-2xl"
+            onDragEnter={handleDragEnter}
+            onDragOver={e => { if (isDraggingFile) e.preventDefault(); }}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+        >
+            {isDraggingFile && user && (
+                <div className="pointer-events-none absolute inset-3 z-50 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--accent-color)] bg-emerald-50/95 text-[var(--accent-color)]">
+                    <ImagePlus className="h-7 w-7 stroke-[1.5]" />
+                    <p className="text-xs font-semibold">Drop to attach</p>
+                    <p className="text-[11px] text-emerald-700">PNG, JPEG, GIF, WebP or PDF — up to 10 MB</p>
+                </div>
+            )}
             <div className="discussion-sidebar-header flex items-start justify-between px-6 pb-4 pt-6 border-b border-slate-100">
                 <div className="flex flex-col">
                     <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
@@ -826,24 +913,55 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                 </div>
                             </div>
                         ) : (
-                            messages.map((msg, idx) => {
+                            feedItems.map((item, idx) => {
+                                if (item.kind === 'systemGroup') {
+                                    const hidden = item.msgs.length - MAX_VISIBLE_SYSTEM_MESSAGES;
+                                    const visible = showAllSystemMessages || hidden <= 0
+                                        ? item.msgs
+                                        : item.msgs.slice(-MAX_VISIBLE_SYSTEM_MESSAGES);
+                                    return (
+                                        <div key={`sys-${item.msgs[0].id || idx}`} className="space-y-1">
+                                            {hidden > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowAllSystemMessages(v => !v)}
+                                                    className="mx-auto flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                                                >
+                                                    <ChevronDown
+                                                        className={`h-3 w-3 transition-transform ${showAllSystemMessages ? 'rotate-180' : ''}`}
+                                                    />
+                                                    <span>
+                                                        {showAllSystemMessages
+                                                            ? 'Hide earlier updates'
+                                                            : `Show ${hidden} earlier update${hidden === 1 ? '' : 's'}`}
+                                                    </span>
+                                                </button>
+                                            )}
+                                            {visible.map((sysMsg, sysIdx) => (
+                                                <div
+                                                    key={sysMsg.id || `${idx}-${sysIdx}`}
+                                                    className="my-2 text-center text-[11px] font-medium italic text-slate-400"
+                                                >
+                                                    <span>{sysMsg.body}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                }
+
+                                const msg = item.msg;
                                 const currentUserEmail = (user?.email || '').toLowerCase();
                                 const currentUserName = (user?.user_metadata?.full_name || '').toLowerCase();
                                 const actorName = (msg.actor || '').toLowerCase();
                                 const isUser = msg.type === 'user' && (
-                                    actorName === currentUserName || 
+                                    actorName === currentUserName ||
                                     actorName === currentUserEmail ||
                                     (actorName.includes('quan') && currentUserName.includes('quan'))
                                 );
-                                const isSystem = msg.type === 'system';
 
                                 return (
                                     <div key={msg.id || idx}>
-                                        {isSystem ? (
-                                            <div className="my-2 text-center text-[11px] font-medium italic text-slate-400">
-                                                <span>{msg.body}</span>
-                                            </div>
-                                        ) : (
+                                        {(
                                             <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
                                                 {!isUser && (
                                                     <span className="text-[11px] font-bold text-[#176b5e] mb-1 pl-1 flex items-center gap-1">
@@ -855,7 +973,18 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                         ? 'bg-[#176b5e] text-white rounded-2xl rounded-tr-xs' 
                                                         : 'bg-[#ecf4f1] text-[#1c2826] border border-[#d2e3dc] rounded-2xl rounded-tl-xs'
                                                 }`}>
-                                                    <RichMessageBody body={msg.body} isUser={isUser} />
+                                                    {msg.body && (
+                                                        <RichMessageBody
+                                                            body={msg.body}
+                                                            isUser={isUser}
+                                                            format={msg.body_format}
+                                                            mentionNames={mentionNames}
+                                                        />
+                                                    )}
+                                                    <AttachmentGrid
+                                                        attachments={parseAttachments(msg.attachments)}
+                                                        isUser={isUser}
+                                                    />
                                                     <div className={`mt-1.5 text-[10px] font-medium flex items-center justify-end gap-1 ${
                                                         isUser ? 'text-emerald-100/80' : 'text-slate-400'
                                                     }`}>
@@ -915,62 +1044,53 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     </div>
 
                     <div className="discussion-composer px-5 pb-5 pt-3 border-t border-slate-100 bg-white relative">
-                        {mentionQuery !== null && filteredMentionMembers.length > 0 && (
-                            <div className="absolute bottom-full left-5 right-5 mb-2 bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-                                <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                                    <AtSign className="w-3 h-3 text-[var(--accent-color)]" />
-                                    <span>Mention Team Member</span>
-                                </div>
-                                <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
-                                    {filteredMentionMembers.map((member, idx) => (
-                                        <button
-                                            key={member.email}
-                                            type="button"
-                                            onClick={() => handleSelectMention(member)}
-                                            onMouseEnter={() => setMentionIndex(idx)}
-                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-left transition-colors ${
-                                                mentionIndex === idx 
-                                                    ? 'bg-emerald-50 text-emerald-900 font-semibold' 
-                                                    : 'text-slate-700 hover:bg-slate-50'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <div className="w-6 h-6 rounded-full bg-[var(--accent-color)] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                                                    {member.name.charAt(0)}
-                                                </div>
-                                                <div className="truncate">
-                                                    <div className="font-semibold text-slate-800 truncate">{member.name}</div>
-                                                    <div className="text-[10px] text-slate-400 truncate">{member.email}</div>
-                                                </div>
-                                            </div>
-                                            <span className="text-[10px] font-mono text-emerald-600 bg-emerald-100/60 px-1.5 py-0.5 rounded-md">
-                                                @{member.name.split(' ')[0]}
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
+                        <PendingAttachmentStrip
+                            pending={pendingAttachments}
+                            onRemove={handleRemovePending}
+                        />
+
+                        {attachmentError && (
+                            <div className="mb-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-900">
+                                <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-amber-600" />
+                                <span className="flex-1">{attachmentError}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setAttachmentError(null)}
+                                    className="shrink-0 rounded p-0.5 transition-colors hover:bg-amber-200"
+                                    aria-label="Dismiss"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
                             </div>
                         )}
-                        <div className="flex items-end gap-2">
-                            <textarea
-                                ref={messageInputRef}
-                                value={newMessage}
-                                onChange={handleInputChange}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Type a note or message (use @ to mention)..."
-                                className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs outline-none transition-all focus:border-[var(--accent-color)] focus:ring-2 focus:ring-[var(--accent-color)]/20 leading-relaxed max-h-[180px] min-h-[44px]"
-                                rows={1}
+
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            accept={ACCEPTED_MIME_TYPES.join(',')}
+                            onChange={handleFilePicker}
+                            className="hidden"
+                        />
+
+                        <Suspense
+                            fallback={
+                                <div className="flex h-[76px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
+                                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                                </div>
+                            }
+                        >
+                            <DiscussionComposer
+                                ref={composerRef}
+                                members={teamMembersList}
+                                isSending={isSending}
+                                hasAttachments={hasReadyAttachment}
+                                onMarkdownChange={setNewMessage}
+                                onSend={handleSendMessage}
+                                onFiles={stageFiles}
+                                onAttachClick={() => fileInputRef.current?.click()}
                             />
-                            <button
-                                onClick={handleSendMessage}
-                                disabled={!newMessage.trim()}
-                                className="shrink-0 h-11 w-11 rounded-2xl bg-[var(--accent-color)] text-white flex items-center justify-center transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 shadow-2xs"
-                                aria-label="Send message"
-                                title="Send message (Enter)"
-                            >
-                                <Send className="h-4 w-4" />
-                            </button>
-                        </div>
+                        </Suspense>
                     </div>
                 </>
             )}
