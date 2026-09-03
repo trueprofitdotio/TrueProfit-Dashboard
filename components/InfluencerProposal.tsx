@@ -1383,7 +1383,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                             setEditingTagIdx(null);
                                                             setActiveStatusPopover({ proposalId: p.id, anchorRect: rect });
                                                         }}
-                                                        className={`px-3 py-1 rounded-full text-xs border transition-transform hover:scale-105 inline-block shadow-2xs ${getProposalTagStyle(p.status)}`}
+                                                        className={`px-3 py-1 rounded-full text-xs border whitespace-nowrap shrink-0 transition-transform hover:scale-105 inline-block shadow-2xs ${getProposalTagStyle(p.status)}`}
                                                         title="Click to update status tag"
                                                     >
                                                         <span>{p.status || 'Active'}</span>
@@ -1423,7 +1423,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
 
             {/* VIEW 2: DETAILED CREATORS PROPOSAL WORKSPACE VIEW */}
             {activeView === 'workspace' && selectedProposal && (
-                <div className={`space-y-6 animate-in fade-in duration-200 transition-all ${activeDiscussion ? 'mr-[560px]' : ''}`}>
+                <div className="space-y-6 animate-in fade-in duration-200">
                     
                     {/* Workspace Header: Clean Title & Back Button */}
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1447,7 +1447,7 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                 <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
                                     {selectedProposal.title}
                                 </h2>
-                                <span className={`px-3 py-0.5 rounded-full text-xs border ${getProposalTagStyle(selectedProposal.status)}`}>
+                                <span className={`px-3 py-0.5 rounded-full text-xs border whitespace-nowrap shrink-0 ${getProposalTagStyle(selectedProposal.status)}`}>
                                     {selectedProposal.status}
                                 </span>
 
@@ -1546,10 +1546,10 @@ const InfluencerProposal: React.FC<InfluencerProposalProps> = ({ onSelectProposa
                                                                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                                                 setActiveActionMenu({ proposalId: selectedProposal.id, kolId: pk.kol_id, anchorRect: rect });
                                                             }}
-                                                            className={`px-3 py-1 rounded-full text-xs border inline-flex items-center gap-1 shadow-2xs hover:scale-105 transition-transform ${getCreatorStatusStyle(pk.status)}`}
+                                                            className={`px-3 py-1 rounded-full text-xs border whitespace-nowrap shrink-0 inline-flex items-center gap-1 shadow-2xs hover:scale-105 transition-transform ${getCreatorStatusStyle(pk.status)}`}
                                                             title="Click to change creator status"
                                                         >
-                                                            <span>{pk.status || 'Active'}</span>
+                                                            <span className="whitespace-nowrap">{pk.status || 'Active'}</span>
                                                         </button>
                                                     </div>
                                                 </td>
