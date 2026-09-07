@@ -2,8 +2,6 @@ import { supabaseClient } from './supabaseClient';
 
 export interface EmailNotificationPayload {
     threadId: string;
-    proposalId: string;
-    proposalTitle?: string;
     kolId: string;
     kolName: string;
     senderName: string;
