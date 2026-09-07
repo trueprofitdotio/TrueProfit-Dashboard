@@ -21,11 +21,9 @@ import {
 interface DiscussionSidebarProps {
     isOpen: boolean;
     onClose: () => void;
-    proposalId: string | null;
-    proposalTitle?: string | null;
     kolId: string | null;
     kolName: string;
-    onStatusChange?: (proposalId: string, kolId: string, newStatus: string) => void;
+    onStatusChange?: (kolId: string, newStatus: string) => void;
 }
 
 interface Message {
@@ -217,8 +215,6 @@ const RichMessageBody: React.FC<{
 const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     isOpen,
     onClose,
-    proposalId,
-    proposalTitle,
     kolId,
     kolName,
     onStatusChange
@@ -333,10 +329,10 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
             const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
             const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
             let exactReturnUrl = currentUrl;
-            if (proposalId && typeof window !== 'undefined') {
+            if (typeof window !== 'undefined') {
                 try {
-                    const urlObj = new URL(currentUrl || `${currentOrigin}/influencer/proposal/${proposalId}`);
-                    urlObj.pathname = `/influencer/proposal/${proposalId}`;
+                    const urlObj = new URL(currentUrl || `${currentOrigin}/influencer/proposal`);
+                    urlObj.pathname = `/influencer/proposal`;
                     if (kolId) urlObj.searchParams.set('kolId', kolId);
                     exactReturnUrl = urlObj.toString();
                 } catch (e) {}
@@ -348,10 +344,6 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                 }
                 localStorage.setItem('tp_oauth_return_tab', 'influencer');
                 sessionStorage.setItem('tp_oauth_return_tab', 'influencer');
-                if (proposalId) {
-                    localStorage.setItem('tp_oauth_return_proposal_id', proposalId);
-                    sessionStorage.setItem('tp_oauth_return_proposal_id', proposalId);
-                }
                 if (kolId) {
                     localStorage.setItem('tp_oauth_return_kol_id', kolId);
                     sessionStorage.setItem('tp_oauth_return_kol_id', kolId);
@@ -428,15 +420,14 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     };
 
     useEffect(() => {
-        if (!isOpen || !proposalId || !kolId || !user) return;
+        if (!isOpen || !kolId || !user) return;
         const initializeThread = async () => {
             setLoading(true);
             try {
-                // 1. Try to find the exact thread for this proposal and creator
+                // 1. Try to find this creator's thread (one thread per creator)
                 let { data: thread, error: fetchError } = await supabaseClient
-                    .from('proposal_discussion_threads')
+                    .from('creator_discussion_threads')
                     .select('id')
-                    .eq('proposal_id', proposalId)
                     .eq('kol_id', kolId)
                     .maybeSingle();
 
@@ -444,34 +435,15 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     console.error('Fetch thread error:', fetchError);
                 }
 
-                // 2. If no thread exists for this (proposal, creator), check if this creator has a thread
-                // migrated or created under a different proposal ID
+                // 2. Create a new thread only if the creator has no previous thread
                 if (!thread) {
-                    const { data: existingKolThread } = await supabaseClient
-                        .from('proposal_discussion_threads')
+                    const { data: newThread, error: insertError } = await supabaseClient
+                        .from('creator_discussion_threads')
+                        .insert({ kol_id: kolId })
                         .select('id')
-                        .eq('kol_id', kolId)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-
-                    if (existingKolThread) {
-                        // Automatically re-point the thread to the active proposal so all prior messages follow the creator
-                        await supabaseClient
-                            .from('proposal_discussion_threads')
-                            .update({ proposal_id: proposalId })
-                            .eq('id', existingKolThread.id);
-                        thread = existingKolThread;
-                    } else {
-                        // 3. Create a new thread only if the creator has no previous thread
-                        const { data: newThread, error: insertError } = await supabaseClient
-                            .from('proposal_discussion_threads')
-                            .insert({ proposal_id: proposalId, kol_id: kolId })
-                            .select('id')
-                            .single();
-                        if (insertError) throw insertError;
-                        thread = newThread;
-                    }
+                        .single();
+                    if (insertError) throw insertError;
+                    thread = newThread;
                 }
                 if (thread) {
                     setThreadId(thread.id);
@@ -486,12 +458,12 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
             }
         };
         initializeThread();
-    }, [isOpen, proposalId, kolId, user]);
+    }, [isOpen, kolId, user]);
 
     const fetchMessages = async (tId: string) => {
         try {
             const { data, error } = await supabaseClient
-                .from('proposal_discussion_messages')
+                .from('creator_discussion_messages')
                 .select('*')
                 .eq('thread_id', tId)
                 .order('created_at', { ascending: true });
@@ -508,7 +480,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
         const msgChannel = supabaseClient.channel(`messages_for_${threadId}`)
             .on(
                 'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'proposal_discussion_messages', filter: `thread_id=eq.${threadId}` },
+                { event: 'INSERT', schema: 'public', table: 'creator_discussion_messages', filter: `thread_id=eq.${threadId}` },
                 (payload) => {
                     setMessages((prev) => {
                         const newMsg = payload.new as Message;
@@ -695,7 +667,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
         scrollToBottom();
         try {
             const { data, error } = await supabaseClient
-                .from('proposal_discussion_messages')
+                .from('creator_discussion_messages')
                 .insert({
                     thread_id: threadId,
                     body: msgText,
@@ -715,11 +687,9 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
             recordReadReceipt(threadId);
             fetchMessages(threadId);
             const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-            const deepLinkUrl = `${currentOrigin}/influencer/proposal/${proposalId || ''}?kolId=${kolId || ''}`;
+            const deepLinkUrl = `${currentOrigin}/influencer/proposal?kolId=${kolId || ''}`;
             sendDiscussionEmailNotification({
                 threadId,
-                proposalId: proposalId || '',
-                proposalTitle: proposalTitle || 'Campaign Proposal',
                 kolId: kolId || '',
                 kolName,
                 senderName: actorName,
@@ -742,11 +712,10 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     };
 
     const handleExecuteActionFromChat = async (action: 'Approved' | 'Rejected' | 'Re-negotiate') => {
-        if (!proposalId || !kolId || !user) return;
+        if (!kolId || !user) return;
         const actorName = user.user_metadata?.full_name || user.email || 'Team Member';
         try {
-            const { error } = await supabaseClient.rpc('update_proposal_kol_status', {
-                p_proposal_id: proposalId,
+            const { error } = await supabaseClient.rpc('update_creator_status', {
                 p_kol_id: kolId,
                 p_new_status: action,
                 p_actor: actorName,
@@ -754,7 +723,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
             });
             if (error) throw error;
             if (onStatusChange) {
-                onStatusChange(proposalId, kolId, action);
+                onStatusChange(kolId, action);
             }
             if (threadId) {
                 fetchMessages(threadId);
@@ -834,12 +803,6 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     </h2>
                     <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
                         <span>Creator: <strong className="font-semibold text-slate-800">{kolName}</strong></span>
-                        {proposalTitle && (
-                            <>
-                                <span className="text-slate-300">•</span>
-                                <span className="truncate max-w-[200px]" title={proposalTitle}>{proposalTitle}</span>
-                            </>
-                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">

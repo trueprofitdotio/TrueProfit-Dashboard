@@ -102,7 +102,7 @@ const App: React.FC = () => {
       // Check for OAuth return URL restoration
       try {
           const savedUrl = localStorage.getItem('tp_oauth_return_url') || sessionStorage.getItem('tp_oauth_return_url');
-          const savedPropId = localStorage.getItem('tp_oauth_return_proposal_id') || sessionStorage.getItem('tp_oauth_return_proposal_id');
+          const savedKolId = localStorage.getItem('tp_oauth_return_kol_id') || sessionStorage.getItem('tp_oauth_return_kol_id');
 
           if (savedUrl) {
               const urlObj = new URL(savedUrl, window.location.origin);
@@ -113,8 +113,8 @@ const App: React.FC = () => {
                       setActiveTabState('influencer');
                   }
               }
-          } else if (savedPropId && window.location.pathname === '/') {
-              const targetPath = `/influencer/proposal/${savedPropId}` + window.location.hash;
+          } else if (savedKolId && window.location.pathname === '/') {
+              const targetPath = `/influencer/proposal?kolId=${savedKolId}` + window.location.hash;
               window.history.replaceState({}, '', targetPath);
               setActiveTabState('influencer');
           }

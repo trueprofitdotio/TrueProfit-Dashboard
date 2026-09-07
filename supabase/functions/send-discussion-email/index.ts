@@ -8,8 +8,6 @@ const FROM_EMAIL = Deno.env.get("NOTIF_FROM_EMAIL") || "TrueProfit Deals <onboar
 
 interface NotificationPayload {
     threadId: string;
-    proposalId: string;
-    proposalTitle?: string;
     kolId: string;
     kolName: string;
     senderName: string;
@@ -34,7 +32,6 @@ serve(async (req) => {
     try {
         const payload: NotificationPayload = await req.json();
         const {
-            proposalTitle,
             kolName,
             senderName,
             senderEmail,
@@ -85,7 +82,7 @@ serve(async (req) => {
         if (!RESEND_API_KEY) {
             console.log("[send-discussion-email] RESEND_API_KEY is not set. Email payload:", {
                 recipients: recipientList,
-                subject: `[TrueProfit Deal] New discussion for ${kolName} (${proposalTitle || 'Proposal'})`,
+                subject: `[TrueProfit Deal] New discussion for ${kolName}`,
                 message: messageBody
             });
             return new Response(JSON.stringify({ 
@@ -103,7 +100,6 @@ serve(async (req) => {
                 <div style="margin-bottom: 20px;">
                     <span style="font-size: 11px; font-weight: 700; color: #176b5e; text-transform: uppercase; letter-spacing: 0.5px;">TrueProfit Deal Discussion</span>
                     <h2 style="margin: 6px 0 0; color: #0f172a; font-size: 18px; font-weight: 700;">${kolName}</h2>
-                    <p style="margin: 2px 0 0; color: #64748b; font-size: 13px;">Proposal: ${proposalTitle || 'Campaign Proposal'}</p>
                 </div>
 
                 <div style="padding: 16px; background-color: #f8fafc; border-left: 4px solid #176b5e; border-radius: 8px; margin-bottom: 24px;">
