@@ -1,66 +1,238 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   TrueProfit Operations Workspace — "Layered Operating Sheet"
+   Work happens on white sheets that sit on a warm sage canvas. The canvas is
+   never a reading surface; every piece of text lives on a raised sheet.
+   ========================================================================== */
+
 :root {
+  /* --- Canvas and surfaces -------------------------------------------- */
+  --tp-canvas: #edf0ea;          /* the page ground; never carries text */
+  --tp-canvas-edge: #e2e7de;     /* seam between canvas and a sheet edge */
+  --tp-surface: #ffffff;         /* the reading sheet */
+  --tp-surface-sunken: #f7f9f5;  /* table heads, nested quiet blocks */
+  --tp-surface-hover: #f2f6f2;   /* row and control hover */
+  --tp-surface-active: #eaf1ec;
+
+  /* --- Rules ----------------------------------------------------------- */
+  --tp-rule: #e6eae3;            /* hairline inside a sheet */
+  --tp-rule-panel: #dde3d9;      /* a sheet's own edge */
+  --tp-rule-strong: #c8d3cc;     /* control edges: inputs, filter triggers */
+  --tp-rule-stronger: #b5c4bc;
+
+  /* --- Ink ladder (all ratios measured against #ffffff) ---------------- */
+  --tp-ink: #17211f;             /* 15.8:1 — headings, key figures */
+  --tp-ink-2: #2b3835;           /* 11.4:1 — body, table cells */
+  --tp-muted: #5d6b67;           /*  5.6:1 — secondary labels */
+  --tp-meta: #6c7a76;            /*  4.6:1 — metadata, placeholders */
+  --tp-faint: #93a09c;           /*  2.9:1 — dividers, icon strokes only */
+
+  /* --- Accent ---------------------------------------------------------- */
   --accent-color: #176b5e;
-  --header-blue: #1c2826;
-  --tp-canvas: #fbfbf8;
-  --tp-surface: #ffffff;
-  --tp-ink: #1c2826;
-  --tp-muted: #687572;
-  --tp-rule: #e5eae7;
-  --tp-hover: #f1f5f3;
-  /* DESIGN.md rounded scale */
-  --tp-radius-control: 5px;
-  --tp-radius-popup: 6px;
-  /* Code rendering only. DESIGN.md declares no monospace face; matches the
-     stack Tailwind's font-mono resolves to, which the bubbles already use. */
+  --tp-accent: #176b5e;          /*  5.9:1 on white */
+  --tp-accent-strong: #10544a;
+  --tp-accent-ink: #0d443c;
+  --tp-accent-soft: #e8f1ee;
+  --tp-accent-rule: #bcd6cf;
+
+  /* --- Semantic -------------------------------------------------------- */
+  --tp-positive: #0e7350;
+  --tp-positive-soft: #e6f3ec;
+  --tp-positive-rule: #b6ddc7;
+  --tp-warning: #8a5709;
+  --tp-warning-soft: #fbf1dd;
+  --tp-warning-rule: #ead9b3;
+  --tp-danger: #ad2138;
+  --tp-danger-soft: #fdecef;
+  --tp-danger-rule: #f0c8cf;
+  --tp-info: #1f5a96;
+  --tp-info-soft: #ebf2fa;
+  --tp-info-rule: #c6daef;
+
+  /* Legacy alias kept so existing markup resolves to the new ink. */
+  --header-blue: #17211f;
+
+  /* --- Radius ---------------------------------------------------------- */
+  --tp-r-xs: 5px;
+  --tp-r-sm: 7px;
+  --tp-r-md: 9px;
+  --tp-r-lg: 12px;
+  --tp-r-xl: 16px;
+  --tp-r-pill: 999px;
+  /* Retained names from the previous scale. */
+  --tp-radius-control: var(--tp-r-sm);
+  --tp-radius-popup: var(--tp-r-md);
+
+  /* --- Elevation: every shadow carries an offset and a soft blur ------- */
+  --tp-elev-1:
+    0 1px 1px rgba(23, 33, 31, 0.035),
+    0 2px 6px -1px rgba(23, 33, 31, 0.05);
+  --tp-elev-2:
+    0 1px 2px rgba(23, 33, 31, 0.05),
+    0 6px 16px -4px rgba(23, 33, 31, 0.1);
+  --tp-elev-3:
+    0 2px 4px -1px rgba(23, 33, 31, 0.06),
+    0 18px 40px -10px rgba(23, 33, 31, 0.16);
+  --tp-elev-4:
+    0 4px 8px -2px rgba(23, 33, 31, 0.08),
+    0 32px 64px -16px rgba(23, 33, 31, 0.22);
+
+  /* --- Space: 4-unit base --------------------------------------------- */
+  --tp-s1: 4px;
+  --tp-s2: 8px;
+  --tp-s3: 12px;
+  --tp-s4: 16px;
+  --tp-s5: 20px;
+  --tp-s6: 24px;
+  --tp-s8: 32px;
+  --tp-s10: 40px;
+  --tp-s12: 48px;
+  --tp-s16: 64px;
+
+  /* --- Motion ---------------------------------------------------------- */
+  --tp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --tp-dur: 180ms;
+  --tp-dur-fast: 120ms;
+
+  /* --- Type ------------------------------------------------------------
+     Instrument Sans carries a 400–700 axis only, so hierarchy is built from
+     size, colour and spacing rather than from heavy weights. Nothing in the
+     interface goes above 600 except a figure, and controls sit at 500. */
+  --tp-font: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
   --tp-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --tp-w-regular: 400;
+  --tp-w-medium: 500;   /* every control label */
+  --tp-w-strong: 600;   /* headings, table labels, key data */
 }
 
-* { box-shadow: none !important; }
+/* ==========================================================================
+   Base
+   ========================================================================== */
 
-html { min-width: 320px; background: var(--tp-canvas); }
+html {
+  min-width: 320px;
+  background: var(--tp-canvas);
+  -webkit-text-size-adjust: 100%;
+}
 
 body {
   min-width: 320px;
   margin: 0;
   background: var(--tp-canvas);
-  color: var(--tp-ink);
-  font-family: Manrope, Arial, sans-serif;
+  color: var(--tp-ink-2);
+  font-family: var(--tp-font);
   font-size: 14px;
+  font-weight: var(--tp-w-regular);
   line-height: 1.5;
+  letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Controls speak at medium. The old build shouted every label in bold, which
+   flattened hierarchy — a button is not more important than a heading. */
+main button,
+.app-dialog button,
+.app-popover button,
+.tp-filter-menu button,
+.discussion-sidebar button,
+.trendline-sidebar button { font-weight: var(--tp-w-medium); }
+
+/* The few controls that stay a step up, restated past the rule above. */
+main button.tp-chip, .tp-filter-menu button.tp-chip { font-weight: 550; }
+main button.workspace-tab { font-weight: var(--tp-w-medium); }
+main button.workspace-tab.is-active { font-weight: var(--tp-w-strong); }
 
 button, input, select, textarea { font: inherit; }
 
-button, a, input, select, textarea {
-  transition: color 160ms cubic-bezier(0.16, 1, 0.3, 1), background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), border-color 160ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms cubic-bezier(0.16, 1, 0.3, 1), transform 160ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+button, a, input, select, textarea, label, summary {
+  transition:
+    color var(--tp-dur) var(--tp-ease),
+    background-color var(--tp-dur) var(--tp-ease),
+    border-color var(--tp-dur) var(--tp-ease),
+    box-shadow var(--tp-dur) var(--tp-ease),
+    opacity var(--tp-dur) var(--tp-ease),
+    transform var(--tp-dur) var(--tp-ease);
 }
 
-:focus-visible { outline: 2px solid var(--accent-color) !important; outline-offset: 3px; }
+:focus-visible {
+  outline: 2px solid var(--tp-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
 
-[class*="backdrop-blur"] { backdrop-filter: none !important; }
+/* Figures line up in columns. */
+table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
 
-.app-shell { min-height: 100vh; overflow-x: clip; }
+/* ==========================================================================
+   App shell and top bar
+   ========================================================================== */
 
-.app-frame { width: min(100% - 40px, 1560px); margin: 0 auto; padding: 28px 0 64px; }
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: clip;
+  background: var(--tp-canvas);
+}
 
-.app-header { display: flex; justify-content: center; padding: 16px 0 34px; text-align: center; }
-.app-header-brand { max-width: min(100%, 42rem); }
-.app-header h1 { margin: 0; color: var(--tp-ink); font-size: 30px; font-weight: 700; letter-spacing: 0; line-height: 1.15; }
-.app-header p { margin: 8px 0 0; color: var(--tp-muted); font-size: 14px; font-weight: 500; }
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  border-bottom: 1px solid var(--tp-canvas-edge);
+  background: var(--tp-surface);
+  box-shadow: var(--tp-elev-1);
+}
 
-.app-navigation { margin-bottom: 44px; }
-.app-navigation-list, .workspace-tabs { display: flex; align-items: center; gap: 24px; width: fit-content; }
+.app-bar-inner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--tp-s8);
+  width: min(100% - 40px, 1560px);
+  margin: 0 auto;
+  padding: var(--tp-s4) 0 0;
+}
+
+.app-brand { display: flex; align-items: baseline; gap: var(--tp-s2); padding-bottom: 14px; }
+.app-brand h1 {
+  margin: 0;
+  color: var(--tp-ink);
+  font-size: 18px;
+  font-weight: var(--tp-w-strong);
+  letter-spacing: -0.022em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.app-brand p {
+  margin: 0;
+  color: var(--tp-meta);
+  font-size: 13px;
+  font-weight: var(--tp-w-regular);
+  white-space: nowrap;
+}
+.app-brand-sep { color: var(--tp-faint); font-size: 13px; }
+
+/* --- Primary navigation: text labels with an accent underline ---------- */
+.app-navigation-list, .workspace-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-s6);
+  width: fit-content;
+  max-width: 100%;
+}
 
 .app-navigation-item, .workspace-tab {
   position: relative;
-  padding: 0 0 7px;
+  padding: 0 2px 13px;
   color: var(--tp-muted);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: var(--tp-w-medium);
   line-height: 1.2;
+  letter-spacing: -0.008em;
+  white-space: nowrap;
 }
 
 .app-navigation-item:hover, .workspace-tab:hover { color: var(--tp-ink); }
@@ -71,187 +243,560 @@ button, a, input, select, textarea {
   bottom: 0;
   left: 0;
   height: 2px;
+  border-radius: 2px 2px 0 0;
   background: transparent;
   content: "";
-  transform: scaleX(0.4);
+  transform: scaleX(0.35);
   transform-origin: center;
-  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), background-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--tp-dur) var(--tp-ease), background-color var(--tp-dur) var(--tp-ease);
 }
 
 .app-navigation-item.is-active, .workspace-tab.is-active { color: var(--tp-ink); }
-.app-navigation-item.is-active::after, .workspace-tab.is-active::after { background: var(--accent-color); transform: scaleX(1); }
-.app-navigation-item:focus-visible, .workspace-tab:focus-visible { outline: 0 !important; }
-.app-navigation-item:focus-visible::after, .workspace-tab:focus-visible::after { background: var(--accent-color); transform: scaleX(1); }
+.app-navigation-item.is-active::after,
+.workspace-tab.is-active::after { background: var(--tp-accent); transform: scaleX(1); }
+.app-navigation-item:focus-visible, .workspace-tab:focus-visible { outline: 0; }
+.app-navigation-item:focus-visible::after,
+.workspace-tab:focus-visible::after { background: var(--tp-accent); transform: scaleX(1); }
 
-.workspace-page { animation: workspace-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-.workspace-context { display: flex; align-items: center; min-height: 20px; margin-bottom: 24px; }
-.workspace-crumbs { display: flex; align-items: center; gap: 8px; color: var(--tp-muted); font-size: 13px; font-weight: 500; }
-.workspace-root-link:hover, .workspace-current-link:hover { color: var(--accent-color); }
-.workspace-current-link.is-current, .workspace-current-title { color: var(--tp-ink); font-weight: 650; }
+/* ==========================================================================
+   Frame and workspace rhythm
+   ========================================================================== */
+
+.app-frame {
+  width: min(100% - 40px, 1560px);
+  margin: 0 auto;
+  padding: var(--tp-s8) 0 var(--tp-s16);
+}
+
+.workspace-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-s6);
+  animation: workspace-enter var(--tp-dur) var(--tp-ease) both;
+}
+
+.workspace-context { display: flex; align-items: center; min-height: 20px; }
+.workspace-crumbs { display: flex; align-items: center; gap: var(--tp-s2); color: var(--tp-muted); font-size: 13px; font-weight: 500; }
+.workspace-root-link:hover, .workspace-current-link:hover { color: var(--tp-accent); }
+.workspace-current-link.is-current, .workspace-current-title { color: var(--tp-ink); font-weight: var(--tp-w-strong); }
 .workspace-current-title { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.workspace-slash { color: #a1adaa; }
-.workspace-tabs { margin-bottom: 36px; }
-.workspace-view { animation: workspace-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-.workspace-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.workspace-slash { color: var(--tp-faint); }
 
-.workspace-heading h2, .workspace-page h2 {
+/* Sub-navigation sits on the canvas as a quiet rail above the sheets. */
+.workspace-tabs {
+  gap: var(--tp-s6);
+  margin: 0 0 var(--tp-s1);
+  border-bottom: 1px solid var(--tp-canvas-edge);
+  width: 100%;
+}
+.workspace-tabs .workspace-tab { padding-bottom: 11px; }
+
+.workspace-view { display: flex; flex-direction: column; gap: var(--tp-s6); animation: workspace-enter var(--tp-dur) var(--tp-ease) both; }
+
+.workspace-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--tp-s6); }
+
+.workspace-heading h2, .workspace-page > h2 {
+  margin: 0;
   color: var(--tp-ink) !important;
-  font-size: 24px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0 !important;
+  font-size: 22px !important;
+  font-weight: var(--tp-w-strong) !important;
+  letter-spacing: -0.028em !important;
+  line-height: 1.2;
 }
 
-.workspace-page h3 { color: var(--tp-ink) !important; font-weight: 650 !important; letter-spacing: 0 !important; }
+/* ==========================================================================
+   Sheets — the white reading surface this app is built on
+   ========================================================================== */
 
-/* Sections stay open. Whitespace and type do the work that cards once did. */
-main .card,
-main .kpi-gauge,
-main [class*="bg-white"][class*="rounded"]:not([class*="absolute"]):not([class*="fixed"]),
-main [class*="bg-[#F8F9FA]"][class*="rounded"]:not([class*="absolute"]):not([class*="fixed"]) {
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
+.card,
+.tp-sheet,
+.kpi-gauge {
+  position: relative;
+  border: 1px solid var(--tp-rule-panel);
+  border-radius: var(--tp-r-xl);
+  background: var(--tp-surface);
+  box-shadow: var(--tp-elev-1);
 }
 
-main .card, main .kpi-gauge { padding-right: 0 !important; padding-left: 0 !important; }
-.kpi-gauge { min-width: 0; }
+/* A sheet whose content reaches its own edge: tables, feeds, media. */
+.tp-sheet-flush { overflow: hidden; padding: 0; }
 
-main [class*="overflow-x-auto"] { border: 0 !important; border-radius: 0 !important; background: transparent !important; }
-main table { width: 100%; border-collapse: separate !important; border-spacing: 0 5px; }
-main table thead, main table thead tr, main table tbody, main table tbody tr, main table tbody td, main table tbody th { border: 0 !important; background: transparent !important; }
-main table thead th { padding-top: 0.4rem !important; padding-bottom: 0.6rem !important; color: var(--tp-muted) !important; font-size: 11px !important; font-weight: 650 !important; letter-spacing: 0 !important; text-transform: none !important; }
-main table tbody td { padding-top: 0.9rem !important; padding-bottom: 0.9rem !important; }
-main table tbody tr:hover > td { background: var(--tp-hover) !important; }
+/* The header strip of a flush sheet. */
+.tp-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tp-s4);
+  padding: var(--tp-s4) var(--tp-s5);
+  border-bottom: 1px solid var(--tp-rule);
+}
+.tp-sheet-head h2, .tp-sheet-head h3 {
+  margin: 0;
+  color: var(--tp-ink);
+  font-size: 15px;
+  font-weight: var(--tp-w-strong);
+  letter-spacing: -0.018em;
+}
+.tp-sheet-head-meta { color: var(--tp-meta); font-size: 12px; font-weight: var(--tp-w-regular); }
 
-main input:not([type="checkbox"]):not([type="radio"]), main select, main textarea {
-  border: 1px solid var(--tp-rule) !important;
-  border-radius: 5px !important;
+/* Section titles inside a sheet. */
+.card h3, .tp-sheet h3 {
+  color: var(--tp-ink) !important;
+  font-weight: var(--tp-w-strong) !important;
+  letter-spacing: -0.018em !important;
+}
+
+/* A quiet recessed block for a nested group. Never a second full sheet. */
+.tp-inset {
+  border: 1px solid var(--tp-rule);
+  border-radius: var(--tp-r-lg);
+  background: var(--tp-surface-sunken);
+}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
+.tp-table-scroll { width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+
+main table { width: 100%; border-collapse: collapse; }
+
+main table thead th {
+  position: relative;
+  padding: 11px var(--tp-s4) 10px;
+  border-bottom: 1px solid var(--tp-rule);
+  background: var(--tp-surface-sunken);
+  color: var(--tp-muted) !important;
+  font-size: 11.5px !important;
+  font-weight: var(--tp-w-strong) !important;
+  letter-spacing: 0.005em !important;
+  text-transform: none !important;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+main table thead th:first-child { border-top-left-radius: 0; }
+
+main table tbody td {
+  padding: var(--tp-s3) var(--tp-s4);
+  border-top: 1px solid var(--tp-rule);
+  color: var(--tp-ink-2);
+  vertical-align: middle;
+}
+
+main table tbody tr:first-child td { border-top: 0; }
+main table tbody tr { transition: background-color var(--tp-dur-fast) var(--tp-ease); }
+main table tbody tr:hover > td { background: var(--tp-surface-hover); }
+
+/* A table nested inside an expanded row is a detail list, not a second table. */
+main table table thead th {
+  padding: var(--tp-s2) var(--tp-s3);
+  border-bottom: 1px solid var(--tp-accent-rule);
+  background: transparent;
+  font-size: 11px !important;
+}
+main table table tbody td { padding: var(--tp-s2) var(--tp-s3); border-top: 1px solid var(--tp-rule); }
+main table table tbody tr:hover > td { background: transparent; }
+
+/* ==========================================================================
+   Controls
+   ========================================================================== */
+
+main input:not([type="checkbox"]):not([type="radio"]),
+main select,
+main textarea,
+.app-popover input:not([type="checkbox"]):not([type="radio"]),
+.app-popover select,
+.app-popover textarea,
+.app-dialog input:not([type="checkbox"]):not([type="radio"]),
+.app-dialog select,
+.app-dialog textarea {
+  border: 1px solid var(--tp-rule-strong) !important;
+  border-radius: var(--tp-r-sm) !important;
   background: var(--tp-surface) !important;
   color: var(--tp-ink) !important;
   box-shadow: none !important;
 }
 
-main input::placeholder, main textarea::placeholder { color: #72807c !important; opacity: 1; }
-main input:not([type="checkbox"]):not([type="radio"]):focus, main select:focus, main textarea:focus { border-color: var(--accent-color) !important; }
-main button[class*="rounded-full"], main button[class*="rounded-xl"], main button[class*="rounded-2xl"] { border-radius: 5px !important; }
+main input::placeholder, main textarea::placeholder,
+.app-popover input::placeholder, .app-popover textarea::placeholder,
+.app-dialog input::placeholder, .app-dialog textarea::placeholder {
+  color: var(--tp-meta) !important;
+  opacity: 1;
+}
 
-main button[class*="bg-white"][class*="rounded"] {
+main input:not([type="checkbox"]):not([type="radio"]):hover, main select:hover, main textarea:hover {
+  border-color: var(--tp-rule-stronger) !important;
+}
+
+main input:not([type="checkbox"]):not([type="radio"]):focus,
+main select:focus,
+main textarea:focus,
+.app-popover input:focus, .app-popover textarea:focus,
+.app-dialog input:focus, .app-dialog textarea:focus {
+  border-color: var(--tp-accent) !important;
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--tp-accent-soft) !important;
+}
+
+/* One radius vocabulary for every control. */
+main button[class*="rounded-full"]:not(.tp-keep-pill),
+main button[class*="rounded-xl"],
+main button[class*="rounded-2xl"],
+main button[class*="rounded-lg"] { border-radius: var(--tp-r-sm) !important; }
+
+main input[class*="rounded-full"], main input[class*="rounded-xl"] { border-radius: var(--tp-r-sm) !important; }
+
+/* Primary command */
+main button[class*="bg-[var(--accent-color)]"],
+main .primary-btn,
+main button[class*="bg-slate-900"],
+main button[class*="bg-slate-800"],
+.app-dialog button[class*="bg-[var(--accent-color)]"],
+.app-popover button[class*="bg-[var(--accent-color)]"] {
   border: 0 !important;
-  border-bottom: 1px solid var(--tp-rule) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
+  background: var(--tp-accent) !important;
+  color: #ffffff !important;
+  font-weight: var(--tp-w-medium);
+  box-shadow: var(--tp-elev-1) !important;
 }
 
-main button[class*="bg-white"][class*="rounded"]:hover {
-  border-bottom-color: var(--accent-color) !important;
+main button[class*="bg-[var(--accent-color)]"]:hover:not(:disabled),
+main .primary-btn:hover:not(:disabled),
+main button[class*="bg-slate-900"]:hover:not(:disabled),
+main button[class*="bg-slate-800"]:hover:not(:disabled),
+.app-dialog button[class*="bg-[var(--accent-color)]"]:hover:not(:disabled),
+.app-popover button[class*="bg-[var(--accent-color)]"]:hover:not(:disabled) {
+  background: var(--tp-accent-strong) !important;
+  box-shadow: var(--tp-elev-2) !important;
+  transform: translateY(-1px);
 }
 
-/* Filters keep an explicit affordance without turning the page into a card layout. */
+main button:disabled, .app-dialog button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
+
+/* --- Filter row: a working strip on its own sheet --------------------- */
+.affiliate-filters, .influencer-filters { --tp-filter-h: 40px; }
+
 main .affiliate-filters .relative > button.filter-control[aria-expanded],
 main .influencer-filters .relative > button.filter-control[aria-expanded],
-main .influencer-filters .relative > select.filter-select[data-filter-select] {
-  min-height: 44px;
-  border: 1px solid #c9d4cf !important;
-  border-radius: 6px !important;
+main .influencer-filters .relative > select.filter-select[data-filter-select],
+main .influencer-filters select.filter-select,
+main .tp-filter-trigger {
+  min-height: var(--tp-filter-h);
+  height: var(--tp-filter-h) !important;
+  border: 1px solid var(--tp-rule-strong) !important;
+  border-radius: var(--tp-r-sm) !important;
   background: var(--tp-surface) !important;
-  padding-right: 14px !important;
-  padding-left: 14px !important;
+  padding-right: var(--tp-s3) !important;
+  padding-left: var(--tp-s3) !important;
+  color: var(--tp-ink) !important;
+  font-weight: 500;
 }
 
 main .affiliate-filters .relative > button.filter-control[aria-expanded]:hover,
-main .affiliate-filters .relative > button.filter-control[aria-expanded="true"],
 main .influencer-filters .relative > button.filter-control[aria-expanded]:hover,
-main .influencer-filters .relative > button.filter-control[aria-expanded="true"],
-main .influencer-filters .relative > select.filter-select[data-filter-select]:hover,
-main .influencer-filters .relative > select.filter-select[data-filter-select]:focus {
-  border-color: #b9c8c2 !important;
+main .influencer-filters select.filter-select:hover,
+main .tp-filter-trigger:hover {
+  border-color: var(--tp-rule-stronger) !important;
+  background: var(--tp-surface-hover) !important;
 }
 
 main .affiliate-filters .relative > button.filter-control[aria-expanded="true"],
 main .influencer-filters .relative > button.filter-control[aria-expanded="true"],
-main .influencer-filters .relative > select.filter-select[data-filter-select]:focus {
-  border-color: var(--accent-color) !important;
+main .influencer-filters select.filter-select:focus,
+main .tp-filter-trigger[aria-expanded="true"] {
+  border-color: var(--tp-accent) !important;
+  background: var(--tp-surface) !important;
+  box-shadow: 0 0 0 3px var(--tp-accent-soft) !important;
 }
 
 main .affiliate-filters .filter-menu,
-main .influencer-filters .filter-menu {
+main .influencer-filters .filter-menu,
+.tp-filter-menu {
   z-index: 40;
   margin-top: 6px;
-  border: 1px solid #c9d4cf !important;
-  border-radius: 8px !important;
+  border: 1px solid var(--tp-rule-panel) !important;
+  border-radius: var(--tp-r-md) !important;
   background: var(--tp-surface) !important;
-  box-shadow: none !important;
+  box-shadow: var(--tp-elev-3) !important;
 }
 
 main .affiliate-filters .filter-menu input,
-main .influencer-filters .filter-menu input {
-  border-radius: 5px !important;
+main .influencer-filters .filter-menu input { border-radius: var(--tp-r-xs) !important; }
+
+/* A menu anchored inside a table header must not inherit the header's nowrap,
+   or its help text runs straight out of the panel. */
+.tp-filter-menu, .tp-filter-menu * { white-space: normal; }
+.tp-filter-menu .tp-chip { white-space: nowrap; }
+
+/* A long free-text cell is clamped so one verbose row does not set the height
+   of the whole table. The full text stays in the title and in the edit popover. */
+.tp-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  max-width: 34ch;
+}
+.tp-clamp-3 > *:first-child { margin-top: 0; }
+.tp-clamp-3 > *:last-child { margin-bottom: 0; }
+
+/* Field label vocabulary */
+.tp-field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--tp-muted);
+  font-size: 12px;
+  font-weight: var(--tp-w-medium);
+  letter-spacing: 0;
 }
 
-main button[class*="bg-[var(--accent-color)]"], main .primary-btn, main button[class*="bg-slate-900"] {
-  border: 0 !important;
-  background: var(--tp-ink) !important;
-  color: #ffffff !important;
+/* --- Status and classification chips ---------------------------------- */
+.tp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--tp-rule);
+  border-radius: var(--tp-r-xs);
+  background: var(--tp-surface-sunken);
+  color: var(--tp-muted);
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: -0.006em;
+  white-space: nowrap;
+}
+.tp-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.tp-chip-positive { border-color: var(--tp-positive-rule); background: var(--tp-positive-soft); color: var(--tp-positive); }
+.tp-chip-danger { border-color: var(--tp-danger-rule); background: var(--tp-danger-soft); color: var(--tp-danger); }
+.tp-chip-warning { border-color: var(--tp-warning-rule); background: var(--tp-warning-soft); color: var(--tp-warning); }
+.tp-chip-info { border-color: var(--tp-info-rule); background: var(--tp-info-soft); color: var(--tp-info); }
+.tp-chip-accent { border-color: var(--tp-accent-rule); background: var(--tp-accent-soft); color: var(--tp-accent-ink); }
+button.tp-chip { cursor: pointer; }
+button.tp-chip:hover { box-shadow: var(--tp-elev-1); }
+
+/* --- Quiet secondary action ------------------------------------------- */
+.tp-btn-quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--tp-rule-strong);
+  border-radius: var(--tp-r-sm);
+  background: var(--tp-surface);
+  color: var(--tp-ink-2);
+  font-size: 12.5px;
+  font-weight: var(--tp-w-medium);
+  cursor: pointer;
+}
+.tp-btn-quiet:hover { border-color: var(--tp-rule-stronger); background: var(--tp-surface-hover); color: var(--tp-ink); }
+
+/* --- Empty and loading states ----------------------------------------- */
+.tp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--tp-s3);
+  padding: var(--tp-s16) var(--tp-s6);
+  text-align: center;
+}
+.tp-empty-title { color: var(--tp-ink); font-size: 15px; font-weight: var(--tp-w-strong); letter-spacing: -0.018em; }
+.tp-empty-body { max-width: 34ch; color: var(--tp-muted); font-size: 13px; line-height: 1.55; }
+
+.tp-skeleton {
+  border-radius: var(--tp-r-xs);
+  background: linear-gradient(90deg, var(--tp-surface-sunken) 0%, var(--tp-surface-hover) 50%, var(--tp-surface-sunken) 100%);
+  background-size: 200% 100%;
+  animation: tp-shimmer 1.4s linear infinite;
 }
 
-main button[class*="bg-[var(--accent-color)]"]:hover, main .primary-btn:hover, main button[class*="bg-slate-900"]:hover { background: #2b3b38 !important; transform: translateY(-1px); }
-main [class*="absolute"][class*="bg-white"], main [class*="fixed"][class*="bg-white"] { border: 1px solid var(--tp-rule) !important; border-radius: 6px !important; box-shadow: none !important; }
-main [class*="border-dashed"] { border: 0 !important; }
+/* ==========================================================================
+   Overlays — menus, popovers, dialogs, sidebars
+   ========================================================================== */
 
-/* Portaled menus and dialogs sit outside <main>; give them the same quiet functional surface. */
 .app-popover,
-body > div[style*="position: fixed"][class*="bg-white"],
-body > div[class*="fixed"][class*="bg-white"],
-body > div[class*="fixed"] > [class*="bg-white"] {
-  border: 1px solid var(--tp-rule) !important;
-  border-radius: 8px !important;
+body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
+  border: 1px solid var(--tp-rule-panel) !important;
+  border-radius: var(--tp-r-lg) !important;
   background: var(--tp-surface) !important;
-  box-shadow: none !important;
+  box-shadow: var(--tp-elev-3) !important;
 }
 
-.app-dialog { border-radius: 8px !important; }
+.app-dialog {
+  border: 1px solid var(--tp-rule-panel) !important;
+  border-radius: var(--tp-r-xl) !important;
+  background: var(--tp-surface) !important;
+  box-shadow: var(--tp-elev-4) !important;
+}
 
 .trendline-sidebar,
 .discussion-sidebar {
-  border-color: var(--tp-rule) !important;
+  border-color: var(--tp-rule-panel) !important;
   border-radius: 0 !important;
   background: var(--tp-surface) !important;
-  box-shadow: none !important;
+  box-shadow: var(--tp-elev-4) !important;
 }
-
-body > div.trendline-sidebar,
-body > div.discussion-sidebar { border-radius: 0 !important; }
 
 .trendline-sidebar-header,
-.discussion-sidebar-header,
-.trendline-growth-row,
-.discussion-auth,
-.discussion-message-feed,
-.discussion-composer {
-  background: transparent !important;
+.discussion-sidebar-header { background: var(--tp-surface) !important; border-bottom: 1px solid var(--tp-rule) !important; }
+.trendline-growth-row { background: var(--tp-surface-sunken) !important; }
+.discussion-auth { background: var(--tp-surface) !important; }
+
+/* ==========================================================================
+   Discussion sidebar — message feed
+   ========================================================================== */
+
+/* The feed is a recessed channel so the bubbles read as raised cards. */
+.discussion-message-feed { background: var(--tp-surface-sunken) !important; }
+.discussion-composer { border-top: 1px solid var(--tp-rule) !important; background: var(--tp-surface) !important; }
+
+/* Bubbles hold a stable measure so a column of them has one left and right
+   edge, whatever each message contains. */
+.discussion-bubble {
+  width: fit-content;
+  min-width: 96px;
+  max-width: min(84%, 380px);
+  border-radius: var(--tp-r-lg);
+  box-shadow: var(--tp-elev-1);
+}
+/* A message carrying media locks to the album width so image-heavy and
+   text-only bubbles stay on the same grid. */
+.discussion-bubble-media { width: min(84%, 320px); max-width: min(84%, 320px); }
+
+.discussion-bubble-them { border-bottom-left-radius: var(--tp-r-xs); }
+.discussion-bubble-me { border-bottom-right-radius: var(--tp-r-xs); }
+
+/* --- Attachment album: uniform tiles, never ragged ------------------- */
+.tp-album { display: grid; gap: 3px; border-radius: var(--tp-r-sm); overflow: hidden; }
+.tp-album-1 { grid-template-columns: 1fr; }
+.tp-album-2 { grid-template-columns: 1fr 1fr; }
+.tp-album-3 { grid-template-columns: 1fr 1fr 1fr; }
+.tp-album-4 { grid-template-columns: 1fr 1fr; }
+
+.tp-album-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--tp-surface-sunken);
+  overflow: hidden;
+}
+/* On the accent bubble the empty and loading tiles borrow the bubble's own
+   hue instead of punching a white hole through it. */
+.tp-album-tile-on-accent { background: rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.65); }
+.tp-album-tile-on-accent svg { color: currentColor; }
+.tp-album-tile > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tp-album-tile[data-interactive="true"] { cursor: zoom-in; }
+.tp-album-tile[data-interactive="true"]:hover > img { opacity: 0.88; }
+.tp-album-tile-more {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(23, 33, 31, 0.56);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: var(--tp-w-strong);
+  letter-spacing: -0.02em;
 }
 
-.trendline-sidebar-header { border-bottom: 1px solid var(--tp-rule); }
-.discussion-message-feed { background: transparent !important; }
-.discussion-composer { border-top-color: transparent !important; }
-.trendline-backdrop { backdrop-filter: none !important; }
+/* --- Thread screenshot rail ------------------------------------------- */
 
-/* Rich-text composer (Tiptap). The editor shows real formatting rather than
-   markdown source, so these rules mirror how the message bubble renders. */
+/* Sits at the foot of the feed, above the composer: a quiet index of every
+   image in the thread so nobody scrolls back hunting for one. */
+.tp-rail {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--tp-s3);
+  margin: var(--tp-s2) calc(var(--tp-s6) * -1) calc(var(--tp-s4) * -1);
+  padding: var(--tp-s2) var(--tp-s6);
+  border-top: 1px solid var(--tp-rule);
+  background: var(--tp-surface);
+}
+
+.tp-rail-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  color: var(--tp-muted);
+  font-size: 11.5px;
+  font-weight: var(--tp-w-medium);
+  white-space: nowrap;
+}
+.tp-rail-count {
+  min-width: 17px;
+  padding: 0 5px;
+  border-radius: var(--tp-r-pill);
+  background: var(--tp-surface-hover);
+  color: var(--tp-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.tp-rail-track {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  overflow-x: auto;
+  padding: 2px 0;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+}
+.tp-rail-track::-webkit-scrollbar { height: 4px; }
+.tp-rail-track::-webkit-scrollbar-thumb { border-radius: 2px; background: var(--tp-rule-strong); }
+
+.tp-rail-thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--tp-rule-panel);
+  border-radius: var(--tp-r-xs);
+  background: var(--tp-surface-sunken);
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.tp-rail-thumb > img { width: 100%; height: 100%; object-fit: cover; }
+.tp-rail-thumb:hover { border-color: var(--tp-accent-rule); }
+.tp-rail-thumb:hover > img { opacity: 0.85; }
+.tp-rail-thumb:focus-visible { outline: 2px solid var(--tp-accent); outline-offset: 2px; }
+.tp-rail-thumb:disabled { cursor: default; }
+
+@media (max-width: 700px) {
+  .tp-rail { margin-right: calc(var(--tp-s4) * -1); margin-left: calc(var(--tp-s4) * -1); padding-right: var(--tp-s4); padding-left: var(--tp-s4); }
+  .tp-rail-label span:not(.tp-rail-count) { display: none; }
+}
+
+/* --- Rich-text composer (Tiptap) mirrors bubble rendering ------------- */
 .discussion-editor-content { outline: none !important; }
 .discussion-editor-shell .tiptap:focus-visible,
 .discussion-editor-shell [contenteditable]:focus-visible,
 .discussion-editor-shell .ProseMirror:focus-visible { outline: none !important; }
 .discussion-editor-content p { margin: 0; line-height: 1.6; }
 .discussion-editor-content p + p { margin-top: 0.25rem; }
-.discussion-editor-content strong { font-weight: 700; }
+.discussion-editor-content strong { font-weight: var(--tp-w-strong); }
 .discussion-editor-content em { font-style: italic; }
 .discussion-editor-content s { text-decoration: line-through; opacity: 0.8; }
 .discussion-editor-content code {
-  background: var(--tp-hover);
+  background: var(--tp-surface-hover);
   color: var(--tp-ink);
   padding: 0.05rem 0.3rem;
-  border-radius: var(--tp-radius-control);
+  border-radius: var(--tp-r-xs);
   font-family: var(--tp-font-mono);
   font-size: 0.92em;
 }
@@ -259,7 +804,7 @@ body > div.discussion-sidebar { border-radius: 0 !important; }
   background: var(--tp-ink);
   color: var(--tp-surface);
   padding: 0.5rem 0.625rem;
-  border-radius: var(--tp-radius-popup);
+  border-radius: var(--tp-r-sm);
   margin: 0.375rem 0;
   overflow-x: auto;
   font-family: var(--tp-font-mono);
@@ -273,44 +818,77 @@ body > div.discussion-sidebar { border-radius: 0 !important; }
 .discussion-editor-content li { margin: 0.1rem 0; }
 .discussion-editor-content li p { margin: 0; }
 .discussion-editor-content blockquote {
-  border-left: 2px solid rgb(203 213 225);
+  border-left: 2px solid var(--tp-rule-strong);
   padding-left: 0.625rem;
   margin: 0.375rem 0;
-  color: rgb(71 85 105);
+  color: var(--tp-muted);
   font-style: italic;
 }
-/* Placeholder shown only on a genuinely empty document. */
 .discussion-editor-content p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
-  color: rgb(148 163 184);
+  color: var(--tp-meta);
   float: left;
   height: 0;
   pointer-events: none;
 }
 
-.influencer-performance .space-y-8, .influencer-performance .space-y-12, .influencer-progress, .influencer-proposal, .kpi-runrate { row-gap: 2.5rem; }
-.influencer-performance [class*="bg-emerald-50"], .influencer-performance [class*="bg-slate-50"] { background: transparent !important; }
-.influencer-performance [class*="border-l"] { box-shadow: none !important; }
-body > div[style] [class*="fixed"][class*="right-0"] { border-left: 1px solid var(--tp-rule) !important; background: var(--tp-surface) !important; box-shadow: none !important; }
-.tab-content-active { animation: workspace-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both !important; }
+/* ==========================================================================
+   Page-level adjustments
+   ========================================================================== */
 
-@keyframes workspace-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.influencer-performance, .influencer-progress, .influencer-proposal, .kpi-runrate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-s6);
+}
+
+.kpi-gauge { min-width: 0; }
+
+.tab-content-active { animation: workspace-enter var(--tp-dur) var(--tp-ease) both; }
+
+@keyframes workspace-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tp-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* ==========================================================================
+   Narrow viewports
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .app-bar-inner { align-items: stretch; flex-direction: column; gap: 0; padding-top: var(--tp-s3); }
+  .app-brand { padding-bottom: var(--tp-s3); }
+  .app-navigation-list { gap: var(--tp-s5); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .app-navigation-list::-webkit-scrollbar { display: none; }
+}
 
 @media (max-width: 700px) {
-  .app-frame { width: min(100% - 28px, 1560px); padding-top: 20px; }
-  .app-header { padding-bottom: 28px; }
-  .app-header h1 { font-size: 24px; }
-  .app-header p { font-size: 13px; }
-  .app-navigation { margin-bottom: 32px; }
-  .app-navigation-list, .workspace-tabs { gap: 18px; max-width: 100%; overflow-x: auto; }
-  .workspace-context { margin-bottom: 20px; }
-  .workspace-tabs { margin-bottom: 28px; }
-  .workspace-heading { align-items: flex-start; flex-direction: column; gap: 16px; }
-  .workspace-page h2, .workspace-heading h2 { font-size: 21px !important; }
-  main table { border-spacing: 0 3px; }
-  main table tbody td { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+  .app-bar-inner, .app-frame { width: min(100% - 28px, 1560px); }
+  .app-frame { padding: var(--tp-s6) 0 var(--tp-s12); }
+  .app-brand h1 { font-size: 16px; }
+  .app-brand-sep, .app-brand p { display: none; }
+  .workspace-tabs { gap: var(--tp-s5); overflow-x: auto; scrollbar-width: none; }
+  .workspace-tabs::-webkit-scrollbar { display: none; }
+  .workspace-heading { align-items: flex-start; flex-direction: column; gap: var(--tp-s4); }
+  .workspace-page > h2, .workspace-heading h2 { font-size: 19px !important; }
+  .card, .tp-sheet, .kpi-gauge { border-radius: var(--tp-r-lg); }
+  main table tbody td { padding: var(--tp-s3) var(--tp-s3); }
+  main table thead th { padding: 10px var(--tp-s3); }
+  .discussion-bubble { max-width: 88%; }
+  .discussion-bubble-media { width: min(88%, 280px); max-width: min(88%, 280px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+  .tp-skeleton { animation: none; background: var(--tp-surface-sunken); }
 }

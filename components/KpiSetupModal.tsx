@@ -127,8 +127,8 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
             <div className="app-dialog flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden border border-[var(--tp-rule)] bg-white">
                 <div className="flex items-start justify-between gap-6 px-6 pb-4 pt-6">
                     <div>
-                        <h2 className="text-xl font-semibold text-slate-900">Setup KPIs</h2>
-                        <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+                        <h2 className="text-xl font-semibold text-[var(--tp-ink)]">Setup KPIs</h2>
+                        <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--tp-muted)]">
                             Select runrate metrics across affiliate, influencer, and merchant dashboards, then set quarterly targets.
                         </p>
                     </div>
@@ -137,14 +137,14 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
                             id="year"
                             value={year}
                             onChange={e => setYear(parseInt(e.target.value, 10))}
-                            className="h-9 rounded-md border border-[var(--tp-rule)] bg-white px-3 text-sm font-medium text-slate-800 outline-none transition-colors focus:border-[var(--accent-color)]"
+                            className="h-9 rounded-md border border-[var(--tp-rule)] bg-white px-3 text-sm font-medium text-[var(--tp-ink)] outline-none transition-colors focus:border-[var(--accent-color)]"
                         >
                             {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                         <button
                             onClick={onClose}
                             disabled={loading}
-                            className="flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                            className="flex h-9 w-9 items-center justify-center rounded-md text-[var(--tp-meta)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink-2)] disabled:opacity-50"
                             aria-label="Close KPI setup"
                         >
                             <X className="h-4 w-4" />
@@ -154,7 +154,7 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
 
                 <div className="grid min-h-0 flex-1 gap-8 overflow-hidden px-6 pb-5 lg:grid-cols-[300px_1fr]">
                     <div className="min-h-0 overflow-y-auto pr-1">
-                        <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Metrics</div>
+                        <div className="mb-3 text-xs font-semibold text-[var(--tp-muted)]">Metrics</div>
                         <div className="space-y-1.5">
                             {KPI_METRICS.map(metric => {
                                 const isSelected = selectedMetricNames.includes(metric.kpiName);
@@ -166,13 +166,13 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
                                         className={`w-full rounded-md px-3 py-2.5 text-left transition-colors ${
                                             isSelected
                                                 ? 'bg-slate-900 text-white'
-                                                : 'text-slate-700 hover:bg-slate-100'
+                                                : 'text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-hover)]'
                                         }`}
                                     >
                                         <span className="flex items-center justify-between gap-3">
                                             <span>
                                                 <span className="block text-sm font-semibold">{metric.label}</span>
-                                                <span className={`mt-0.5 block text-xs ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                                                <span className={`mt-0.5 block text-xs ${isSelected ? 'text-[var(--tp-faint)]' : 'text-[var(--tp-muted)]'}`}>
                                                     {metric.group}
                                                 </span>
                                             </span>
@@ -185,7 +185,7 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
                     </div>
 
                     <div className="min-h-0 overflow-auto">
-                        <div className="grid min-w-[620px] grid-cols-[minmax(170px,1fr)_repeat(4,minmax(84px,112px))] gap-3 px-1 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <div className="grid min-w-[620px] grid-cols-[minmax(170px,1fr)_repeat(4,minmax(84px,112px))] gap-3 px-1 pb-2 text-xs font-semibold text-[var(--tp-muted)]">
                             <span>Target</span>
                             {QUARTERS.map(quarter => <span key={quarter.key}>{quarter.label}</span>)}
                         </div>
@@ -199,8 +199,8 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
                                         className="grid min-w-[620px] grid-cols-[minmax(170px,1fr)_repeat(4,minmax(84px,112px))] items-center gap-3 px-1 py-2"
                                     >
                                         <div>
-                                            <div className="text-sm font-semibold text-slate-900">{metric.label}</div>
-                                            <div className="mt-0.5 text-xs leading-5 text-slate-500">{metric.description}</div>
+                                            <div className="text-sm font-semibold text-[var(--tp-ink)]">{metric.label}</div>
+                                            <div className="mt-0.5 text-xs leading-5 text-[var(--tp-muted)]">{metric.description}</div>
                                         </div>
                                         {QUARTERS.map(quarter => (
                                             <input
@@ -210,7 +210,7 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
                                                 placeholder="0"
                                                 value={targets[quarter.key] || ''}
                                                 onChange={e => handleInputChange(metric.kpiName, quarter.key, e.target.value)}
-                                                className="h-10 rounded-md border border-[var(--tp-rule)] bg-white px-3 text-sm font-medium text-slate-900 outline-none transition-colors focus:border-[var(--accent-color)]"
+                                                className="h-10 rounded-md border border-[var(--tp-rule)] bg-white px-3 text-sm font-medium text-[var(--tp-ink)] outline-none transition-colors focus:border-[var(--accent-color)]"
                                             />
                                         ))}
                                     </div>
@@ -221,21 +221,21 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
                 </div>
 
                 <div className="flex items-center justify-between gap-4 px-6 pb-6 pt-1">
-                    <div className="min-h-[20px] text-sm text-rose-600">
+                    <div className="min-h-[20px] text-sm text-[var(--tp-danger)]">
                         {error}
                     </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={onClose}
                             disabled={loading}
-                            className="rounded-md px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
+                            className="rounded-md px-4 py-2 text-sm font-medium text-[var(--tp-muted)] transition-colors hover:bg-[var(--tp-surface-hover)] disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={loading}
-                            className="flex min-w-[118px] items-center justify-center gap-2 rounded-md bg-[var(--accent-color)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1ea072] disabled:bg-slate-400"
+                            className="flex min-w-[118px] items-center justify-center gap-2 rounded-md bg-[var(--accent-color)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--tp-accent-strong)] disabled:bg-slate-400"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                             <span>{loading ? 'Saving' : 'Save KPIs'}</span>

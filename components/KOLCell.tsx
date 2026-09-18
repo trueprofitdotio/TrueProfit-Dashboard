@@ -1,4 +1,5 @@
 import React from 'react';
+import { Globe, Users } from 'lucide-react';
 import { US, FR, DE, GB, CA, TR, SG, ES, VN } from 'country-flag-icons/react/3x2';
 
 export interface KolData {
@@ -18,40 +19,36 @@ interface KOLCellProps {
     className?: string;
 }
 
+// One lookup drives both the flag and the compact code shown beside it, so the
+// meta row stays a fixed width instead of stretching on "United Kingdom".
+const COUNTRIES: Record<string, { code: string; Flag: React.ComponentType<{ className?: string }> }> = {
+    'UNITED STATES': { code: 'US', Flag: US }, US: { code: 'US', Flag: US }, USA: { code: 'US', Flag: US },
+    FRANCE: { code: 'FR', Flag: FR }, FR: { code: 'FR', Flag: FR },
+    GERMANY: { code: 'DE', Flag: DE }, DE: { code: 'DE', Flag: DE },
+    'UNITED KINGDOM': { code: 'UK', Flag: GB }, UK: { code: 'UK', Flag: GB }, GB: { code: 'UK', Flag: GB },
+    CANADA: { code: 'CA', Flag: CA }, CA: { code: 'CA', Flag: CA }, CAD: { code: 'CA', Flag: CA },
+    TURKEY: { code: 'TR', Flag: TR }, TR: { code: 'TR', Flag: TR },
+    SINGAPORE: { code: 'SG', Flag: SG }, SG: { code: 'SG', Flag: SG },
+    SPAIN: { code: 'ES', Flag: ES }, ES: { code: 'ES', Flag: ES },
+    VIETNAM: { code: 'VN', Flag: VN }, VN: { code: 'VN', Flag: VN },
+};
+
+const lookupCountry = (country?: string | null) =>
+    country ? COUNTRIES[country.trim().toUpperCase()] : undefined;
+
 // Render SVG Flag Component cleanly for any country name or code
 export const RenderCountryFlag: React.FC<{ country?: string | null }> = ({ country }) => {
-    if (!country) return <span className="text-xs">🌐</span>;
-    const c = country.trim().toUpperCase();
+    const match = lookupCountry(country);
+    const wrapperClass = "w-[15px] h-[11px] shrink-0 overflow-hidden rounded-[2px] border border-black/10 inline-flex items-center justify-center";
 
-    const wrapperClass = "w-4 h-3 rounded-2xs inline-block shadow-xs shrink-0 align-middle overflow-hidden flex items-center justify-center";
-    if (c === 'UNITED STATES' || c === 'US' || c === 'USA') {
-        return <span className={wrapperClass}><US /></span>;
+    if (!match) {
+        return (
+            <span className={`${wrapperClass} bg-[var(--tp-surface-sunken)]`}>
+                <Globe className="h-2.5 w-2.5 text-[var(--tp-faint)]" strokeWidth={2} />
+            </span>
+        );
     }
-    if (c === 'FRANCE' || c === 'FR') {
-        return <span className={wrapperClass}><FR /></span>;
-    }
-    if (c === 'GERMANY' || c === 'DE') {
-        return <span className={wrapperClass}><DE /></span>;
-    }
-    if (c === 'UNITED KINGDOM' || c === 'UK' || c === 'GB') {
-        return <span className={wrapperClass}><GB /></span>;
-    }
-    if (c === 'CANADA' || c === 'CA' || c === 'CAD') {
-        return <span className={wrapperClass}><CA /></span>;
-    }
-    if (c === 'TURKEY' || c === 'TR') {
-        return <span className={wrapperClass}><TR /></span>;
-    }
-    if (c === 'SINGAPORE' || c === 'SG') {
-        return <span className={wrapperClass}><SG /></span>;
-    }
-    if (c === 'SPAIN' || c === 'ES') {
-        return <span className={wrapperClass}><ES /></span>;
-    }
-    if (c === 'VIETNAM' || c === 'VN') {
-        return <span className={wrapperClass}><VN /></span>;
-    }
-    return <span className="text-xs">🌐</span>;
+    return <span className={wrapperClass}><match.Flag /></span>;
 };
 
 // Formats subscriber count e.g. 108000 -> 108K, 1860000 -> 1.70M
@@ -82,6 +79,7 @@ export const KOLCell: React.FC<KOLCellProps> = ({
     const subs = kol?.subscriber_count;
 
     const formattedSubs = formatSubscribers(subs);
+    const countryCode = lookupCountry(country)?.code;
 
     // Initials for avatar fallback
     const initials = name
@@ -93,15 +91,15 @@ export const KOLCell: React.FC<KOLCellProps> = ({
         .toUpperCase() || 'K';
 
     return (
-        <div className={`flex items-center space-x-3 ${className}`}>
+        <div className={`flex items-center gap-3 ${className}`}>
             {/* Avatar Image or Fallback Circle */}
-            <div className="shrink-0 relative">
+            <div className="relative shrink-0">
                 {avatarUrl ? (
-                    <img 
-                        src={avatarUrl} 
-                        alt={name} 
+                    <img
+                        src={avatarUrl}
+                        alt=""
                         referrerPolicy="no-referrer"
-                        className="w-9 h-9 rounded-full object-cover border border-slate-200 shadow-xs shrink-0"
+                        className="h-9 w-9 shrink-0 rounded-full border border-[var(--tp-rule-panel)] object-cover"
                         onError={(e) => {
                             (e.target as HTMLElement).style.display = 'none';
                             const fallbackEl = (e.target as HTMLElement).nextElementSibling;
@@ -109,23 +107,23 @@ export const KOLCell: React.FC<KOLCellProps> = ({
                         }}
                     />
                 ) : null}
-                <div className={`w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-white font-bold text-xs flex items-center justify-center border border-slate-200 shadow-xs ${avatarUrl ? 'hidden' : ''}`}>
+                <div className={`h-9 w-9 items-center justify-center rounded-full border border-[var(--tp-accent-rule)] bg-[var(--tp-accent-soft)] text-[11px] font-semibold tracking-tight text-[var(--tp-accent-ink)] ${avatarUrl ? 'hidden' : 'flex'}`}>
                     {initials}
                 </div>
             </div>
 
-            {/* KOL Name & Metadata */}
+            {/* Name on one line, metrics on a single aligned rail below it. */}
             <div className="min-w-0 flex-1">
-                <div className="font-medium text-slate-900 text-sm leading-snug truncate">
+                <div className="truncate text-[13.5px] font-semibold leading-tight text-[var(--tp-ink)]">
                     {channelLink ? (
-                        <a 
-                            href={channelLink} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="hover:text-[var(--accent-color)] hover:underline transition-colors flex items-center gap-1 group w-fit"
-                            title={`Open ${name}'s YouTube Channel`}
+                        <a
+                            href={channelLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-fit max-w-full truncate hover:text-[var(--tp-accent)] hover:underline"
+                            title={`Open ${name} on YouTube`}
                         >
-                            <span>{name}</span>
+                            {name}
                         </a>
                     ) : (
                         <span>{name}</span>
@@ -133,13 +131,16 @@ export const KOLCell: React.FC<KOLCellProps> = ({
                 </div>
 
                 {showSubtext && (
-                    <div className="text-xs text-slate-500 font-medium flex items-center space-x-1.5 mt-0.5">
-                        <span title={country} className="flex items-center gap-1">
+                    <div className="mt-[3px] flex items-center gap-2 text-[11.5px] font-medium leading-none text-[var(--tp-meta)]">
+                        <span className="flex shrink-0 items-center gap-1.5" title={country}>
                             <RenderCountryFlag country={country} />
-                            <span>{country}</span>
+                            <span className="uppercase tracking-wide">{countryCode || country}</span>
                         </span>
-                        <span className="text-slate-300">•</span>
-                        <span className="text-slate-600 font-semibold">{formattedSubs} subs</span>
+                        <span className="h-3 w-px shrink-0 bg-[var(--tp-rule)]" aria-hidden="true" />
+                        <span className="flex shrink-0 items-center gap-1" title={`${formattedSubs} subscribers`}>
+                            <Users className="h-3 w-3 text-[var(--tp-faint)]" strokeWidth={2} />
+                            <span className="tabular-nums text-[var(--tp-ink-2)]">{formattedSubs}</span>
+                        </span>
                     </div>
                 )}
             </div>

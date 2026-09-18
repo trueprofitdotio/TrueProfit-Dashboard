@@ -43,17 +43,14 @@ export const SYSTEM_DEFAULT_PROGRESS_TAGS = [
 
 const DEFAULT_PROGRESS_TAGS = SYSTEM_DEFAULT_PROGRESS_TAGS;
 
+// Custom user-created tags hash into this ring. Each entry is a chip variant
+// from the shared vocabulary, so a custom tag can never invent a new colour.
 const COLOR_PALETTES = [
-    'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold',
-    'bg-rose-100 text-rose-800 border-rose-300 font-semibold',
-    'bg-amber-100 text-amber-800 border-amber-300 font-semibold',
-    'bg-purple-100 text-purple-800 border-purple-300 font-semibold',
-    'bg-sky-100 text-sky-800 border-sky-300 font-semibold',
-    'bg-indigo-100 text-indigo-800 border-indigo-300 font-semibold',
-    'bg-teal-100 text-teal-800 border-teal-300 font-semibold',
-    'bg-pink-100 text-pink-800 border-pink-300 font-semibold',
-    'bg-orange-100 text-orange-800 border-orange-300 font-semibold',
-    'bg-blue-100 text-blue-800 border-blue-300 font-semibold'
+    'tp-chip-positive',
+    'tp-chip-danger',
+    'tp-chip-warning',
+    'tp-chip-info',
+    'tp-chip-accent'
 ];
 
 const calcPopoverPosition = (
@@ -95,15 +92,15 @@ const calcPopoverPosition = (
 };
 
 const getProgressTagStyle = (status?: string | null) => {
-    if (!status) return 'bg-slate-100 text-slate-700 border-slate-200 font-normal';
+    if (!status) return '';
     const s = status.trim().toLowerCase();
-    if (s === 'all done') return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold';
-    if (s === 'in progress') return 'bg-blue-100 text-blue-800 border-blue-300 font-semibold';
-    if (s === 'not started') return 'bg-slate-100 text-slate-700 border-slate-300 font-medium';
-    if (s === 'pending/canceled' || s === 'canceled' || s === 'cancelled') return 'bg-rose-100 text-rose-800 border-rose-300 font-semibold';
-    if (s.includes('1st payment') || s.includes('2nd payment')) return 'bg-amber-100 text-amber-800 border-amber-300 font-semibold';
-    if (s.includes('awaiting content') || s.includes('third content')) return 'bg-purple-100 text-purple-800 border-purple-300 font-semibold';
-    if (s.includes('awaiting payment')) return 'bg-sky-100 text-sky-800 border-sky-300 font-semibold';
+    if (s === 'all done') return 'tp-chip-positive';
+    if (s === 'in progress') return 'tp-chip-info';
+    if (s === 'not started') return '';
+    if (s === 'pending/canceled' || s === 'canceled' || s === 'cancelled') return 'tp-chip-danger';
+    if (s.includes('1st payment') || s.includes('2nd payment')) return 'tp-chip-warning';
+    if (s.includes('awaiting content') || s.includes('third content')) return 'tp-chip-accent';
+    if (s.includes('awaiting payment')) return 'tp-chip-info';
     
     // Hash fallback for custom unique tags
     let hash = 0;
@@ -144,14 +141,14 @@ const renderPlatformIcon = (url: string) => {
     const u = (url || '').toLowerCase();
     if (u.includes('youtube.com') || u.includes('youtu.be')) {
         return (
-            <svg className="w-3.5 h-3.5 text-red-500 shrink-0 fill-red-500" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 text-[var(--tp-danger)] shrink-0 fill-red-500" viewBox="0 0 24 24">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
             </svg>
         );
     }
     if (u.includes('tiktok.com')) {
         return (
-            <svg className="w-3.5 h-3.5 shrink-0 text-slate-900 fill-current" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 shrink-0 text-[var(--tp-ink)] fill-current" viewBox="0 0 24 24">
                 <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 2.13 6.333 6.333 0 0 0 4.148 10.458 6.333 6.333 0 0 0 6.709-6.319V8.2a8.214 8.214 0 0 0 4.77 1.526V6.28a4.8 4.8 0 0 1-1.205-.406z"/>
             </svg>
         );
@@ -167,12 +164,12 @@ const renderPlatformIcon = (url: string) => {
     }
     if (u.includes('twitter.com') || u.includes('x.com')) {
         return (
-            <svg className="w-3.5 h-3.5 shrink-0 text-slate-800 fill-current" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 shrink-0 text-[var(--tp-ink)] fill-current" viewBox="0 0 24 24">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
             </svg>
         );
     }
-    return <Play className="w-3.5 h-3.5 text-slate-400 shrink-0" />;
+    return <Play className="w-3.5 h-3.5 text-[var(--tp-meta)] shrink-0" />;
 };
 
 // Contract/Document Name Formatter Helper
@@ -262,23 +259,23 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
 
     return (
         <div className="w-64 select-none font-sans" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--tp-rule)]">
                 <div className="flex items-center gap-1">
-                    <button onClick={handlePrevYear} className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800" title="Previous Year">
+                    <button onClick={handlePrevYear} className="p-1 hover:bg-[var(--tp-surface-hover)] rounded text-[var(--tp-muted)] hover:text-[var(--tp-ink)]" title="Previous Year">
                         <ChevronsLeft className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800" title="Previous Month">
+                    <button onClick={handlePrevMonth} className="p-1 hover:bg-[var(--tp-surface-hover)] rounded text-[var(--tp-muted)] hover:text-[var(--tp-ink)]" title="Previous Month">
                         <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
                 </div>
-                <div className="text-xs font-semibold text-slate-800">
+                <div className="text-xs font-semibold text-[var(--tp-ink)]">
                     {monthNames[month]} {year}
                 </div>
                 <div className="flex items-center gap-1">
-                    <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800" title="Next Month">
+                    <button onClick={handleNextMonth} className="p-1 hover:bg-[var(--tp-surface-hover)] rounded text-[var(--tp-muted)] hover:text-[var(--tp-ink)]" title="Next Month">
                         <ChevronRight className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={handleNextYear} className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800" title="Next Year">
+                    <button onClick={handleNextYear} className="p-1 hover:bg-[var(--tp-surface-hover)] rounded text-[var(--tp-muted)] hover:text-[var(--tp-ink)]" title="Next Year">
                         <ChevronsRight className="w-3.5 h-3.5" />
                     </button>
                 </div>
@@ -286,7 +283,7 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
 
             <div className="grid grid-cols-7 gap-1 text-center mb-1">
                 {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
-                    <div key={i} className="text-[10px] font-semibold text-slate-400 uppercase py-0.5">
+                    <div key={i} className="text-[11px] font-semibold text-[var(--tp-meta)] uppercase py-0.5">
                         {d}
                     </div>
                 ))}
@@ -296,7 +293,7 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
                 {Array.from({ length: firstDayIndex }).map((_, i) => {
                     const prevDay = prevMonthDays - firstDayIndex + i + 1;
                     return (
-                        <div key={`prev-${i}`} className="py-1 text-slate-300 text-[11px]">
+                        <div key={`prev-${i}`} className="py-1 text-[var(--tp-faint)] text-[11px]">
                             {prevDay}
                         </div>
                     );
@@ -314,10 +311,10 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
                             onClick={() => handleDateClick(day)}
                             className={`py-1 text-xs rounded-lg transition-all font-medium ${
                                 selected
-                                    ? 'bg-[var(--accent-color)] text-white shadow-xs font-bold'
+                                    ? 'bg-[var(--accent-color)] text-white font-semibold'
                                     : today
-                                    ? 'bg-emerald-50 text-emerald-700 font-semibold border border-emerald-300'
-                                    : 'hover:bg-slate-100 text-slate-700'
+                                    ? 'bg-emerald-50 text-[var(--tp-accent-ink)] font-semibold border border-emerald-300'
+                                    : 'hover:bg-[var(--tp-surface-hover)] text-[var(--tp-ink-2)]'
                             }`}
                         >
                             {day}
@@ -326,7 +323,7 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
                 })}
             </div>
 
-            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+            <div className="mt-3 pt-2 border-t border-[var(--tp-rule)] flex items-center justify-between text-xs">
                 <button
                     type="button"
                     onClick={() => {
@@ -337,14 +334,14 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
                         onSelectDate(formatted);
                         onClose();
                     }}
-                    className="text-[11px] font-medium text-emerald-600 hover:text-emerald-700 hover:underline"
+                    className="text-[11px] font-medium text-[var(--tp-accent)] hover:text-[var(--tp-accent-ink)] hover:underline"
                 >
                     Today
                 </button>
                 <button
                     type="button"
                     onClick={onClose}
-                    className="text-[11px] font-medium text-slate-400 hover:text-slate-600"
+                    className="text-[11px] font-medium text-[var(--tp-meta)] hover:text-[var(--tp-muted)]"
                 >
                     Close
                 </button>
@@ -1040,13 +1037,13 @@ const InfluencerProgress: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="relative min-w-[240px]">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--tp-faint)]" />
                         <input 
                             type="text"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Search KOL name..."
-                            className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-[var(--accent-color)] outline-none font-normal"
+                            placeholder="Search KOL name"
+                            className="h-10 w-full pl-9 pr-3 text-[13px]"
                         />
                     </div>
 
@@ -1060,7 +1057,7 @@ const InfluencerProgress: React.FC = () => {
                         const statusBtnLabel = isDefaultSystem
                             ? 'Default Statuses'
                             : isAllOrNone 
-                            ? 'All Statuses' 
+                            ? 'All statuses' 
                             : selectedStatuses.length === 1 
                             ? `Status: ${selectedStatuses[0]}` 
                             : `Status (${selectedStatuses.length} selected)`;
@@ -1070,39 +1067,40 @@ const InfluencerProgress: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowStatusFilterPopover(!showStatusFilterPopover)}
-                                    className="flex items-center gap-2 px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors shadow-2xs"
+                                    aria-expanded={showStatusFilterPopover}
+                                    className="tp-filter-trigger flex items-center gap-2 text-[13px]"
                                 >
-                                    <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <Filter className="h-3.5 w-3.5 shrink-0 text-[var(--tp-faint)]" />
                                     <span>{statusBtnLabel}</span>
-                                    <ChevronRight className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showStatusFilterPopover ? 'rotate-90' : ''}`} />
+                                    <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-[var(--tp-faint)] transition-transform ${showStatusFilterPopover ? 'rotate-90' : ''}`} />
                                 </button>
 
                                 {showStatusFilterPopover && (
-                                    <div className="absolute top-full left-0 mt-1.5 bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-3 w-64 z-50 space-y-2">
-                                        <div className="flex justify-between items-center pb-2 border-b border-slate-100 text-xs font-semibold text-slate-800">
-                                            <span>Filter by Status</span>
+                                    <div className="tp-filter-menu absolute left-0 top-full z-50 mt-1.5 w-64 space-y-2 p-2">
+                                        <div className="flex items-center justify-between gap-2 border-b border-[var(--tp-rule)] px-1 pb-2 text-[11px] font-semibold text-[var(--tp-muted)]">
+                                            <span>Filter by status</span>
                                             <div className="flex items-center gap-1.5">
                                                 <button 
                                                     type="button"
                                                     onClick={() => setSelectedStatuses([...SYSTEM_DEFAULT_PROGRESS_TAGS])} 
-                                                    className="text-[11px] font-medium text-slate-500 hover:text-slate-800 hover:underline"
+                                                    className="text-[11px] font-semibold text-[var(--tp-muted)] hover:text-[var(--tp-ink)] hover:underline"
                                                     title="Filter system defaults: Not Started, In Progress, All Done"
                                                 >
                                                     Defaults
                                                 </button>
-                                                <span className="text-slate-300">|</span>
+                                                <span className="text-[var(--tp-faint)]" aria-hidden="true">|</span>
                                                 <button 
                                                     type="button"
                                                     onClick={() => setSelectedStatuses([...allActiveStatuses])} 
-                                                    className="text-[11px] font-medium text-emerald-600 hover:underline"
+                                                    className="text-[11px] font-semibold text-[var(--tp-accent)] hover:underline"
                                                 >
                                                     All
                                                 </button>
-                                                <span className="text-slate-300">|</span>
+                                                <span className="text-[var(--tp-faint)]" aria-hidden="true">|</span>
                                                 <button 
                                                     type="button"
                                                     onClick={() => setSelectedStatuses([])} 
-                                                    className="text-[11px] font-medium text-slate-500 hover:underline"
+                                                    className="text-[11px] font-semibold text-[var(--tp-muted)] hover:underline"
                                                 >
                                                     Reset
                                                 </button>
@@ -1112,7 +1110,7 @@ const InfluencerProgress: React.FC = () => {
                                             {allActiveStatuses.map(t => {
                                                 const isSystem = SYSTEM_DEFAULT_PROGRESS_TAGS.includes(t);
                                                 return (
-                                                    <label key={t} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-medium text-slate-700">
+                                                    <label key={t} className="flex cursor-pointer items-center justify-between rounded-[6px] p-1.5 text-[13px] font-medium text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-hover)]">
                                                         <div className="flex items-center gap-2">
                                                             <input 
                                                                 type="checkbox"
@@ -1124,12 +1122,12 @@ const InfluencerProgress: React.FC = () => {
                                                                         setSelectedStatuses([...selectedStatuses, t]);
                                                                     }
                                                                 }}
-                                                                className="rounded text-[var(--accent-color)] focus:ring-[var(--accent-color)] h-3.5 w-3.5"
+                                                                className="h-3.5 w-3.5 shrink-0 accent-[var(--tp-accent)]"
                                                             />
                                                             <span>{t}</span>
                                                         </div>
                                                         {isSystem && (
-                                                            <span className="text-[10px] text-slate-400 font-normal">System</span>
+                                                            <span className="text-[11px] font-medium text-[var(--tp-meta)]">System</span>
                                                         )}
                                                     </label>
                                                 );
@@ -1147,60 +1145,60 @@ const InfluencerProgress: React.FC = () => {
                         setShowAddModal(true);
                         setNewStartMonth(formatDateDisplay(new Date().toISOString()));
                     }}
-                    className="bg-[var(--accent-color)] text-white px-5 py-2 rounded-full font-medium hover:bg-emerald-600 transition-colors shadow-xs text-xs flex items-center justify-center gap-1.5 w-fit shrink-0"
+                    className="primary-btn flex h-10 w-fit shrink-0 items-center justify-center gap-1.5 rounded-[7px] bg-[var(--accent-color)] px-5 text-[13px] font-semibold text-white"
                 >
                     <Plus className="w-4 h-4" />
-                    <span>Add New Deal</span>
+                    <span>Add new deal</span>
                 </button>
             </div>
 
             {/* Table Layout */}
-            <div ref={tableContainerRef} className="overflow-x-auto border border-[#bfdbfe]/50 rounded-2xl shadow-xs bg-white">
-                <table className="w-full text-sm text-left text-slate-600 border-collapse">
-                    <thead className="text-xs text-slate-500 font-normal uppercase bg-slate-50/80 border-b border-[#bfdbfe]/50 select-none">
+            <div ref={tableContainerRef} className="card tp-sheet-flush tp-table-scroll">
+                <table className="w-full text-left text-sm">
+                    <thead className="select-none">
                         <tr>
-                            <th onClick={() => handleSort('start_month')} className="px-4 py-3.5 min-w-[140px] cursor-pointer hover:bg-slate-100/80 transition-colors font-normal group">
+                            <th onClick={() => handleSort('start_month')} className="min-w-[140px] cursor-pointer hover:text-[var(--tp-ink)]">
                                 <div className="flex items-center gap-1">
-                                    <span>Collab Started</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                    <span>Collab started</span>
+                                    <ArrowUpDown className="h-3 w-3 shrink-0 text-[var(--tp-faint)]" />
                                 </div>
                             </th>
-                            <th onClick={() => handleSort('kol_name')} className="px-4 py-3.5 min-w-[200px] cursor-pointer hover:bg-slate-100/80 transition-colors font-normal group">
+                            <th onClick={() => handleSort('kol_name')} className="min-w-[200px] cursor-pointer hover:text-[var(--tp-ink)]">
                                 <div className="flex items-center gap-1">
                                     <span>KOL</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                    <ArrowUpDown className="h-3 w-3 shrink-0 text-[var(--tp-faint)]" />
                                 </div>
                             </th>
-                            <th onClick={() => handleSort('progress_status')} className="px-4 py-3.5 min-w-[160px] cursor-pointer hover:bg-slate-100/80 transition-colors font-normal group">
+                            <th onClick={() => handleSort('progress_status')} className="min-w-[160px] cursor-pointer hover:text-[var(--tp-ink)]">
                                 <div className="flex items-center gap-1">
                                     <span>Status</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                    <ArrowUpDown className="h-3 w-3 shrink-0 text-[var(--tp-faint)]" />
                                 </div>
                             </th>
-                            <th onClick={() => handleSort('total_package')} className="px-4 py-3.5 text-right min-w-[110px] cursor-pointer hover:bg-slate-100/80 transition-colors font-normal group">
+                            <th onClick={() => handleSort('total_package')} className="min-w-[110px] cursor-pointer text-right hover:text-[var(--tp-ink)]">
                                 <div className="flex items-center justify-end gap-1">
-                                    <span>Package ($)</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                    <span>Package (USD)</span>
+                                    <ArrowUpDown className="h-3 w-3 shrink-0 text-[var(--tp-faint)]" />
                                 </div>
                             </th>
-                            <th onClick={() => handleSort('payment_percent')} className="px-4 py-3.5 min-w-[180px] cursor-pointer hover:bg-slate-100/80 transition-colors font-normal group">
+                            <th onClick={() => handleSort('payment_percent')} className="min-w-[180px] cursor-pointer hover:text-[var(--tp-ink)]">
                                 <div className="flex items-center gap-1">
-                                    <span>Payment Progress</span>
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                    <span>Payment progress</span>
+                                    <ArrowUpDown className="h-3 w-3 shrink-0 text-[var(--tp-faint)]" />
                                 </div>
                             </th>
-                            <th className="px-4 py-3.5 min-w-[130px] font-normal">Content Progress</th>
-                            <th className="px-4 py-3.5 min-w-[240px] font-normal">Reported Videos</th>
-                            <th className="px-4 py-3.5 min-w-[120px] font-normal">Released Date</th>
-                            <th className="px-4 py-3.5 min-w-[140px] font-normal">Contract</th>
-                            <th className="px-4 py-3.5 min-w-[80px] text-center font-normal">Action</th>
+                            <th className="min-w-[130px]">Content progress</th>
+                            <th className="min-w-[240px]">Reported videos</th>
+                            <th className="min-w-[120px]">Released date</th>
+                            <th className="min-w-[140px]">Contract</th>
+                            <th className="min-w-[80px] text-center">Action</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#bfdbfe]/30">
+                    <tbody>
                         {loading ? (
-                            <tr><td colSpan={10} className="text-center py-12 text-slate-400">Loading progress workspace...</td></tr>
+                            <tr><td colSpan={10}><div className="tp-empty"><span className="tp-skeleton h-3.5 w-48" /></div></td></tr>
                         ) : processedCollaborations.length === 0 ? (
-                            <tr><td colSpan={10} className="text-center py-12 text-slate-400">No matching deals found.</td></tr>
+                            <tr><td colSpan={10}><div className="tp-empty"><p className="tp-empty-title">No deals match this view</p><p className="tp-empty-body">Clear the search or widen the status filter to see the rest of the collaborations.</p></div></td></tr>
                         ) : (
                             processedCollaborations.map(c => {
                                 const totalPkgNum = parsePackageNumber(c.total_package);
@@ -1212,12 +1210,12 @@ const InfluencerProgress: React.FC = () => {
                                 const displayedVids = isExpanded ? allVids : allVids.slice(0, 4);
 
                                 return (
-                                    <tr key={c.id} className="hover:bg-slate-50/40 transition-colors align-top">
+                                    <tr key={c.id} className="align-top">
                                         {/* 1. Collab Started */}
-                                        <td className="px-4 py-3 whitespace-nowrap text-xs font-normal text-slate-700">
+                                        <td className="px-4 py-3 whitespace-nowrap text-xs font-normal text-[var(--tp-ink-2)]">
                                             <button 
                                                 onClick={e => openPopover(e, c, 'date')}
-                                                className="hover:bg-slate-100 px-2 py-1 rounded transition-colors text-left inline-block border border-transparent hover:border-slate-200"
+                                                className="hover:bg-[var(--tp-surface-hover)] px-2 py-1 rounded transition-colors text-left inline-block border border-transparent hover:border-[var(--tp-rule)]"
                                                 title="Click to edit Collab Started date"
                                             >
                                                 <span>{formatDateDisplay(c.start_month)}</span>
@@ -1233,7 +1231,7 @@ const InfluencerProgress: React.FC = () => {
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <button
                                                 onClick={e => openPopover(e, c, 'progress')}
-                                                className={`px-3 py-1 rounded-full text-[13px] border transition-transform hover:scale-105 inline-block shadow-2xs ${getProgressTagStyle(c.progress_status)}`}
+                                                className={`tp-chip ${getProgressTagStyle(c.progress_status)}`}
                                                 title="Click to change status tag"
                                             >
                                                 <span>{c.progress_status || 'Select Status'}</span>
@@ -1241,10 +1239,10 @@ const InfluencerProgress: React.FC = () => {
                                         </td>
 
                                         {/* 4. Package Column (Moved to LEFT of Payment Progress) */}
-                                        <td className="px-4 py-3 text-right font-medium text-slate-800 whitespace-nowrap">
+                                        <td className="px-4 py-3 text-right font-medium text-[var(--tp-ink)] whitespace-nowrap">
                                             <button 
                                                 onClick={e => openPopover(e, c, 'package')}
-                                                className="hover:bg-slate-100 px-2 py-1 rounded transition-colors text-right inline-block text-slate-800 font-medium border border-transparent hover:border-slate-200"
+                                                className="hover:bg-[var(--tp-surface-hover)] px-2 py-1 rounded transition-colors text-right inline-block text-[var(--tp-ink)] font-medium border border-transparent hover:border-[var(--tp-rule)]"
                                                 title="Click to edit package amount"
                                             >
                                                 {formatCurrencyUSD(c.total_package)}
@@ -1255,14 +1253,14 @@ const InfluencerProgress: React.FC = () => {
                                         <td className="px-4 py-3 min-w-[180px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'payment')}
-                                                className="cursor-pointer group/bar p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors border border-transparent hover:border-slate-200"
+                                                className="cursor-pointer group/bar p-1.5 rounded-lg hover:bg-[var(--tp-surface-hover)]/80 transition-colors border border-transparent hover:border-[var(--tp-rule)]"
                                                 title="Click to update Actual Budget Spent"
                                             >
                                                 <div className="flex justify-between items-center text-xs mb-1 font-medium">
-                                                    <span className="text-slate-700 text-[11px] font-medium">
+                                                    <span className="text-[var(--tp-ink-2)] text-[11px] font-medium">
                                                         {formatCurrencyUSD(actualSpent)}/{formatCurrencyUSD(c.total_package)} Paid
                                                     </span>
-                                                    <span className={`${paymentPercent === 100 ? 'text-emerald-600' : 'text-blue-600'} font-semibold`}>
+                                                    <span className={`${paymentPercent === 100 ? 'text-[var(--tp-accent)]' : 'text-[var(--tp-info)]'} font-semibold`}>
                                                         {paymentPercent}%
                                                     </span>
                                                 </div>
@@ -1291,14 +1289,14 @@ const InfluencerProgress: React.FC = () => {
                                                 return (
                                                     <div 
                                                         onClick={e => openPopover(e, c, 'count')}
-                                                        className="cursor-pointer group/cnt p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors border border-transparent hover:border-slate-200"
+                                                        className="cursor-pointer group/cnt p-1.5 rounded-lg hover:bg-[var(--tp-surface-hover)]/80 transition-colors border border-transparent hover:border-[var(--tp-rule)]"
                                                         title="Click to edit agreed content count"
                                                     >
                                                         <div className="flex justify-between items-center text-xs mb-1 font-medium">
-                                                            <span className="text-slate-700 font-semibold text-[11px]">
-                                                                {recordedCount} / {agreedCount} <span className="text-[10px] font-normal text-slate-500">vids</span>
+                                                            <span className="text-[var(--tp-ink-2)] font-semibold text-[11px]">
+                                                                {recordedCount} / {agreedCount} <span className="text-[11px] font-normal text-[var(--tp-muted)]">vids</span>
                                                             </span>
-                                                            <span className={`${percent === 100 ? 'text-emerald-600' : 'text-blue-600'} font-semibold text-[11px]`}>
+                                                            <span className={`${percent === 100 ? 'text-[var(--tp-accent)]' : 'text-[var(--tp-info)]'} font-semibold text-[11px]`}>
                                                                 {percent}%
                                                             </span>
                                                         </div>
@@ -1323,7 +1321,7 @@ const InfluencerProgress: React.FC = () => {
                                         <td className="px-4 py-3 max-w-[260px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'videos')}
-                                                className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px]"
+                                                className="cursor-pointer hover:bg-[var(--tp-surface-hover)]/80 p-2 rounded-xl border border-transparent hover:border-[var(--tp-rule)] transition-all min-h-[42px]"
                                                 title="Click to manage videos & links"
                                             >
                                                 {allVids.length > 0 ? (
@@ -1337,7 +1335,7 @@ const InfluencerProgress: React.FC = () => {
                                                                         target="_blank" 
                                                                         rel="noopener noreferrer" 
                                                                         onClick={e => e.stopPropagation()}
-                                                                        className="font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 truncate max-w-[240px]"
+                                                                        className="font-medium text-[var(--tp-info)] hover:text-[var(--tp-accent)] hover:underline flex items-center gap-1.5 truncate max-w-[240px]"
                                                                         title={vid.video_url}
                                                                     >
                                                                         {renderPlatformIcon(vid.video_url)}
@@ -1353,14 +1351,14 @@ const InfluencerProgress: React.FC = () => {
                                                                     e.stopPropagation();
                                                                     setExpandedVideoRows(prev => ({ ...prev, [c.id]: !prev[c.id] }));
                                                                 }}
-                                                                className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 pt-1 block"
+                                                                className="text-[11px] font-semibold text-[var(--tp-accent)] hover:text-[var(--tp-accent-ink)] pt-1 block"
                                                             >
                                                                 {isExpanded ? '▲ Show less' : `▼ +${allVids.length - 4} more video${allVids.length - 4 > 1 ? 's' : ''}`}
                                                             </button>
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                    <span className="text-xs text-[var(--tp-meta)] italic flex items-center gap-1">
                                                         <Plus className="w-3.5 h-3.5" /> Add videos...
                                                     </span>
                                                 )}
@@ -1368,7 +1366,7 @@ const InfluencerProgress: React.FC = () => {
                                         </td>
 
                                         {/* 8. Released Date Column */}
-                                        <td className="px-4 py-3 whitespace-nowrap text-xs font-normal text-slate-600">
+                                        <td className="px-4 py-3 whitespace-nowrap text-xs font-normal text-[var(--tp-muted)]">
                                             {formatDateDisplay(c.released_date)}
                                         </td>
 
@@ -1376,7 +1374,7 @@ const InfluencerProgress: React.FC = () => {
                                         <td className="px-4 py-3 max-w-[180px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'agreement')}
-                                                className="cursor-pointer hover:bg-slate-100/80 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all min-h-[42px]"
+                                                className="cursor-pointer hover:bg-[var(--tp-surface-hover)]/80 p-2 rounded-xl border border-transparent hover:border-[var(--tp-rule)] transition-all min-h-[42px]"
                                                 title="Click to manage agreement documents"
                                             >
                                                 {(() => {
@@ -1395,7 +1393,7 @@ const InfluencerProgress: React.FC = () => {
                                                                                 target="_blank"
                                                                                 rel="noopener noreferrer"
                                                                                 onClick={e => e.stopPropagation()}
-                                                                                className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 truncate max-w-[160px]"
+                                                                                className="font-medium text-[var(--tp-accent)] hover:text-[var(--tp-accent-ink)] hover:underline flex items-center gap-1.5 truncate max-w-[160px]"
                                                                                 title={url}
                                                                             >
                                                                                 <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -1408,7 +1406,7 @@ const InfluencerProgress: React.FC = () => {
                                                         );
                                                     }
                                                     return (
-                                                        <span className="text-xs text-slate-400 italic flex items-center gap-1">
+                                                        <span className="text-xs text-[var(--tp-meta)] italic flex items-center gap-1">
                                                             <Plus className="w-3.5 h-3.5" /> Add doc...
                                                         </span>
                                                     );
@@ -1420,7 +1418,7 @@ const InfluencerProgress: React.FC = () => {
                                         <td className="px-4 py-3 text-center whitespace-nowrap">
                                             <button 
                                                 onClick={() => setDeleteConfirmCollab(c)}
-                                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-70 hover:opacity-100"
+                                                className="p-1.5 text-[var(--tp-meta)] hover:text-[var(--tp-danger)] hover:bg-[var(--tp-danger-soft)] rounded-[5px] transition-colors"
                                                 title="Delete Deal"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -1440,7 +1438,7 @@ const InfluencerProgress: React.FC = () => {
                     ref={popoverRef}
                     onClick={e => e.stopPropagation()}
                     style={calcPopoverPosition(activePopover.anchorRect, 320, 360)}
-                    className="bg-white rounded-2xl border border-[#bfdbfe]/80 shadow-lg p-4 w-80 font-sans"
+                    className="bg-white rounded-2xl border border-[#dde3d9]/80 shadow-lg p-4 w-80 font-sans"
                 >
                     {/* 1. Date Single Mini Calendar Popover */}
                     {activePopover.type === 'date' && (
@@ -1454,9 +1452,9 @@ const InfluencerProgress: React.FC = () => {
                     {/* 2. Status Tag Popover (With Hover Edit/Delete Action Icons) */}
                     {activePopover.type === 'progress' && (
                         <div className="space-y-3" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Status Tag</span>
-                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            <div className="flex justify-between items-center pb-2 border-b border-[var(--tp-rule)]">
+                                <span className="font-semibold text-xs text-[var(--tp-ink)]">Status Tag</span>
+                                <button onClick={() => setActivePopover(null)} className="text-[var(--tp-meta)] hover:text-[var(--tp-muted)]"><X className="w-4 h-4" /></button>
                             </div>
 
                             {/* Tag Options List */}
@@ -1465,7 +1463,7 @@ const InfluencerProgress: React.FC = () => {
                                     const isSystem = SYSTEM_DEFAULT_PROGRESS_TAGS.includes(t);
                                     if (editingTagIdx === idx) {
                                         return (
-                                            <div key={idx} className="flex items-center gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-300">
+                                            <div key={idx} className="flex items-center gap-1.5 p-1 bg-[var(--tp-surface-sunken)] rounded-xl border border-[var(--tp-rule-strong)]">
                                                 <input 
                                                     type="text" 
                                                     autoFocus 
@@ -1474,11 +1472,11 @@ const InfluencerProgress: React.FC = () => {
                                                     onKeyDown={e => {
                                                         if (e.key === 'Enter') handleSaveEditTag(idx);
                                                     }}
-                                                    className="w-full text-xs p-1 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-medium"
+                                                    className="w-full text-xs p-1 border border-[var(--tp-rule)] rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-medium"
                                                 />
                                                 <button 
                                                     onClick={() => handleSaveEditTag(idx)} 
-                                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0"
+                                                    className="p-1 text-[var(--tp-accent)] hover:bg-emerald-50 rounded-lg shrink-0"
                                                     title="Save name"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
@@ -1488,10 +1486,10 @@ const InfluencerProgress: React.FC = () => {
                                     }
 
                                     return (
-                                        <div key={t} className="group/tag flex items-center justify-between p-1 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <div key={t} className="group/tag flex items-center justify-between p-1 rounded-xl hover:bg-[var(--tp-surface-sunken)] transition-colors">
                                             <button
                                                 onClick={() => updateCollaborationField(activePopover.rowId, 'progress_status', t)}
-                                                className={`flex-1 text-left px-3 py-1.5 rounded-lg text-xs border transition-colors ${getProgressTagStyle(t)}`}
+                                                className={`tp-chip flex-1 justify-start ${getProgressTagStyle(t)}`}
                                             >
                                                 <span>{t}</span>
                                             </button>
@@ -1499,14 +1497,14 @@ const InfluencerProgress: React.FC = () => {
                                                 <div className="opacity-0 group-hover/tag:opacity-100 flex items-center gap-0.5 ml-1 transition-opacity">
                                                     <button 
                                                         onClick={e => { e.stopPropagation(); setEditingTagIdx(idx); setEditingTagVal(t); }} 
-                                                        className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 rounded-md"
+                                                        className="p-1 text-[var(--tp-meta)] hover:text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-active)]/80 rounded-md"
                                                         title="Rename tag"
                                                     >
                                                         <Edit2 className="w-3.5 h-3.5" />
                                                     </button>
                                                     <button 
                                                         onClick={e => { e.stopPropagation(); handleDeleteTag(idx); }} 
-                                                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md"
+                                                        className="p-1 text-[var(--tp-meta)] hover:text-[var(--tp-danger)] hover:bg-[var(--tp-danger-soft)] rounded-[5px]"
                                                         title="Delete tag option"
                                                     >
                                                         <Trash2 className="w-3.5 h-3.5" />
@@ -1519,13 +1517,13 @@ const InfluencerProgress: React.FC = () => {
                             </div>
 
                             {/* Add Custom Tag Form */}
-                            <div className="pt-2 border-t border-slate-100 flex gap-1.5">
+                            <div className="pt-2 border-t border-[var(--tp-rule)] flex gap-1.5">
                                 <input 
                                     type="text" 
                                     value={newCustomTagInput} 
                                     onChange={e => setNewCustomTagInput(e.target.value)} 
                                     placeholder="Add custom status tag..." 
-                                    className="w-full p-1.5 border border-slate-300 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[var(--accent-color)] font-normal"
+                                    className="w-full p-1.5 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-1 focus:ring-[var(--accent-color)] font-normal"
                                     onKeyDown={e => { if (e.key === 'Enter') handleAddCustomTag(); }}
                                 />
                                 <button 
@@ -1540,7 +1538,7 @@ const InfluencerProgress: React.FC = () => {
                             <div className="pt-1 text-center">
                                 <button
                                     onClick={() => handleResetToAutoStatus(activePopover.rowId)}
-                                    className="text-[11px] text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1 w-full"
+                                    className="text-[11px] text-[var(--tp-meta)] hover:text-[var(--tp-muted)] flex items-center justify-center gap-1 w-full"
                                 >
                                     <RotateCcw className="w-3 h-3" />
                                     <span>Reset to auto status</span>
@@ -1552,17 +1550,17 @@ const InfluencerProgress: React.FC = () => {
                     {/* 3. Actual Spent (Payment) Popover */}
                     {activePopover.type === 'payment' && (
                         <div className="space-y-3">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Update Budget Spent</span>
-                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            <div className="flex justify-between items-center pb-2 border-b border-[var(--tp-rule)]">
+                                <span className="font-semibold text-xs text-[var(--tp-ink)]">Update Budget Spent</span>
+                                <button onClick={() => setActivePopover(null)} className="text-[var(--tp-meta)] hover:text-[var(--tp-muted)]"><X className="w-4 h-4" /></button>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="block text-xs font-semibold text-slate-600">Actual Spent ($)</label>
+                                <label className="block text-xs font-semibold text-[var(--tp-muted)]">Actual Spent ($)</label>
                                 <input 
                                     type="number" 
                                     value={spentInputVal} 
                                     onChange={e => setSpentInputVal(e.target.value)}
-                                    className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
+                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
                                     placeholder="0"
                                     autoFocus
                                     onKeyDown={e => {
@@ -1573,10 +1571,10 @@ const InfluencerProgress: React.FC = () => {
                                 />
                             </div>
                             <div className="flex justify-end gap-2 pt-1">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'actual_spent', parseFloat(spentInputVal) || 0)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
                                 >
                                     Save
                                 </button>
@@ -1587,17 +1585,17 @@ const InfluencerProgress: React.FC = () => {
                     {/* 4. Package Amount Popover */}
                     {activePopover.type === 'package' && (
                         <div className="space-y-3">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Update Package Amount</span>
-                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            <div className="flex justify-between items-center pb-2 border-b border-[var(--tp-rule)]">
+                                <span className="font-semibold text-xs text-[var(--tp-ink)]">Update Package Amount</span>
+                                <button onClick={() => setActivePopover(null)} className="text-[var(--tp-meta)] hover:text-[var(--tp-muted)]"><X className="w-4 h-4" /></button>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="block text-xs font-semibold text-slate-600">Package Amount ($)</label>
+                                <label className="block text-xs font-semibold text-[var(--tp-muted)]">Package Amount ($)</label>
                                 <input 
                                     type="text" 
                                     value={pkgInputVal} 
                                     onChange={e => setPkgInputVal(e.target.value)}
-                                    className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
+                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
                                     placeholder="$5,000"
                                     autoFocus
                                     onKeyDown={e => {
@@ -1608,10 +1606,10 @@ const InfluencerProgress: React.FC = () => {
                                 />
                             </div>
                             <div className="flex justify-end gap-2 pt-1">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'total_package', pkgInputVal)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
                                 >
                                     Save
                                 </button>
@@ -1622,18 +1620,18 @@ const InfluencerProgress: React.FC = () => {
                     {/* 5. Agreed Content Count Popover */}
                     {activePopover.type === 'count' && (
                         <div className="space-y-3">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Agreed Videos Count</span>
-                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            <div className="flex justify-between items-center pb-2 border-b border-[var(--tp-rule)]">
+                                <span className="font-semibold text-xs text-[var(--tp-ink)]">Agreed Videos Count</span>
+                                <button onClick={() => setActivePopover(null)} className="text-[var(--tp-meta)] hover:text-[var(--tp-muted)]"><X className="w-4 h-4" /></button>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="block text-xs font-semibold text-slate-600">Expected Total Videos</label>
+                                <label className="block text-xs font-semibold text-[var(--tp-muted)]">Expected Total Videos</label>
                                 <input 
                                     type="number" 
                                     min="1"
                                     value={countInputVal} 
                                     onChange={e => setCountInputVal(parseInt(e.target.value) || 1)}
-                                    className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
+                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
                                     autoFocus
                                     onKeyDown={e => {
                                         if (e.key === 'Enter') {
@@ -1643,10 +1641,10 @@ const InfluencerProgress: React.FC = () => {
                                 />
                             </div>
                             <div className="flex justify-end gap-2 pt-1">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'content_count', countInputVal)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
                                 >
                                     Save
                                 </button>
@@ -1657,9 +1655,9 @@ const InfluencerProgress: React.FC = () => {
                     {/* 6. Videos Manager Popover */}
                     {activePopover.type === 'videos' && (
                         <div className="space-y-3">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Reported Videos</span>
-                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            <div className="flex justify-between items-center pb-2 border-b border-[var(--tp-rule)]">
+                                <span className="font-semibold text-xs text-[var(--tp-ink)]">Reported videos</span>
+                                <button onClick={() => setActivePopover(null)} className="text-[var(--tp-meta)] hover:text-[var(--tp-muted)]"><X className="w-4 h-4" /></button>
                             </div>
 
                             {/* Existing Video URLs List */}
@@ -1667,13 +1665,13 @@ const InfluencerProgress: React.FC = () => {
                                 {videoUrlsList.map((url, idx) => {
                                     if (editingUrlIdx === idx) {
                                         return (
-                                            <div key={idx} className="flex items-center gap-1 p-1 bg-slate-50 rounded-xl border border-slate-200">
+                                            <div key={idx} className="flex items-center gap-1 p-1 bg-[var(--tp-surface-sunken)] rounded-xl border border-[var(--tp-rule)]">
                                                 <input 
                                                     type="text" 
                                                     autoFocus
                                                     value={editingUrlVal} 
                                                     onChange={e => setEditingUrlVal(e.target.value)}
-                                                    className="w-full text-xs p-1 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
+                                                    className="w-full text-xs p-1 border border-[var(--tp-rule)] rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
                                                 />
                                                 <button 
                                                     onClick={() => {
@@ -1682,7 +1680,7 @@ const InfluencerProgress: React.FC = () => {
                                                         setVideoUrlsList(copy);
                                                         setEditingUrlIdx(null);
                                                     }} 
-                                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0"
+                                                    className="p-1 text-[var(--tp-accent)] hover:bg-emerald-50 rounded-lg shrink-0"
                                                     title="Save URL"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
@@ -1692,22 +1690,22 @@ const InfluencerProgress: React.FC = () => {
                                     }
 
                                     return (
-                                        <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-200 group/vlink">
+                                        <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-[var(--tp-surface-sunken)] rounded-xl border border-[var(--tp-rule)] group/vlink">
                                             <div className="flex items-center gap-1.5 truncate max-w-[190px]">
                                                 {renderPlatformIcon(url)}
-                                                <span className="text-[11px] font-normal text-slate-700 truncate">{url}</span>
+                                                <span className="text-[11px] font-normal text-[var(--tp-ink-2)] truncate">{url}</span>
                                             </div>
                                             <div className="flex items-center gap-0.5">
                                                 <button 
                                                     onClick={() => { setEditingUrlIdx(idx); setEditingUrlVal(url); }} 
-                                                    className="text-slate-400 hover:text-slate-700 p-1 rounded-md"
+                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-ink-2)] p-1 rounded-md"
                                                     title="Edit video URL"
                                                 >
                                                     <Edit2 className="w-3.5 h-3.5" />
                                                 </button>
                                                 <button 
                                                     onClick={() => setVideoUrlsList(prev => prev.filter((_, i) => i !== idx))} 
-                                                    className="text-slate-400 hover:text-rose-600 p-1 rounded-md"
+                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-danger)] p-1 rounded-md"
                                                     title="Delete video"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1719,23 +1717,23 @@ const InfluencerProgress: React.FC = () => {
                             </div>
 
                             {/* Add New Video Link Input */}
-                            <div className="pt-2 border-t border-slate-100 space-y-2">
-                                <label className="block text-[11px] font-semibold text-slate-600 uppercase">Add Video Link</label>
+                            <div className="pt-2 border-t border-[var(--tp-rule)] space-y-2">
+                                <label className="tp-field-label">Add Video Link</label>
                                 <input 
                                     type="text" 
                                     value={newVideoUrlInput} 
                                     onChange={e => setNewVideoUrlInput(e.target.value)} 
                                     placeholder="https://www.youtube.com/watch?v=..."
-                                    className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-normal"
+                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-normal"
                                     onKeyDown={e => { if (e.key === 'Enter') handleSaveVideosPopover(activePopover.rowId); }}
                                 />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => handleSaveVideosPopover(activePopover.rowId)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
                                 >
                                     Save Videos
                                 </button>
@@ -1746,9 +1744,9 @@ const InfluencerProgress: React.FC = () => {
                     {/* 7. Agreement Documents Popover */}
                     {activePopover.type === 'agreement' && (
                         <div className="space-y-3">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                                <span className="font-semibold text-xs text-slate-800 uppercase tracking-wider">Agreement &amp; Contracts</span>
-                                <button onClick={() => setActivePopover(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                            <div className="flex justify-between items-center pb-2 border-b border-[var(--tp-rule)]">
+                                <span className="font-semibold text-xs text-[var(--tp-ink)]">Agreement &amp; Contracts</span>
+                                <button onClick={() => setActivePopover(null)} className="text-[var(--tp-meta)] hover:text-[var(--tp-muted)]"><X className="w-4 h-4" /></button>
                             </div>
 
                             {/* Existing Documents URLs List */}
@@ -1756,13 +1754,13 @@ const InfluencerProgress: React.FC = () => {
                                 {agreementUrlsList.map((url, idx) => {
                                     if (editingAgreementIdx === idx) {
                                         return (
-                                            <div key={idx} className="flex items-center gap-1 p-1 bg-slate-50 rounded-xl border border-slate-200">
+                                            <div key={idx} className="flex items-center gap-1 p-1 bg-[var(--tp-surface-sunken)] rounded-xl border border-[var(--tp-rule)]">
                                                 <input 
                                                     type="text" 
                                                     autoFocus
                                                     value={editingAgreementVal} 
                                                     onChange={e => setEditingAgreementVal(e.target.value)}
-                                                    className="w-full text-xs p-1 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
+                                                    className="w-full text-xs p-1 border border-[var(--tp-rule)] rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
                                                 />
                                                 <button 
                                                     onClick={() => {
@@ -1771,7 +1769,7 @@ const InfluencerProgress: React.FC = () => {
                                                         setAgreementUrlsList(copy);
                                                         setEditingAgreementIdx(null);
                                                     }} 
-                                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg shrink-0"
+                                                    className="p-1 text-[var(--tp-accent)] hover:bg-emerald-50 rounded-lg shrink-0"
                                                     title="Save URL link"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
@@ -1781,22 +1779,22 @@ const InfluencerProgress: React.FC = () => {
                                     }
 
                                     return (
-                                        <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-200 group/alink">
+                                        <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-[var(--tp-surface-sunken)] rounded-xl border border-[var(--tp-rule)] group/alink">
                                             <div className="flex items-center gap-1.5 truncate max-w-[190px]">
-                                                <FileText className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                                                <span className="text-[11px] font-normal text-slate-700 truncate">{url}</span>
+                                                <FileText className="w-3.5 h-3.5 text-[var(--tp-muted)] shrink-0" />
+                                                <span className="text-[11px] font-normal text-[var(--tp-ink-2)] truncate">{url}</span>
                                             </div>
                                             <div className="flex items-center gap-0.5">
                                                 <button 
                                                     onClick={() => { setEditingAgreementIdx(idx); setEditingAgreementVal(url); }}
-                                                    className="text-slate-400 hover:text-slate-700 p-1 rounded-md"
+                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-ink-2)] p-1 rounded-md"
                                                     title="Edit document URL"
                                                 >
                                                     <Edit2 className="w-3.5 h-3.5" />
                                                 </button>
                                                 <button 
                                                     onClick={() => setAgreementUrlsList(prev => prev.filter((_, i) => i !== idx))} 
-                                                    className="text-slate-400 hover:text-rose-600 p-1 rounded-md"
+                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-danger)] p-1 rounded-md"
                                                     title="Delete document link"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1808,23 +1806,23 @@ const InfluencerProgress: React.FC = () => {
                             </div>
 
                             {/* Add New Document Link Input */}
-                            <div className="pt-2 border-t border-slate-100 space-y-2">
-                                <label className="block text-[11px] font-semibold text-slate-600 uppercase">Add New Document URL</label>
+                            <div className="pt-2 border-t border-[var(--tp-rule)] space-y-2">
+                                <label className="tp-field-label">Add New Document URL</label>
                                 <input 
                                     type="text" 
                                     value={newAgreementUrlInput} 
                                     onChange={e => setNewAgreementUrlInput(e.target.value)} 
                                     placeholder="https://..."
-                                    className="w-full p-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-normal"
+                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-normal"
                                     onKeyDown={e => { if (e.key === 'Enter') handleSaveAgreementPopover(activePopover.rowId); }}
                                 />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => handleSaveAgreementPopover(activePopover.rowId)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl shadow-xs"
+                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
                                 >
                                     Save Documents
                                 </button>
@@ -1838,25 +1836,25 @@ const InfluencerProgress: React.FC = () => {
             {/* ENHANCED ADD NEW DEAL MODAL — Rendered via Portal to escape parent container scroll */}
             {showAddModal && createPortal(
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-visible animate-in fade-in zoom-in-95 duration-200 my-auto border border-slate-200">
-                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 rounded-t-2xl">
-                            <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-visible animate-in fade-in zoom-in-95 duration-200 my-auto border border-[var(--tp-rule)]">
+                        <div className="p-5 border-b border-[var(--tp-rule)] flex justify-between items-center bg-[var(--tp-surface-sunken)]/80 rounded-t-2xl">
+                            <h3 className="text-base font-semibold text-[var(--tp-ink)] flex items-center gap-2">
                                 <span>Add New Influencer Deal</span>
                             </h3>
-                            <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                            <button onClick={() => setShowAddModal(false)} className="text-[var(--tp-meta)] hover:text-[var(--tp-muted)]"><X className="w-5 h-5" /></button>
                         </div>
 
                         <form onSubmit={handleCreateCollaboration} className="p-6 space-y-5">
                             
                             {/* Mode Tabs: Select Existing vs Add New YouTube Channel */}
-                            <div className="flex rounded-xl bg-slate-100 p-1">
+                            <div className="flex rounded-xl bg-[var(--tp-surface-hover)] p-1">
                                 <button
                                     type="button"
                                     onClick={() => setKolSourceMode('existing')}
                                     className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
                                         kolSourceMode === 'existing'
-                                            ? 'bg-white text-slate-900 shadow-xs'
-                                            : 'text-slate-500 hover:text-slate-800'
+                                            ? 'bg-white text-[var(--tp-ink)]'
+                                            : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
                                     }`}
                                 >
                                     Existing KOL List
@@ -1866,11 +1864,11 @@ const InfluencerProgress: React.FC = () => {
                                     onClick={() => setKolSourceMode('new_yt')}
                                     className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${
                                         kolSourceMode === 'new_yt'
-                                            ? 'bg-white text-slate-900 shadow-xs'
-                                            : 'text-slate-500 hover:text-slate-800'
+                                            ? 'bg-white text-[var(--tp-ink)]'
+                                            : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
                                     }`}
                                 >
-                                    <Youtube className="w-3.5 h-3.5 text-red-500 fill-red-500" />
+                                    <Youtube className="w-3.5 h-3.5 text-[var(--tp-danger)] fill-red-500" />
                                     <span>New YouTube Channel</span>
                                 </button>
                             </div>
@@ -1878,21 +1876,21 @@ const InfluencerProgress: React.FC = () => {
                             {/* Mode 1: Select Existing KOL */}
                             {kolSourceMode === 'existing' && (
                                 <div className="space-y-1.5">
-                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    <label className="block text-xs font-semibold text-[var(--tp-ink-2)]">
                                         Select Creator
                                     </label>
                                     <div className="relative">
                                         <select 
                                             value={newKolId}
                                             onChange={e => setNewKolId(e.target.value)}
-                                            className="w-full p-2.5 pr-8 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs font-medium text-slate-800 appearance-none cursor-pointer"
+                                            className="w-full p-2.5 pr-8 border border-[var(--tp-rule-strong)] rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs font-medium text-[var(--tp-ink)] appearance-none cursor-pointer"
                                         >
                                             <option value="">Choose creator from existing KOLs...</option>
                                             {allKols.map(k => (
                                                 <option key={k.id} value={k.id}>{k.name} ({k.country || 'United States'})</option>
                                             ))}
                                         </select>
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--tp-meta)]">
                                             <ChevronRight className="w-4 h-4 rotate-90" />
                                         </div>
                                     </div>
@@ -1902,18 +1900,18 @@ const InfluencerProgress: React.FC = () => {
                             {/* Mode 2: Fetch New YouTube Channel URL */}
                             {kolSourceMode === 'new_yt' && (
                                 <div className="space-y-1.5">
-                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    <label className="block text-xs font-semibold text-[var(--tp-ink-2)]">
                                         YouTube Channel URL / Handle
                                     </label>
                                     <div className="flex gap-2">
                                         <div className="relative flex-1">
-                                            <Youtube className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                                            <Youtube className="w-4 h-4 text-[var(--tp-meta)] absolute left-3 top-2.5" />
                                             <input 
                                                 type="text" 
                                                 value={ytChannelUrlInput}
                                                 onChange={e => setYtChannelUrlInput(e.target.value)}
                                                 placeholder="https://www.youtube.com/@Taysthetic"
-                                                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal"
+                                                className="w-full pl-9 pr-3 py-2 border border-[var(--tp-rule-strong)] rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal"
                                                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleFetchYtChannel(); } }}
                                             />
                                         </div>
@@ -1938,8 +1936,8 @@ const InfluencerProgress: React.FC = () => {
 
                             {/* LIVE KOL PREVIEW CARD */}
                             {((kolSourceMode === 'existing' && selectedExistingKol) || (kolSourceMode === 'new_yt' && fetchedKolData)) && (
-                                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
-                                    <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                                <div className="p-3 bg-[var(--tp-surface-sunken)] rounded-2xl border border-[var(--tp-rule)]">
+                                    <div className="text-[11px] font-semibold text-[var(--tp-meta)] mb-1.5">
                                         Creator Live Preview
                                     </div>
                                     <KOLCell 
@@ -1951,23 +1949,23 @@ const InfluencerProgress: React.FC = () => {
                             {/* Collab Started Date & Package Amount Inputs */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5 relative">
-                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    <label className="block text-xs font-semibold text-[var(--tp-ink-2)]">
                                         Collab Started Date
                                     </label>
                                     <button 
                                         type="button"
                                         onClick={() => setShowModalCalendar(!showModalCalendar)}
-                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs text-left font-medium flex items-center justify-between"
+                                        className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs text-left font-medium flex items-center justify-between"
                                     >
-                                        <div className="flex items-center gap-1.5 text-slate-800">
-                                            <Calendar className="w-4 h-4 text-slate-400" />
+                                        <div className="flex items-center gap-1.5 text-[var(--tp-ink)]">
+                                            <Calendar className="w-4 h-4 text-[var(--tp-meta)]" />
                                             <span>{newStartMonth || 'Select Date'}</span>
                                         </div>
                                     </button>
 
                                     {/* Modal Single Calendar Picker Popover */}
                                     {showModalCalendar && (
-                                        <div className="absolute top-full left-0 mt-1 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 w-72 z-50">
+                                        <div className="absolute top-full left-0 mt-1 bg-white rounded-2xl border border-[var(--tp-rule)] shadow-xl p-3 w-72 z-50">
                                             <MiniCalendarPicker 
                                                 initialDate={newStartMonth}
                                                 onSelectDate={(dt) => {
@@ -1981,7 +1979,7 @@ const InfluencerProgress: React.FC = () => {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    <label className="block text-xs font-semibold text-[var(--tp-ink-2)]">
                                         Contract Package ($)
                                     </label>
                                     <input 
@@ -1997,23 +1995,23 @@ const InfluencerProgress: React.FC = () => {
                                             }
                                         }}
                                         placeholder="$5,000"
-                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-medium"
+                                        className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-medium"
                                     />
                                 </div>
                             </div>
 
                             {/* Modal Action Buttons */}
-                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                            <div className="flex justify-end gap-3 pt-4 border-t border-[var(--tp-rule)]">
                                 <button 
                                     type="button" 
                                     onClick={() => setShowAddModal(false)} 
-                                    className="px-5 py-2.5 rounded-full font-medium text-slate-600 hover:bg-slate-100 transition-colors text-sm"
+                                    className="px-5 py-2.5 rounded-full font-medium text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] transition-colors text-sm"
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     type="submit" 
-                                    className="px-6 py-2.5 rounded-full font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 transition-colors shadow-xs text-sm"
+                                    className="px-6 py-2.5 rounded-full font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 transition-colors text-sm"
                                 >
                                     Create Deal
                                 </button>
@@ -2026,26 +2024,26 @@ const InfluencerProgress: React.FC = () => {
             {/* DELETE DEAL CONFIRMATION MODAL */}
             {deleteConfirmCollab && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4">
-                        <div className="flex items-center gap-3 text-amber-600">
-                            <div className="p-3 bg-amber-50 rounded-2xl">
+                    <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-[var(--tp-rule)] space-y-4">
+                        <div className="flex items-center gap-3 text-[var(--tp-warning)]">
+                            <div className="p-3 bg-[var(--tp-warning-soft)] rounded-2xl">
                                 <Trash2 className="w-6 h-6" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-900">Remove Deal Record</h3>
+                            <h3 className="text-lg font-semibold text-[var(--tp-ink)]">Remove Deal Record</h3>
                         </div>
-                        <p className="text-sm text-slate-600 leading-relaxed">
-                            Are you sure you want to remove this deal record for <strong className="text-slate-900">{deleteConfirmCollab.kols?.name || 'this influencer'}</strong>? This action cannot be undone.
+                        <p className="text-sm text-[var(--tp-muted)] leading-relaxed">
+                            Are you sure you want to remove this deal record for <strong className="text-[var(--tp-ink)]">{deleteConfirmCollab.kols?.name || 'this influencer'}</strong>? This action cannot be undone.
                         </p>
                         <div className="flex justify-end gap-3 pt-2">
                             <button
                                 onClick={() => setDeleteConfirmCollab(null)}
-                                className="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                                className="px-5 py-2.5 text-xs font-semibold text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-xl transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={() => handleDeleteCollaboration(deleteConfirmCollab.id)}
-                                className="px-5 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-sm"
+                                className="px-5 py-2.5 text-xs font-semibold text-white bg-[var(--tp-danger)] hover:bg-rose-700 rounded-xl transition-colors"
                             >
                                 Yes, Remove Deal
                             </button>

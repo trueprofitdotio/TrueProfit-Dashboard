@@ -30,7 +30,7 @@ const getProgressColor = (progress: number) => {
     const p = progress * 100;
     if (p <= 25) return '#DC143C';
     if (p <= 79) return '#FA812F';
-    return '#23C48C';
+    return 'var(--accent-color)';
 };
 
 const getProgressGradient = (progress: number) => {
@@ -114,17 +114,28 @@ const KpiGauge: React.FC<KpiGaugeProps> = ({ title, color: metricColor, format, 
     }, [progress, isSmall]);
 
     return (
-        <div className="kpi-gauge relative p-6 text-center">
-            <div className={`font-semibold text-slate-800 ${isSmall ? 'text-base' : 'text-lg'}`}>
+        <div className="kpi-gauge relative p-5 text-center">
+            <div className={`flex items-center justify-center gap-2 font-semibold tracking-[-0.006em] text-[var(--tp-ink)] ${isSmall ? 'text-[13px]' : 'text-[15px]'}`}>
+                <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: metricColor }} aria-hidden="true" />
                 <span>{title}</span>
-                <span className="ml-2 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: metricColor }} />
             </div>
             <div ref={chartRef} className="relative mx-auto" style={{ width: '100%', height: isSmall ? '150px' : '250px' }}></div>
-            <div className="mt-2 space-y-1 text-sm text-slate-500">
-                {predicted !== undefined && <p>Predicted: <span className="font-bold" style={{ color: progressColor }}>{predicted.toFixed(0)}%</span></p>}
-                <p>KPI: <span className="font-bold text-slate-700">{formatMetricValue(kpi, format)}</span></p>
-                <p>Achieved: <span className="font-bold text-slate-700">{formatMetricValue(achieved, format)}</span></p>
-            </div>
+            <dl className="mt-3 divide-y divide-[var(--tp-rule)] border-t border-[var(--tp-rule)] text-[12.5px]">
+                {predicted !== undefined && (
+                    <div className="flex items-center justify-between py-1.5">
+                        <dt className="text-[var(--tp-muted)]">Predicted</dt>
+                        <dd className="font-semibold tabular-nums" style={{ color: progressColor }}>{predicted.toFixed(0)}%</dd>
+                    </div>
+                )}
+                <div className="flex items-center justify-between py-1.5">
+                    <dt className="text-[var(--tp-muted)]">Target</dt>
+                    <dd className="font-semibold tabular-nums text-[var(--tp-ink)]">{formatMetricValue(kpi, format)}</dd>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                    <dt className="text-[var(--tp-muted)]">Achieved</dt>
+                    <dd className="font-semibold tabular-nums text-[var(--tp-ink)]">{formatMetricValue(achieved, format)}</dd>
+                </div>
+            </dl>
         </div>
     );
 };
@@ -189,12 +200,12 @@ const KpiRunrate: React.FC<KpiRunrateProps> = ({ loading, error, data, onSave })
     return (
         <div className="workspace-page kpi-runrate">
             <div className="workspace-heading">
-                <h2 className="text-2xl font-bold text-slate-800">Q{quarter} {year} KPI Runrate</h2>
-                <button onClick={() => setIsModalOpen(true)} className="rounded-md bg-[var(--accent-color)] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1ea072]">Setup KPIs</button>
+                <h2>Q{quarter} {year} KPI runrate</h2>
+                <button onClick={() => setIsModalOpen(true)} className="primary-btn h-10 shrink-0 rounded-[7px] bg-[var(--accent-color)] px-5 text-[13px] font-semibold text-white">Set up KPIs</button>
             </div>
-            {loading ? <Loader /> : error ? <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-700">{error}</div> : (
+            {loading ? <Loader /> : error ? <div className="card flex items-start gap-2.5 p-4 text-[13px] font-medium text-[var(--tp-danger)]" role="alert"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tp-danger)]" /><span>{error}</span></div> : (
                 <>
-                    <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                         {currentYearTargets.map(target => (
                             <KpiGauge
                                 key={target.kpi_name}
@@ -205,11 +216,11 @@ const KpiRunrate: React.FC<KpiRunrateProps> = ({ loading, error, data, onSave })
                     {Object.keys(pastQuartersProgress).length > 0 && (
                         <div>
                             <button onClick={() => setShowPastQuarters(!showPastQuarters)} className="group mb-4 flex w-full items-center justify-between py-2 text-left" aria-expanded={showPastQuarters}>
-                                <h2 className="text-2xl font-bold text-slate-800 transition-colors group-hover:text-[var(--accent-color)]">{year} Previous Quarters</h2>
-                                <svg className={`h-6 w-6 text-slate-600 transition-transform group-hover:text-[var(--accent-color)] ${showPastQuarters ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                <h2 className="transition-colors group-hover:text-[var(--accent-color)]">{year} previous quarters</h2>
+                                <svg className={`h-5 w-5 text-[var(--tp-muted)] transition-transform group-hover:text-[var(--accent-color)] ${showPastQuarters ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                             </button>
                             {showPastQuarters && (
-                                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                                     {Object.keys(pastQuartersProgress).sort().flatMap(qKey => {
                                         const pastQuarterNumber = parseInt(qKey.replace('q', ''), 10);
                                         const pastQuarterTargetKey = quarterTargetKey(pastQuarterNumber);

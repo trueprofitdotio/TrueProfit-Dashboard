@@ -37,17 +37,17 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ anchorRect, items, onRequestClo
         <div
             ref={menuRef}
             style={style}
-            className="z-[999999] bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 animate-in fade-in zoom-in-95 duration-150 font-sans"
+            className="z-[999999] bg-white rounded-xl shadow-lg border border-[var(--tp-rule)] py-1.5 animate-in fade-in zoom-in-95 duration-150 font-sans"
         >
             {items.map((item) => (
                 <button
                     key={item.key}
                     onClick={() => { item.onClick(); onRequestClose(); }}
-                    className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[13px] font-medium transition-colors ${item.separatorBefore ? 'mt-1 border-t border-slate-100 pt-2.5' : ''} ${item.destructive
-                            ? 'text-rose-600 hover:bg-rose-50'
+                    className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[13px] font-medium transition-colors ${item.separatorBefore ? 'mt-1 border-t border-[var(--tp-rule)] pt-2.5' : ''} ${item.destructive
+                            ? 'text-[var(--tp-danger)] hover:bg-[var(--tp-danger-soft)]'
                             : item.activeWhen
-                                ? 'text-slate-900 bg-slate-50 font-semibold'
-                                : 'text-slate-700 hover:bg-slate-50'
+                                ? 'text-[var(--tp-ink)] bg-[var(--tp-surface-sunken)] font-semibold'
+                                : 'text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-sunken)]'
                         }`}
                 >
                     <span className="w-4 h-4 flex items-center justify-center shrink-0">{item.icon}</span>

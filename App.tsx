@@ -12,16 +12,9 @@ type Tab = 'affiliate' | 'conversion' | 'influencer' | 'kpi';
 
 // --- App Component ---
 
-const Header: React.FC = () => (
-  <header className="app-header">
-    <div className="app-header-brand">
-      <h1>TrueProfit Dashboard</h1>
-      <p>Affiliate &amp; Influencer Channels</p>
-    </div>
-  </header>
-);
-
-const Tabs: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ activeTab, setActiveTab }) => {
+// The top bar carries product identity and the three workspace routes on one
+// white plane, so the canvas below is reserved entirely for work sheets.
+const AppBar: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ activeTab, setActiveTab }) => {
     const tabs: { id: Tab; label: string; disabled?: boolean }[] = [
         { id: 'affiliate', label: 'Affiliate' },
         { id: 'influencer', label: 'Influencer' },
@@ -29,28 +22,32 @@ const Tabs: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ 
     ];
 
   return (
-    <nav className="app-navigation" aria-label="Workspace sections">
-      <div className="app-navigation-list">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => !tab.disabled && setActiveTab(tab.id)}
-            disabled={tab.disabled}
-            className={`app-navigation-item
-              ${
-                activeTab === tab.id
-                  ? 'is-active'
-                  : ''
-              }
-              ${tab.disabled ? 'cursor-not-allowed opacity-50' : ''}
-            `}
-          >
-            {tab.label}
-            {tab.disabled && <span className="text-[10px] ml-1 opacity-60"> (Coming Soon)</span>}
-          </button>
-        ))}
+    <header className="app-bar">
+      <div className="app-bar-inner">
+        <div className="app-brand">
+          <h1>TrueProfit Dashboard</h1>
+          <span className="app-brand-sep" aria-hidden="true">/</span>
+          <p>Affiliate &amp; Influencer channels</p>
+        </div>
+
+        <nav className="app-navigation" aria-label="Workspace sections">
+          <div className="app-navigation-list">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => !tab.disabled && setActiveTab(tab.id)}
+                disabled={tab.disabled}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
+                className={`app-navigation-item ${activeTab === tab.id ? 'is-active' : ''} ${tab.disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+              >
+                {tab.label}
+                {tab.disabled && <span className="text-[11px] ml-1 opacity-60"> (Coming Soon)</span>}
+              </button>
+            ))}
+          </div>
+        </nav>
       </div>
-    </nav>
+    </header>
   );
 };
 
@@ -297,9 +294,8 @@ const App: React.FC = () => {
 
   return (
     <div className="app-shell">
+      <AppBar activeTab={activeTab} setActiveTab={handleSetActiveTab} />
       <div className="app-frame">
-        <Header />
-        <Tabs activeTab={activeTab} setActiveTab={handleSetActiveTab} />
         <main key={activeTab} className="tab-content-active">{renderContent()}</main>
       </div>
     </div>

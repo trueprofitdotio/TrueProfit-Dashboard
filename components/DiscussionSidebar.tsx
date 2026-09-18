@@ -8,7 +8,7 @@ import {
     DiscussionAttachment, parseAttachments, uploadDiscussionAttachment,
     removeDiscussionAttachment, validateAttachment, displayNameFor, ACCEPTED_MIME_TYPES
 } from '../services/discussionAttachments';
-import { AttachmentGrid, PendingAttachmentStrip, PendingAttachment } from './DiscussionAttachments';
+import { AttachmentGrid, PendingAttachmentStrip, PendingAttachment, ThreadImageRail } from './DiscussionAttachments';
 import type { DiscussionComposerHandle } from './DiscussionComposer';
 // The editor pulls in ProseMirror (~400 kB). Loading it only when a discussion
 // is actually opened keeps it out of the dashboard's initial bundle.
@@ -111,28 +111,28 @@ const YouTubeCardPreview: React.FC<{ url: string; isUser: boolean }> = ({ url, i
                 onClick={e => e.stopPropagation()}
                 className={`mt-2.5 flex flex-col sm:flex-row gap-2.5 p-2 rounded-xl border transition-all hover:scale-[1.01] block overflow-hidden ${
                     isUser 
-                        ? 'bg-emerald-950/40 border-emerald-500/30 text-white hover:bg-emerald-950/60' 
-                        : 'bg-white border-[#d2e3dc] text-slate-800 hover:bg-slate-50 shadow-2xs'
+                        ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' 
+                        : 'bg-white border-[var(--tp-rule-panel)] text-[var(--tp-ink)] hover:bg-[var(--tp-surface-sunken)]'
                 }`}
             >
                 <div className="relative w-full sm:w-28 h-20 bg-slate-900 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
                     <img src={thumbUrl} alt="Video thumbnail" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                        <div className="w-6 h-6 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-xs">
+                        <div className="w-6 h-6 rounded-full bg-red-600/90 text-white flex items-center justify-center">
                             <Play className="w-3 h-3 fill-current ml-0.5" />
                         </div>
                     </div>
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <div className="flex items-center gap-1 text-[10px] font-semibold text-red-500 uppercase tracking-wider mb-0.5">
+                    <div className="flex items-center gap-1 text-[11px] font-semibold text-[var(--tp-danger)] mb-0.5">
                         <Youtube className="w-3 h-3 fill-current" />
                         <span>YouTube Video</span>
                     </div>
-                    <div className={`text-xs font-semibold line-clamp-2 leading-tight ${isUser ? 'text-white' : 'text-slate-900'}`}>
+                    <div className={`text-xs font-semibold line-clamp-2 leading-tight ${isUser ? 'text-white' : 'text-[var(--tp-ink)]'}`}>
                         {videoInfo?.title || 'Watch on YouTube'}
                     </div>
                     {videoInfo?.channelTitle && (
-                        <div className={`text-[11px] mt-1 truncate ${isUser ? 'text-emerald-200' : 'text-slate-500'}`}>
+                        <div className={`text-[11px] mt-1 truncate ${isUser ? 'text-white/75' : 'text-[var(--tp-muted)]'}`}>
                             {videoInfo.channelTitle}
                         </div>
                     )}
@@ -150,27 +150,27 @@ const YouTubeCardPreview: React.FC<{ url: string; isUser: boolean }> = ({ url, i
                 onClick={e => e.stopPropagation()}
                 className={`mt-2.5 flex items-center gap-3 p-2.5 rounded-xl border transition-all hover:scale-[1.01] block ${
                     isUser 
-                        ? 'bg-emerald-950/40 border-emerald-500/30 text-white hover:bg-emerald-950/60' 
-                        : 'bg-white border-[#d2e3dc] text-slate-800 hover:bg-slate-50 shadow-2xs'
+                        ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' 
+                        : 'bg-white border-[var(--tp-rule-panel)] text-[var(--tp-ink)] hover:bg-[var(--tp-surface-sunken)]'
                 }`}
             >
                 {channelInfo?.avatarUrl ? (
                     <img src={channelInfo.avatarUrl} alt="Channel avatar" className="w-10 h-10 rounded-full object-cover border border-white/20 shrink-0" />
                 ) : (
-                    <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0 font-bold text-xs">
+                    <div className="w-10 h-10 rounded-full bg-red-100 text-[var(--tp-danger)] flex items-center justify-center shrink-0 font-semibold text-xs">
                         <Youtube className="w-5 h-5 fill-current" />
                     </div>
                 )}
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 text-[10px] font-semibold text-red-500 uppercase tracking-wider mb-0.5">
+                    <div className="flex items-center gap-1 text-[11px] font-semibold text-[var(--tp-danger)] mb-0.5">
                         <Youtube className="w-3 h-3 fill-current" />
                         <span>YouTube Creator</span>
                     </div>
-                    <div className={`text-xs font-semibold truncate ${isUser ? 'text-white' : 'text-slate-900'}`}>
+                    <div className={`text-xs font-semibold truncate ${isUser ? 'text-white' : 'text-[var(--tp-ink)]'}`}>
                         {channelInfo?.title || 'YouTube Channel'}
                     </div>
                     {channelInfo?.subscriberCount && (
-                        <div className={`text-[11px] font-medium ${isUser ? 'text-emerald-200' : 'text-slate-500'}`}>
+                        <div className={`text-[11px] font-medium ${isUser ? 'text-white/75' : 'text-[var(--tp-muted)]'}`}>
                             {channelInfo.subscriberCount} subscribers
                         </div>
                     )}
@@ -759,6 +759,24 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
         return items;
     }, [messages]);
 
+    /**
+     * Every attachment posted in this thread, oldest first, de-duplicated by
+     * storage path. Feeds the screenshot rail and, once written back to the
+     * deal row, the proposal table's Audience insight column.
+     */
+    const threadAttachments = useMemo(() => {
+        const seen = new Set<string>();
+        const out: DiscussionAttachment[] = [];
+        for (const msg of messages) {
+            for (const att of parseAttachments(msg.attachments)) {
+                if (seen.has(att.path)) continue;
+                seen.add(att.path);
+                out.push(att);
+            }
+        }
+        return out;
+    }, [messages]);
+
     const latestMessage = messages[messages.length - 1];
     const otherReaders = useMemo(() => {
         if (!latestMessage || !user) return [];
@@ -793,23 +811,23 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                 <div className="pointer-events-none absolute inset-3 z-50 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--accent-color)] bg-emerald-50/95 text-[var(--accent-color)]">
                     <ImagePlus className="h-7 w-7 stroke-[1.5]" />
                     <p className="text-xs font-semibold">Drop to attach</p>
-                    <p className="text-[11px] text-emerald-700">PNG, JPEG, GIF, WebP or PDF — up to 10 MB</p>
+                    <p className="text-[11px] text-[var(--tp-accent-ink)]">PNG, JPEG, GIF, WebP or PDF — up to 10 MB</p>
                 </div>
             )}
-            <div className="discussion-sidebar-header flex items-start justify-between px-6 pb-4 pt-6 border-b border-slate-100">
+            <div className="discussion-sidebar-header flex items-start justify-between px-6 pb-4 pt-6 border-b border-[var(--tp-rule)]">
                 <div className="flex flex-col">
-                    <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
+                    <h2 className="flex items-center gap-2 text-base font-semibold text-[var(--tp-ink)]">
                         <span>Deal Discussion</span>
                     </h2>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                        <span>Creator: <strong className="font-semibold text-slate-800">{kolName}</strong></span>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-[var(--tp-muted)]">
+                        <span>Creator: <strong className="font-semibold text-[var(--tp-ink)]">{kolName}</strong></span>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     {user && (
                         <button
                             onClick={handleSignOut}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tp-meta)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink-2)]"
                             title={`Logged in as ${user.email}. Click to Sign Out`}
                         >
                             <LogOut className="h-4 w-4" />
@@ -817,7 +835,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     )}
                     <button 
                         onClick={onClose}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tp-meta)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink-2)]"
                         aria-label="Close discussion"
                     >
                         <X className="h-4 w-4" />
@@ -827,26 +845,26 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
 
             {authLoading ? (
                 <div className="flex flex-1 items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-[var(--tp-meta)]" />
                 </div>
             ) : !user ? (
                 <div className="discussion-auth flex flex-1 flex-col items-center justify-center space-y-5 px-8 text-center">
                     <div className="space-y-1.5">
-                        <h3 className="text-base font-semibold text-slate-900">Sign in to join discussion</h3>
-                        <p className="mx-auto max-w-[300px] text-xs leading-5 text-slate-500">
-                            Access is strictly restricted to internal team members with an <strong className="text-slate-800">@firegroup.io</strong> Google account.
+                        <h3 className="text-base font-semibold text-[var(--tp-ink)]">Sign in to join discussion</h3>
+                        <p className="mx-auto max-w-[300px] text-xs leading-5 text-[var(--tp-muted)]">
+                            Access is strictly restricted to internal team members with an <strong className="text-[var(--tp-ink)]">@firegroup.io</strong> Google account.
                         </p>
                     </div>
                     {authError && (
-                        <div className="flex max-w-[320px] items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-left text-xs font-medium text-rose-700">
-                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                        <div className="flex max-w-[320px] items-start gap-2 rounded-xl border border-[var(--tp-danger-rule)] bg-[var(--tp-danger-soft)] p-3 text-left text-xs font-medium text-[var(--tp-danger)]">
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--tp-danger)]" />
                             <span>{authError}</span>
                         </div>
                     )}
                     <div className="w-full max-w-[320px] space-y-2">
                         <button
                             onClick={handleGoogleLogin}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800 shadow-xs"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24">
                                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -859,7 +877,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                         {isDevEnvironment && (
                             <button
                                 onClick={handleDevLogin}
-                                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--tp-rule)] bg-white py-2 text-xs font-semibold text-[var(--tp-ink-2)] transition-colors hover:bg-[var(--tp-surface-sunken)]"
                             >
                                 <span>Dev test sign-in (Quan Tran Hoang)</span>
                             </button>
@@ -868,17 +886,17 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                 </div>
             ) : (
                 <>
-                    <div className="discussion-message-feed flex-1 space-y-4 overflow-y-auto px-6 py-4 bg-slate-50/40">
+                    <div className="discussion-message-feed flex-1 space-y-4 overflow-y-auto px-6 py-4 bg-[var(--tp-surface-sunken)]/40">
                         {loading ? (
                             <div className="flex h-full items-center justify-center">
-                                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                                <Loader2 className="h-6 w-6 animate-spin text-[var(--tp-meta)]" />
                             </div>
                         ) : messages.length === 0 ? (
-                            <div className="flex h-full flex-col items-center justify-center space-y-2 text-center text-slate-400">
-                                <Users className="w-8 h-8 stroke-1 text-slate-300" />
+                            <div className="flex h-full flex-col items-center justify-center space-y-2 text-center text-[var(--tp-meta)]">
+                                <Users className="w-8 h-8 stroke-1 text-[var(--tp-faint)]" />
                                 <div>
-                                    <p className="text-xs font-semibold text-slate-700">No messages yet</p>
-                                    <p className="mx-auto mt-1 max-w-[240px] text-xs text-slate-400">Start the internal discussion or tag team members using @</p>
+                                    <p className="text-xs font-semibold text-[var(--tp-ink-2)]">No messages yet</p>
+                                    <p className="mx-auto mt-1 max-w-[240px] text-xs text-[var(--tp-meta)]">Start the internal discussion or tag team members using @</p>
                                 </div>
                             </div>
                         ) : (
@@ -894,7 +912,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                 <button
                                                     type="button"
                                                     onClick={() => setShowAllSystemMessages(v => !v)}
-                                                    className="mx-auto flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                                                    className="mx-auto flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold text-[var(--tp-meta)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-muted)]"
                                                 >
                                                     <ChevronDown
                                                         className={`h-3 w-3 transition-transform ${showAllSystemMessages ? 'rotate-180' : ''}`}
@@ -909,7 +927,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                             {visible.map((sysMsg, sysIdx) => (
                                                 <div
                                                     key={sysMsg.id || `${idx}-${sysIdx}`}
-                                                    className="my-2 text-center text-[11px] font-medium italic text-slate-400"
+                                                    className="my-2 text-center text-[11px] font-medium italic text-[var(--tp-meta)]"
                                                 >
                                                     <span>{sysMsg.body}</span>
                                                 </div>
@@ -933,14 +951,19 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                         {(
                                             <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
                                                 {!isUser && (
-                                                    <span className="text-[11px] font-bold text-[#176b5e] mb-1 pl-1 flex items-center gap-1">
-                                                        <span>{msg.actor || 'Team Member'}</span>
+                                                    <span className="mb-1 pl-1 text-[11px] font-semibold text-[var(--tp-accent)]">
+                                                        {msg.actor || 'Team Member'}
                                                     </span>
                                                 )}
-                                                <div className={`max-w-[85%] px-4 py-3 text-xs leading-relaxed shadow-2xs ${
-                                                    isUser 
-                                                        ? 'bg-[#176b5e] text-white rounded-2xl rounded-tr-xs' 
-                                                        : 'bg-[#ecf4f1] text-[#1c2826] border border-[#d2e3dc] rounded-2xl rounded-tl-xs'
+                                                {/* A bubble carrying media locks to the album width, so a
+                                                    column of messages keeps one edge no matter what was
+                                                    attached or how each image is proportioned. */}
+                                                <div className={`discussion-bubble px-3.5 py-2.5 text-xs leading-relaxed ${
+                                                    parseAttachments(msg.attachments).length > 0 ? 'discussion-bubble-media' : ''
+                                                } ${
+                                                    isUser
+                                                        ? 'discussion-bubble-me bg-[var(--tp-accent)] text-white'
+                                                        : 'discussion-bubble-them border border-[var(--tp-rule-panel)] bg-[var(--tp-surface)] text-[var(--tp-ink-2)]'
                                                 }`}>
                                                     {msg.body && (
                                                         <RichMessageBody
@@ -954,8 +977,8 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                         attachments={parseAttachments(msg.attachments)}
                                                         isUser={isUser}
                                                     />
-                                                    <div className={`mt-1.5 text-[10px] font-medium flex items-center justify-end gap-1 ${
-                                                        isUser ? 'text-emerald-100/80' : 'text-slate-400'
+                                                    <div className={`mt-1.5 flex items-center justify-end gap-1 text-[11px] font-medium tabular-nums ${
+                                                        isUser ? 'text-white/70' : 'text-[var(--tp-meta)]'
                                                     }`}>
                                                         <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                     </div>
@@ -968,7 +991,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                             {intent === 'Approved' && (
                                                                 <button
                                                                     onClick={() => handleExecuteActionFromChat('Approved')}
-                                                                    className="flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
+                                                                    className="flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
                                                                 >
                                                                     <Check className="h-3.5 w-3.5" />
                                                                     <span>Approve deal</span>
@@ -977,7 +1000,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                             {intent === 'Rejected' && (
                                                                 <button
                                                                     onClick={() => handleExecuteActionFromChat('Rejected')}
-                                                                    className="flex items-center gap-1.5 rounded-full border border-rose-300 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-800 hover:bg-rose-100 transition-colors shadow-2xs"
+                                                                    className="flex items-center gap-1.5 rounded-full border border-[var(--tp-danger-rule)] bg-[var(--tp-danger-soft)] px-3 py-1 text-xs font-semibold text-rose-800 hover:bg-rose-100 transition-colors"
                                                                 >
                                                                     <X className="h-3.5 w-3.5" />
                                                                     <span>Reject deal</span>
@@ -986,7 +1009,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                             {intent === 'Re-negotiate' && (
                                                                 <button
                                                                     onClick={() => handleExecuteActionFromChat('Re-negotiate')}
-                                                                    className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors shadow-2xs"
+                                                                    className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-[var(--tp-warning-soft)] px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
                                                                 >
                                                                     <RefreshCw className="h-3.5 w-3.5" />
                                                                     <span>Re-negotiate deal</span>
@@ -1002,30 +1025,34 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                             })
                         )}
                         {otherReaders.length > 0 && (
-                            <div className="pt-1 flex items-center justify-end gap-1.5 text-[11px] text-slate-400 font-medium select-none">
-                                <CheckCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <div className="pt-1 flex items-center justify-end gap-1.5 text-[11px] text-[var(--tp-meta)] font-medium select-none">
+                                <CheckCheck className="w-3.5 h-3.5 text-[var(--tp-accent)] shrink-0" />
                                 <span>
                                     Seen by {otherReaders.map(r => r.user_name).join(', ')} at {new Date(otherReaders[0].last_read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
                         )}
                         <div ref={messagesEndRef} />
+
+                        {/* Pinned to the foot of the feed, above the composer:
+                            every screenshot in the thread, in one place. */}
+                        <ThreadImageRail attachments={threadAttachments} />
                     </div>
 
-                    <div className="discussion-composer px-5 pb-5 pt-3 border-t border-slate-100 bg-white relative">
+                    <div className="discussion-composer px-5 pb-5 pt-3 border-t border-[var(--tp-rule)] bg-white relative">
                         <PendingAttachmentStrip
                             pending={pendingAttachments}
                             onRemove={handleRemovePending}
                         />
 
                         {attachmentError && (
-                            <div className="mb-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-900">
-                                <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-amber-600" />
+                            <div className="mb-2 flex items-start gap-1.5 rounded-lg border border-[var(--tp-warning-rule)] bg-[var(--tp-warning-soft)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--tp-warning)]">
+                                <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-[var(--tp-warning)]" />
                                 <span className="flex-1">{attachmentError}</span>
                                 <button
                                     type="button"
                                     onClick={() => setAttachmentError(null)}
-                                    className="shrink-0 rounded p-0.5 transition-colors hover:bg-amber-200"
+                                    className="shrink-0 rounded p-0.5 transition-colors hover:bg-[var(--tp-warning-rule)]"
                                     aria-label="Dismiss"
                                 >
                                     <X className="h-3 w-3" />
@@ -1044,8 +1071,8 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
 
                         <Suspense
                             fallback={
-                                <div className="flex h-[76px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
-                                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                                <div className="flex h-[76px] items-center justify-center rounded-2xl border border-[var(--tp-rule)] bg-white">
+                                    <Loader2 className="h-4 w-4 animate-spin text-[var(--tp-meta)]" />
                                 </div>
                             }
                         >

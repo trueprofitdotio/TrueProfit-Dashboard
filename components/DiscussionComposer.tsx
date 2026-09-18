@@ -192,8 +192,8 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
     return (
         <>
             {mentionQuery !== null && filteredMembers.length > 0 && (
-                <div className="absolute bottom-full left-5 right-5 mb-2 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl animate-in fade-in zoom-in-95 duration-150">
-                    <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                <div className="absolute bottom-full left-5 right-5 mb-2 z-50 overflow-hidden rounded-2xl border border-[var(--tp-rule)] bg-white shadow-xl animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center gap-1 border-b border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] px-3 py-2 text-[11px] font-semibold text-[var(--tp-muted)]">
                         <AtSign className="h-3 w-3 text-[var(--accent-color)]" />
                         <span>Mention Team Member</span>
                     </div>
@@ -207,19 +207,19 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                                 className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors ${
                                     mentionIndex === idx
                                         ? 'bg-emerald-50 font-semibold text-emerald-900'
-                                        : 'text-slate-700 hover:bg-slate-50'
+                                        : 'text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-sunken)]'
                                 }`}
                             >
                                 <span className="flex min-w-0 items-center gap-2">
-                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent-color)] text-[10px] font-bold text-white">
+                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent-color)] text-[11px] font-semibold text-white">
                                         {member.name.charAt(0)}
                                     </span>
                                     <span className="truncate">
-                                        <span className="block truncate font-semibold text-slate-800">{member.name}</span>
-                                        <span className="block truncate text-[10px] text-slate-400">{member.email}</span>
+                                        <span className="block truncate font-semibold text-[var(--tp-ink)]">{member.name}</span>
+                                        <span className="block truncate text-[11px] text-[var(--tp-meta)]">{member.email}</span>
                                     </span>
                                 </span>
-                                <span className="rounded-md bg-emerald-100/60 px-1.5 py-0.5 font-mono text-[10px] text-emerald-700">
+                                <span className="rounded-md bg-emerald-100/60 px-1.5 py-0.5 font-mono text-[11px] text-[var(--tp-accent-ink)]">
                                     @{member.name.split(' ')[0]}
                                 </span>
                             </button>
@@ -240,7 +240,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                         className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
                             active
                                 ? 'bg-emerald-100 text-[var(--accent-color)]'
-                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                                : 'text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink)]'
                         }`}
                     >
                         <Icon className="h-3.5 w-3.5" />
@@ -254,24 +254,24 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                     onClick={onAttachClick}
                     title="Attach a screenshot or file"
                     aria-label="Attach a screenshot or file"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--tp-muted)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink)]"
                 >
                     <Paperclip className="h-3.5 w-3.5" />
                 </button>
 
-                <span className="ml-auto text-[10px] text-slate-400">
+                <span className="ml-auto text-[11px] text-[var(--tp-meta)]">
                     Paste or drop a screenshot
                 </span>
             </div>
 
             <div className="flex items-end gap-2">
-                <div className="discussion-editor-shell max-h-[180px] min-h-[44px] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs transition-colors focus-within:border-[var(--accent-color)]">
+                <div className="discussion-editor-shell max-h-[180px] min-h-[44px] w-full overflow-y-auto rounded-2xl border border-[var(--tp-rule)] bg-white px-4 py-2.5 text-xs transition-colors focus-within:border-[var(--accent-color)]">
                     <EditorContent editor={editor} />
                 </div>
                 <button
                     onClick={onSend}
                     disabled={!canSend}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-color)] text-white shadow-2xs transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-color)] text-white transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Send message"
                     title="Send message (Enter)"
                 >

@@ -92,23 +92,23 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange }) 
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"
+                className="w-full bg-white text-left p-2.5 border border-[#dde3d9]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"
                 aria-haspopup="true"
                 aria-expanded={isOpen}
             >
-                <span className="text-slate-800">{formatShortDate(value)}</span>
-                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <span className="text-[var(--tp-ink)]">{formatShortDate(value)}</span>
+                <svg className="w-5 h-5 text-[var(--tp-meta)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             </button>
 
             {isOpen && (
-                <div className="absolute z-20 mt-1 w-full sm:w-80 bg-white border border-[#bfdbfe]/50 p-4 rounded-2xl shadow-none">
+                <div className="absolute z-20 mt-1 w-full sm:w-80 bg-white border border-[#dde3d9]/50 p-4 rounded-2xl">
                     <div className="flex justify-between items-center mb-4">
                         <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-emerald-50 rounded-full w-8 h-8 flex items-center justify-center" aria-label="Previous month">&lt;</button>
-                        <span className="font-semibold text-slate-800">{formatMonthYear(viewDate)}</span>
+                        <span className="font-semibold text-[var(--tp-ink)]">{formatMonthYear(viewDate)}</span>
                         <button onClick={() => changeMonth(1)} className="p-2 hover:bg-emerald-50 rounded-full w-8 h-8 flex items-center justify-center" aria-label="Next month">&gt;</button>
                     </div>
                     <div className="grid grid-cols-7 gap-1 text-center text-sm">
-                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => <div key={day} className="font-medium text-slate-500">{day}</div>)}
+                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => <div key={day} className="font-medium text-[var(--tp-muted)]">{day}</div>)}
                         {calendarGrid.map((date, index) => (
                             date ? (
                                 <button
@@ -117,7 +117,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange }) 
                                     ref={el => { dayButtonRefs.current[index] = el; }}
                                     onClick={() => handleSelectDate(date)}
                                     className={`w-10 h-10 flex items-center justify-center transition-colors duration-150 rounded-full
-                                        ${isSameDay(date, value) ? 'bg-[var(--accent-color)] text-white font-bold' : ''}
+                                        ${isSameDay(date, value) ? 'bg-[var(--accent-color)] text-white font-semibold' : ''}
                                         ${!isSameDay(date, value) ? 'hover:bg-emerald-50' : ''}
                                         ${isSameDay(date, new Date()) && !isSameDay(date, value) ? 'text-[var(--accent-color)] font-semibold' : ''}
                                     `}

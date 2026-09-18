@@ -4,7 +4,7 @@ import { Affiliate } from '../types';
 
 const Loader: React.FC = () => (
     <div className="flex justify-center items-center p-8">
-        <div className="w-16 h-16 border-4 border-[#23C48C] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-16 h-16 border-4 border-[var(--accent-color)] border-t-transparent rounded-full animate-spin"></div>
     </div>
 );
 
@@ -69,22 +69,22 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
         <div className="relative" ref={dropdownRef}>
             <button
                 type="button"
-                className="w-full bg-white text-left p-2.5 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[#23C48C] flex justify-between items-center h-[42px] rounded-full px-5"
+                className="w-full bg-white text-left p-2.5 border border-[#dde3d9]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"
                 onClick={() => setIsOpen(!isOpen)}
             >
-                <span className={selectedOption ? 'text-slate-800' : 'text-slate-400'}>
+                <span className={selectedOption ? 'text-[var(--tp-ink)]' : 'text-[var(--tp-meta)]'}>
                     {selectedOption ? `${selectedOption.name} (${selectedOption.publicId})` : placeholder}
                 </span>
-                 <svg className="w-5 h-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l-7 7-7-7" /></svg>
+                 <svg className="w-5 h-5 text-[var(--tp-meta)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l-7 7-7-7" /></svg>
             </button>
 
             {isOpen && (
-                <div className="absolute z-10 mt-1 w-full bg-white max-h-60 overflow-hidden rounded-2xl border border-[#bfdbfe]/50 shadow-none">
-                    <div className="p-2 border-b border-[#bfdbfe]/30">
+                <div className="absolute z-10 mt-1 w-full bg-white max-h-60 overflow-hidden rounded-2xl border border-[#dde3d9]/50">
+                    <div className="p-2 border-b border-[#dde3d9]/30">
                         <input
                             type="text"
                             placeholder="Search affiliates..."
-                            className="w-full px-4 py-2 border border-[#bfdbfe]/50 focus:outline-none focus:ring-1 focus:ring-[#23C48C] rounded-full"
+                            className="w-full px-4 py-2 border border-[#dde3d9]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] rounded-full"
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
@@ -93,7 +93,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
                         {filteredOptions.map(option => (
                             <li
                                 key={option.publicId}
-                                className={`px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 cursor-pointer ${value === option.publicId ? 'bg-emerald-100/50' : ''}`}
+                                className={`px-4 py-2 text-sm text-[var(--tp-ink-2)] hover:bg-emerald-50 cursor-pointer ${value === option.publicId ? 'bg-emerald-100/50' : ''}`}
                                 onClick={() => handleSelect(option.publicId)}
                             >
                                 {option.name} ({option.publicId})
@@ -214,17 +214,17 @@ const PartnerAnalysis: React.FC = () => {
         <div className="space-y-8">
             <div className="card p-6 flex flex-col md:flex-row items-end gap-6 mb-8">
                 <div className="w-full md:w-auto">
-                    <label htmlFor="month" className="block text-sm font-semibold text-slate-700 mb-1">Month</label>
+                    <label htmlFor="month" className="block text-sm font-semibold text-[var(--tp-ink-2)] mb-1">Month</label>
                     <input
                         type="month"
                         id="month"
                         value={month}
                         onChange={e => setMonth(e.target.value)}
-                        className="p-2.5 border border-[#bfdbfe]/50 focus:ring-1 focus:ring-[#23C48C] focus:outline-none h-[42px] rounded-full px-5 w-full md:w-auto bg-white text-slate-800 text-sm"
+                        className="p-2.5 border border-[#dde3d9]/50 focus:ring-1 focus:ring-[var(--accent-color)] focus:outline-none h-[42px] rounded-full px-5 w-full md:w-auto bg-white text-[var(--tp-ink)] text-sm"
                     />
                 </div>
                 <div className="w-full md:w-1/3">
-                    <label htmlFor="affiliate" className="block text-sm font-semibold text-slate-700 mb-1">Affiliate</label>
+                    <label htmlFor="affiliate" className="block text-sm font-semibold text-[var(--tp-ink-2)] mb-1">Affiliate</label>
                      <SearchableSelect
                         options={sortedAffiliates}
                         value={selectedAffiliate}
@@ -233,28 +233,28 @@ const PartnerAnalysis: React.FC = () => {
                     />
                 </div>
                 <div className="w-full md:w-auto">
-                    <button onClick={handleGetMetric} disabled={loading || !selectedAffiliate} className="w-full px-8 py-2.5 text-white font-semibold rounded-full primary-btn bg-[#23C48C] focus:outline-none disabled:bg-slate-300 disabled:cursor-not-allowed disabled:transform-none h-[42px] border-none shadow-none">
+                    <button onClick={handleGetMetric} disabled={loading || !selectedAffiliate} className="w-full px-8 py-2.5 text-white font-semibold rounded-full primary-btn bg-[var(--accent-color)] focus:outline-none disabled:bg-slate-300 disabled:cursor-not-allowed disabled:transform-none h-[42px] border-none">
                         {loading ? 'Loading...' : 'Get Metrics'}
                     </button>
                 </div>
             </div>
 
             {loading && <Loader />}
-            {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl shadow-none" role="alert">{error}</div>}
+            {error && <div className="card flex items-start gap-2.5 p-4 text-[13px] font-medium text-[var(--tp-danger)]" role="alert"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tp-danger)]" /><span>{error}</span></div>}
             {data && (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="card p-6"><p className="text-sm text-slate-500 font-semibold mb-1">Total Clicks</p><p className="text-3xl font-bold text-slate-800">{formatNumber(data.clicks)}</p></div>
-                        <div className="card p-6"><p className="text-sm text-slate-500 font-semibold mb-1">Total Installs</p><p className="text-3xl font-bold text-slate-800">{formatNumber(data.installs)}</p></div>
-                        <div className="card p-6"><p className="text-sm text-slate-500 font-semibold mb-1">Total Revenue</p><p className="text-3xl font-bold text-slate-800">{formatCurrency(data.revenue)}</p></div>
-                        <div className="card p-6"><p className="text-sm text-slate-500 font-semibold mb-1">Total Payout</p><p className="text-3xl font-bold text-slate-800">{formatCurrency(data.payout)}</p></div>
+                        <div className="card p-6"><p className="text-sm text-[var(--tp-muted)] font-semibold mb-1">Total Clicks</p><p className="text-3xl font-semibold text-[var(--tp-ink)]">{formatNumber(data.clicks)}</p></div>
+                        <div className="card p-6"><p className="text-sm text-[var(--tp-muted)] font-semibold mb-1">Total Installs</p><p className="text-3xl font-semibold text-[var(--tp-ink)]">{formatNumber(data.installs)}</p></div>
+                        <div className="card p-6"><p className="text-sm text-[var(--tp-muted)] font-semibold mb-1">Total Revenue</p><p className="text-3xl font-semibold text-[var(--tp-ink)]">{formatCurrency(data.revenue)}</p></div>
+                        <div className="card p-6"><p className="text-sm text-[var(--tp-muted)] font-semibold mb-1">Total Payout</p><p className="text-3xl font-semibold text-[var(--tp-ink)]">{formatCurrency(data.payout)}</p></div>
                     </div>
                     
                     <div className="card p-6 overflow-x-auto">
-                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Daily Breakdown</h3>
+                        <h3 className="text-lg font-semibold text-[var(--tp-ink)] mb-4">Daily Breakdown</h3>
                         {data.daily.length > 0 ? (
-                            <table className="w-full text-sm text-left text-slate-500">
-                                <thead className="text-xs text-[#2236ba] font-bold uppercase bg-transparent">
+                            <table className="w-full text-sm text-left text-[var(--tp-muted)]">
+                                <thead className="text-xs text-[var(--tp-accent)] font-semibold bg-transparent">
                                     <tr>
                                         <th scope="col" className="px-6 py-3">Date</th>
                                         <th scope="col" className="px-6 py-3 text-right">Clicks</th>
@@ -263,16 +263,16 @@ const PartnerAnalysis: React.FC = () => {
                                 </thead>
                                 <tbody>
                                     {data.daily.map(row => (
-                                        <tr key={row.date} className="bg-white border-b border-[#bfdbfe]/30 hover:bg-slate-50/50">
-                                            <td className="px-6 py-4 font-medium text-slate-900">{row.date}</td>
-                                            <td className="px-6 py-4 text-right text-slate-600">{formatNumber(row.clicks)}</td>
-                                            <td className="px-6 py-4 text-right text-slate-600">{formatNumber(row.installs)}</td>
+                                        <tr key={row.date} className="bg-white border-b border-[#dde3d9]/30 hover:bg-[var(--tp-surface-sunken)]/50">
+                                            <td className="px-6 py-4 font-medium text-[var(--tp-ink)]">{row.date}</td>
+                                            <td className="px-6 py-4 text-right text-[var(--tp-muted)]">{formatNumber(row.clicks)}</td>
+                                            <td className="px-6 py-4 text-right text-[var(--tp-muted)]">{formatNumber(row.installs)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         ) : (
-                            <p className="text-slate-500 text-center py-4">No daily data available for this period.</p>
+                            <p className="text-[var(--tp-muted)] text-center py-4">No daily data available for this period.</p>
                         )}
                     </div>
                 </>
