@@ -39,7 +39,7 @@ interface KolPerformanceData {
 const Loader: React.FC<{ text?: string }> = ({ text }) => (
     <div className="flex flex-col justify-center items-center p-8 space-y-4">
         <div className="w-16 h-16 border-4 border-[var(--accent-color)] border-t-transparent rounded-full animate-spin"></div>
-        {text && <p className="text-[var(--accent-color)] animate-pulse">{text}</p>}
+        {text && <p className="text-[var(--tp-accent-ink)] animate-pulse">{text}</p>}
     </div>
 );
 
@@ -48,7 +48,7 @@ const formatNumber = (num: number) => new Intl.NumberFormat('en-US').format(num)
 const getPlatformTag = (url: string) => {
     if (!url) return { label: 'Unknown', color: 'bg-[var(--tp-surface-sunken)] text-[var(--tp-muted)]' };
     const lowerUrl = url.toLowerCase();
-    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return { label: 'Youtube', color: 'bg-red-100 text-[var(--tp-danger)]' };
+    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return { label: 'Youtube', color: 'bg-[var(--tp-danger-soft)] text-[var(--tp-danger)]' };
     if (lowerUrl.includes('tiktok.com')) return { label: 'TikTok', color: 'bg-[var(--tp-ink)] text-white' };
     if (lowerUrl.includes('x.com') || lowerUrl.includes('twitter.com')) return { label: 'X', color: 'bg-[var(--tp-surface-hover)] text-[var(--tp-ink)]' };
     if (lowerUrl.includes('instagram.com')) return { label: 'Instagram', color: 'bg-[var(--tp-accent-soft)] text-[var(--tp-accent-ink)]' };
@@ -74,7 +74,7 @@ const getVideoStatus = (video: VideoPerformanceData) => {
     }
 
     // Default to HEALTHY for all other cases (Active, Healthy, etc.)
-    return { label: 'Healthy', color: 'bg-emerald-100 text-[var(--tp-accent-ink)]' };
+    return { label: 'Healthy', color: 'bg-[var(--tp-accent-field)] text-[var(--tp-accent-ink)]' };
 };
 
 const utcInputStringToDate = (dateString: string | null | undefined): Date | null => {
@@ -218,7 +218,7 @@ const VideoTable: React.FC<{
                         {displayedVideos.map(v => (
                             <tr key={v.id} className="border-b border-[var(--tp-rule)] hover:bg-[var(--tp-surface-sunken)]">
                                 <td className="px-4 py-3 font-medium truncate" title={v.title || v.video_url}>
-                                    <a href={v.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent-color)]">
+                                    <a href={v.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--tp-accent-ink)]">
                                         {v.title && typeof v.title === 'string' && v.title.trim() !== "" ? v.title : v.video_url}
                                     </a>
                                 </td>
@@ -232,7 +232,7 @@ const VideoTable: React.FC<{
                                 <td className="px-4 py-3">{formatDisplayDateGmt7(utcInputStringToDate(v.released_date))}</td>
                                 <td className="px-4 py-3 text-right">{formatNumber(v.startViews)}</td>
                                 <td className="px-4 py-3 text-right">{formatNumber(v.endViews)}</td>
-                                <td className="px-4 py-3 text-right font-semibold text-[var(--tp-accent)]">{formatNumber(v.viewGrowth)}</td>
+                                <td className="px-4 py-3 text-right font-semibold text-[var(--tp-accent-ink)]">{formatNumber(v.viewGrowth)}</td>
                                 {showStatus && (
                                     <td className="px-4 py-3 text-center">
                                         {(() => {
@@ -242,7 +242,7 @@ const VideoTable: React.FC<{
                                     </td>
                                 )}
                                 <td className="px-4 py-3 text-center">
-                                    <button onClick={() => onSeeTrendline(v)} className="text-[var(--accent-color)] font-semibold hover:underline text-xs">
+                                    <button onClick={() => onSeeTrendline(v)} className="text-[var(--tp-accent-ink)] font-semibold hover:underline text-xs">
                                         See trendline
                                     </button>
                                 </td>
@@ -263,7 +263,7 @@ const VideoTable: React.FC<{
                     <div className="flex justify-center mt-4">
                         <button 
                             onClick={() => setShowAll(!showAll)}
-                            className="text-sm font-semibold text-[var(--accent-color)] hover:underline flex items-center gap-1"
+                            className="text-sm font-semibold text-[var(--tp-accent-ink)] hover:underline flex items-center gap-1"
                         >
                             {showAll ? 'Show less' : `Show more (${videos.length - initialLimit} more)`}
                         </button>
@@ -338,7 +338,7 @@ const Filters: React.FC<FiltersProps> = ({
                     </div>
                 </div>
                 <div className="self-end">
-                     <button onClick={onFetch} disabled={loading} className="primary-btn h-10 w-full rounded-[7px] bg-[var(--accent-color)] px-6 text-[13px] font-semibold text-white">
+                     <button onClick={onFetch} disabled={loading} className="primary-btn h-10 w-full rounded-[7px] bg-[var(--accent-color)] px-6 text-[13px] font-semibold text-[var(--tp-on-accent)]">
                         {loading ? 'Loading…' : 'Get performance'}
                     </button>
                 </div>
@@ -373,8 +373,8 @@ const Filters: React.FC<FiltersProps> = ({
                                 onClick={() => setCompareType(type.id as CompareType)}
                                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
                                     compareType === type.id 
-                                    ? 'bg-[var(--accent-color)] text-white border-[var(--accent-color)]' 
-                                    : 'bg-white text-[var(--tp-muted)] border-[#dde3d9]/50 hover:bg-[var(--tp-surface-sunken)]'
+                                    ? 'bg-[var(--accent-color)] text-[var(--tp-on-accent)] border-[var(--accent-color)]' 
+                                    : 'bg-white text-[var(--tp-muted)] border-[#e1e7e5]/50 hover:bg-[var(--tp-surface-sunken)]'
                                 }`}
                             >
                                 {type.label}
@@ -458,14 +458,14 @@ const TopKolTable: React.FC<{ title: string; data: KolPerformanceData[]; dateRan
                             </td>
                             <td className="px-4 py-3 text-right">{formatNumber(kol.startViews)}</td>
                             <td className="px-4 py-3 text-right">{formatNumber(kol.endViews)}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-[var(--tp-accent)]">{formatNumber(kol.viewGrowth)}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-[var(--tp-accent-ink)]">{formatNumber(kol.viewGrowth)}</td>
                             <td className="px-4 py-3 text-right">{kol.growthPercentage === Infinity ? 'New' : `${kol.growthPercentage.toFixed(1)}%`}</td>
                         </tr>
                         {expandedKolId === kol.kolId && (
                              <tr>
-                                <td colSpan={5} className="p-0 bg-emerald-50/30">
+                                <td colSpan={5} className="p-0 bg-[#f7f8fe]">
                                     <div className="p-4">
-                                         <table className="w-full text-xs"><thead className="border-b border-emerald-200">
+                                         <table className="w-full text-xs"><thead className="border-b border-[var(--tp-accent-rule)]">
                                                  <tr>
                                                     <th className="px-2 py-2 text-left font-semibold">Video Title</th>
                                                     <th className="px-2 py-2 text-left font-semibold">Released</th>
@@ -477,16 +477,16 @@ const TopKolTable: React.FC<{ title: string; data: KolPerformanceData[]; dateRan
                                             </thead>
                                             <tbody>
                                                 {kol.videos.map(video => (
-                                                    <tr key={video.id} className="border-b border-emerald-100 last:border-b-0">
+                                                    <tr key={video.id} className="border-b border-[var(--tp-rule)] last:border-b-0">
                                                         <td className="px-2 py-2 font-medium text-[var(--tp-ink)] max-w-xs truncate">
-                                                             <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent-color)]" title={video.title || video.video_url}>
+                                                             <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--tp-accent-ink)]" title={video.title || video.video_url}>
                                                                 {video.title && typeof video.title === 'string' && video.title.trim() !== "" ? video.title : video.video_url}
                                                              </a>
                                                         </td>
                                                         <td className="px-2 py-2">{formatDisplayDateGmt7(utcInputStringToDate(video.released_date))}</td>
                                                         <td className="px-2 py-2 text-right">{formatNumber(video.startViews)}</td>
                                                         <td className="px-2 py-2 text-right">{formatNumber(video.endViews)}</td>
-                                                        <td className="px-2 py-2 text-right font-semibold text-[var(--tp-accent)]">{formatNumber(video.viewGrowth)}</td>
+                                                        <td className="px-2 py-2 text-right font-semibold text-[var(--tp-accent-ink)]">{formatNumber(video.viewGrowth)}</td>
                                                         <td className="px-2 py-2 text-right">{video.growthPercentage === Infinity ? 'New' : `${video.growthPercentage.toFixed(1)}%`}</td>
                                                     </tr>
                                                 ))}
@@ -503,7 +503,7 @@ const TopKolTable: React.FC<{ title: string; data: KolPerformanceData[]; dateRan
         </div>
         {data.length > 10 && (
             <div className="border-t border-[var(--tp-rule)] px-5 py-3">
-                <button onClick={onToggleShowAll} className="text-[12.5px] font-semibold text-[var(--tp-accent)] hover:underline">
+                <button onClick={onToggleShowAll} className="text-[12.5px] font-semibold text-[var(--tp-accent-ink)] hover:underline">
                     {showAll ? 'Show fewer KOLs' : `Show all ${data.length} KOLs`}
                 </button>
             </div>
@@ -546,21 +546,21 @@ const PerformanceTable: React.FC<{ title: string; data: VideoPerformanceData[]; 
                            <div className="flex items-center gap-2">
                                <div className="marquee-container">
                                    <div className="marquee-content">
-                                       <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent-color)]">
+                                       <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--tp-accent-ink)]">
                                            {video.title && typeof video.title === 'string' && video.title.trim() !== "" ? video.title : video.video_url}
                                        </a>
                                    </div>
                                </div>
                                {isNew(video.released_date) && (
-                                   <span className="px-1.5 py-0.5 text-[11px] font-semibold bg-emerald-100 text-[var(--tp-accent-ink)] rounded shrink-0">New</span>
+                                   <span className="px-1.5 py-0.5 text-[11px] font-semibold bg-[var(--tp-accent-field)] text-[var(--tp-accent-ink)] rounded shrink-0">New</span>
                                )}
                            </div>
                         </td>
                         <td className="px-4 py-3">{formatDisplayDateGmt7(utcInputStringToDate(video.released_date))}</td><td className="px-4 py-3">{video.kols?.name || 'N/A'}</td>
                         <td className="px-4 py-3 text-right">{formatNumber(video.startViews)}</td><td className="px-4 py-3 text-right">{formatNumber(video.endViews)}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-[var(--tp-accent)]">{formatNumber(video.viewGrowth)}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-[var(--tp-accent-ink)]">{formatNumber(video.viewGrowth)}</td>
                         <td className="px-4 py-3 text-right">{video.growthPercentage === Infinity ? 'New' : `${video.growthPercentage.toFixed(1)}%`}</td>
-                        <td className="px-4 py-3 text-center"><button onClick={() => onSeeTrendline(video)} className="text-[var(--accent-color)] font-semibold hover:underline">See trendline</button></td>
+                        <td className="px-4 py-3 text-center"><button onClick={() => onSeeTrendline(video)} className="text-[var(--tp-accent-ink)] font-semibold hover:underline">See trendline</button></td>
                     </tr>
                 ))}
             </tbody>
@@ -628,8 +628,8 @@ const DetailedPerformanceModal: React.FC<{
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-[#ffffff] rounded-2xl w-full max-w-[1600px] max-h-[90vh] overflow-hidden flex flex-col border border-[#dde3d9]/50">
-                <div className="p-6 border-b border-[#dde3d9]/30 flex justify-between items-center bg-[var(--tp-surface-sunken)]/50">
+            <div className="bg-[#ffffff] rounded-2xl w-full max-w-[1600px] max-h-[90vh] overflow-hidden flex flex-col border border-[#e1e7e5]/50">
+                <div className="p-6 border-b border-[#e1e7e5]/30 flex justify-between items-center bg-[var(--tp-surface-sunken)]/50">
                     <div>
                         <h2 className="text-2xl font-semibold text-[var(--tp-ink)]">{title}</h2>
                         <p className="text-[var(--tp-muted)] text-sm">Detailed view growth from release date</p>
@@ -670,14 +670,14 @@ const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; is
                 tooltip: { 
                     trigger: 'axis',
                     backgroundColor: '#ffffff',
-                    borderColor: '#dde3d9',
+                    borderColor: '#e1e7e5',
                     borderWidth: 1,
                     padding: [10, 12],
-                    textStyle: { color: '#17211f', fontSize: 12 },
+                    textStyle: { color: '#0f1613', fontSize: 12 },
                     extraCssText: 'border-radius: 6px; box-shadow: none;',
                     formatter: (params: any[]) => {
                         const point = params[0];
-                        return `<div style="font-size:11px;color:#5d6b67;margin-bottom:4px">${point.axisValueLabel}</div><div style="font-weight:700;font-size:14px;color:#17211f">${formatNumber(point.value)} views</div>`;
+                        return `<div style="font-size:11px;color:#5a635f;margin-bottom:4px">${point.axisValueLabel}</div><div style="font-weight:700;font-size:14px;color:#0f1613">${formatNumber(point.value)} views</div>`;
                     }
                 },
                 xAxis: { 
@@ -685,13 +685,13 @@ const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; is
                     data: data.points.map(p => formatDisplayDateGmt7(utcInputStringToDate(p.date))),
                     axisLine: { show: false },
                     axisTick: { show: false },
-                    axisLabel: { color: '#5d6b67', fontSize: 10, interval: 'auto' },
+                    axisLabel: { color: '#5a635f', fontSize: 10, interval: 'auto' },
                     boundaryGap: false,
                 },
                 yAxis: { 
                     type: 'value',
-                    axisLabel: { color: '#5d6b67', fontSize: 10, formatter: (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}` },
-                    splitLine: { lineStyle: { color: '#dde3d9', type: 'dashed' } },
+                    axisLabel: { color: '#5a635f', fontSize: 10, formatter: (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}` },
+                    splitLine: { lineStyle: { color: '#e1e7e5', type: 'dashed' } },
                     axisLine: { show: false },
                     axisTick: { show: false },
                 },
@@ -701,7 +701,7 @@ const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; is
                     type: 'line', 
                     smooth: true, 
                     showSymbol: false,
-                    lineStyle: { width: 2.5, color: '#176b5e' },
+                    lineStyle: { width: 2.5, color: '#12a877' },
                     areaStyle: { color: 'rgba(23, 107, 94, 0.10)' },
                     emphasis: { disabled: true }
                 }],
@@ -729,14 +729,14 @@ const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; is
                     <button 
                         onClick={onSeeFull}
                         disabled={loadingFull}
-                        className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--tp-accent-ink)] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-4 py-2 rounded-full transition-all disabled:opacity-60"
+                        className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--tp-accent-ink)] bg-[var(--tp-accent-soft)] hover:bg-[var(--tp-accent-field)] border border-[var(--tp-accent-rule)] px-4 py-2 rounded-full transition-all disabled:opacity-60"
                     >
                         {loadingFull ? 'Loading history…' : 'See full history from release date'}
                     </button>
                 )}
                 {isFull && (
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--tp-muted)] bg-[var(--tp-surface-hover)] border border-[var(--tp-rule)] px-4 py-2 rounded-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--tp-positive)] inline-block"></span>
                         Showing full history from release date
                     </span>
                 )}
@@ -1041,7 +1041,7 @@ const InfluencerPerformance: React.FC = () => {
                                     sitting in three competing boxes. */}
                                 <div className="tp-inset grid grid-cols-1 divide-y divide-[var(--tp-rule)] md:grid-cols-3 md:divide-x md:divide-y-0">
                                     <div className="p-5">
-                                        <p className="mb-1.5 text-[12px] font-semibold text-[var(--tp-accent)]">Total view growth</p>
+                                        <p className="mb-1.5 text-[12px] font-semibold text-[var(--tp-accent-ink)]">Total view growth</p>
                                         <p className="mb-1 text-[30px] font-semibold leading-none tracking-[-0.025em] tabular-nums text-[var(--tp-accent-ink)]">{formatNumber(overviewStats.current.totalGrowth)}</p>
                                         <ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.totalGrowth, overviewStats.previous.totalGrowth)} vsDateRange={overviewStats.vsDateRange} />
                                     </div>
@@ -1111,17 +1111,17 @@ const InfluencerPerformance: React.FC = () => {
                     {/* Backdrop overlay */}
                     <div
                         onClick={() => setSidebarState(false)}
-                        className={`trendline-backdrop fixed inset-0 bg-slate-900/10 z-[99] transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                        className={`trendline-backdrop fixed inset-0 bg-[rgba(15,21,36,0.1)] z-[99] transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                     />
 
                     {/* Sidebar panel */}
-                    <div className={`trendline-sidebar fixed top-0 right-0 h-full w-[520px] max-w-full bg-white z-[100] flex flex-col border-l border-[#dde3d9]/50 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                    <div className={`trendline-sidebar fixed top-0 right-0 h-full w-[520px] max-w-full bg-white z-[100] flex flex-col border-l border-[#e1e7e5]/50 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
 
                         {/* ── Header ── */}
                         <div className="trendline-sidebar-header flex-none px-6 py-5">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-[var(--accent-color)] mb-1">Video trendline</p>
+                                    <p className="text-xs font-semibold text-[var(--tp-accent-ink)] mb-1">Video trendline</p>
                                     <h2 className="text-base font-semibold text-[var(--tp-ink)] leading-snug line-clamp-2">
                                         {selectedVideo?.title || 'Loading…'}
                                     </h2>
@@ -1149,9 +1149,9 @@ const InfluencerPerformance: React.FC = () => {
 
                         {/* ── View Growth Badge ── */}
                         {selectedVideo && (
-                            <div className="trendline-growth-row flex-none px-6 py-3 border-b border-[#dde3d9]/30 flex items-center justify-between">
+                            <div className="trendline-growth-row flex-none px-6 py-3 border-b border-[#e1e7e5]/30 flex items-center justify-between">
                                 <span className="text-xs text-[var(--tp-muted)] font-medium">View Growth (selected period)</span>
-                                <span className="text-sm font-semibold text-[var(--tp-accent)]">+{formatNumber(selectedVideo.viewGrowth)}</span>
+                                <span className="text-sm font-semibold text-[var(--tp-accent-ink)]">+{formatNumber(selectedVideo.viewGrowth)}</span>
                             </div>
                         )}
 
@@ -1166,7 +1166,7 @@ const InfluencerPerformance: React.FC = () => {
 
                                 {isTrendlineLoading ? (
                                     <div className="h-56 flex flex-col items-center justify-center gap-3">
-                                        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                        <div className="w-8 h-8 border-2 border-[var(--tp-accent)] border-t-transparent rounded-full animate-spin" />
                                         <p className="text-xs text-[var(--tp-meta)] font-medium">Analyzing trends…</p>
                                     </div>
                                 ) : trendlineData ? (
@@ -1186,7 +1186,7 @@ const InfluencerPerformance: React.FC = () => {
                                     </div>
                                 )}
                                                     {/* Divider */}
-                            <div className="mx-6 my-3 border-t border-[#dde3d9]/30" />
+                            <div className="mx-6 my-3 border-t border-[#e1e7e5]/30" />
 
                             {/* Video details */}
                             {selectedVideo && (
@@ -1194,23 +1194,23 @@ const InfluencerPerformance: React.FC = () => {
                                     <p className="text-[11px] font-semibold text-[var(--tp-meta)] mb-3">Video Details</p>
 
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-[#f7f9f5] rounded-xl p-3.5 border border-[#dde3d9]/40">
+                                        <div className="bg-[#f7faf9] rounded-xl p-3.5 border border-[#e1e7e5]/40">
                                             <p className="text-[11px] text-[var(--tp-meta)] font-semibold mb-1">Platform</p>
                                             {(() => {
                                                 const platform = getPlatformTag(selectedVideo.video_url);
                                                 return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${platform.color}`}>{platform.label}</span>;
                                             })()}
                                         </div>
-                                        <div className="bg-[#f7f9f5] rounded-xl p-3.5 border border-[#dde3d9]/40">
+                                        <div className="bg-[#f7faf9] rounded-xl p-3.5 border border-[#e1e7e5]/40">
                                             <p className="text-[11px] text-[var(--tp-meta)] font-semibold mb-1">KOL</p>
                                             <p className="text-sm font-semibold text-[var(--tp-ink)] truncate">{selectedVideo.kols?.name || '—'}</p>
                                         </div>
-                                        <div className="bg-[#f7f9f5] rounded-xl p-3.5 border border-[#dde3d9]/40">
+                                        <div className="bg-[#f7faf9] rounded-xl p-3.5 border border-[#e1e7e5]/40">
                                             <p className="text-[11px] text-[var(--tp-meta)] font-semibold mb-1">Released</p>
                                             <p className="text-sm font-semibold text-[var(--tp-ink)]">{formatDisplayDateGmt7(utcInputStringToDate(selectedVideo.released_date))}</p>
                                         </div>
-                                        <div className="bg-emerald-50 rounded-xl p-3.5 border border-emerald-100/50">
-                                            <p className="text-[11px] text-[var(--tp-accent)] font-semibold mb-1">View Growth</p>
+                                        <div className="bg-[var(--tp-accent-soft)] rounded-xl p-3.5 border border-[var(--tp-accent-rule)]">
+                                            <p className="text-[11px] text-[var(--tp-accent-ink)] font-semibold mb-1">View Growth</p>
                                             <p className="text-sm font-semibold text-[var(--tp-accent-ink)]">+{formatNumber(selectedVideo.viewGrowth)}</p>
                                         </div>
                                     </div>
@@ -1220,7 +1220,7 @@ const InfluencerPerformance: React.FC = () => {
                                             href={selectedVideo.video_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex w-full items-center justify-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-full transition-all border border-[#dde3d9]/30"
+                                            className="flex w-full items-center justify-center gap-2 px-6 py-2.5 bg-[var(--tp-ink)] hover:bg-[var(--tp-ink-2)] text-white text-sm font-semibold rounded-full transition-all border border-[#e1e7e5]/30"
                                         >
                                             Open Video ↗
                                         </a>

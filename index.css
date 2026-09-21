@@ -1,57 +1,94 @@
 @import "tailwindcss";
 
+/* Tailwind's own sans stack, so a `font-sans` utility — which the Proposal
+   workspace and several popovers carry — resolves to the product face instead
+   of resetting to the system stack. Kept in step with --tp-font by hand;
+   @theme takes a literal, not a var(). */
+@theme {
+  --font-sans: "Inter", "Inter var", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
 /* ==========================================================================
    TrueProfit Operations Workspace — "Layered Operating Sheet"
-   Work happens on white sheets that sit on a warm sage canvas. The canvas is
-   never a reading surface; every piece of text lives on a raised sheet.
+   Work happens on white sheets that sit on a bright porcelain canvas. The
+   canvas is never a reading surface; every piece of text lives on a raised
+   sheet. The brand mint is the signal, and because it is too bright to carry
+   white text it is always a fill with a near-black label.
    ========================================================================== */
 
 :root {
   /* --- Canvas and surfaces -------------------------------------------- */
-  --tp-canvas: #edf0ea;          /* the page ground; never carries text */
-  --tp-canvas-edge: #e2e7de;     /* seam between canvas and a sheet edge */
+  --tp-canvas: #f4f7f6;          /* the page ground; never carries text */
+  --tp-canvas-edge: #e6ebe9;     /* seam between canvas and a sheet edge */
   --tp-surface: #ffffff;         /* the reading sheet */
-  --tp-surface-sunken: #f7f9f5;  /* table heads, nested quiet blocks */
-  --tp-surface-hover: #f2f6f2;   /* row and control hover */
-  --tp-surface-active: #eaf1ec;
+  --tp-surface-sunken: #f7faf9;  /* table heads, nested quiet blocks */
+  --tp-surface-hover: #f2f7f5;   /* row and control hover */
+  --tp-surface-active: #e8f6f0;
 
   /* --- Rules ----------------------------------------------------------- */
-  --tp-rule: #e6eae3;            /* hairline inside a sheet */
-  --tp-rule-panel: #dde3d9;      /* a sheet's own edge */
-  --tp-rule-strong: #c8d3cc;     /* control edges: inputs, filter triggers */
-  --tp-rule-stronger: #b5c4bc;
+  --tp-rule: #ecf0ee;            /* hairline inside a sheet */
+  --tp-rule-panel: #e1e7e5;      /* a sheet's own edge */
+  --tp-rule-strong: #c9d2ce;     /* control edges: inputs, filter triggers */
+  --tp-rule-stronger: #b0bcb7;
 
   /* --- Ink ladder (all ratios measured against #ffffff) ---------------- */
-  --tp-ink: #17211f;             /* 15.8:1 — headings, key figures */
-  --tp-ink-2: #2b3835;           /* 11.4:1 — body, table cells */
-  --tp-muted: #5d6b67;           /*  5.6:1 — secondary labels */
-  --tp-meta: #6c7a76;            /*  4.6:1 — metadata, placeholders */
-  --tp-faint: #93a09c;           /*  2.9:1 — dividers, icon strokes only */
+  --tp-ink: #0f1613;             /* 18.4:1 — headings, key figures */
+  --tp-ink-2: #262e2b;           /* 13.9:1 — body, table cells */
+  --tp-muted: #5a635f;           /*  6.2:1 — secondary labels */
+  --tp-meta: #6a736f;            /*  4.9:1 — metadata, placeholders */
+  --tp-faint: #9ba5a1;           /*  2.5:1 — dividers, icon strokes only */
 
-  /* --- Accent ---------------------------------------------------------- */
-  --accent-color: #176b5e;
-  --tp-accent: #176b5e;          /*  5.9:1 on white */
-  --tp-accent-strong: #10544a;
-  --tp-accent-ink: #0d443c;
-  --tp-accent-soft: #e8f1ee;
-  --tp-accent-rule: #bcd6cf;
+  /* --- Accent: three steps, and each has one job ----------------------
+     The brand green is bright enough that white text on it reads at 2.25:1,
+     so it is a FILL, never a text colour and never a hairline indicator:
+       accent        large filled shapes — buttons, bubbles, badges. Its
+                     label is --tp-on-accent (8.2:1), never white.
+       accent-strong hover fill, and every thin graphic that must survive on
+                     white: the active tab underline, progress fills, focus
+                     borders, the mint chart series (3.05:1).
+       accent-ink    accent-coloured TEXT and icons on a light surface, plus
+                     focus outlines (5.2:1).
+     Reaching for the wrong step is how this palette breaks. */
+  --accent-color: #23c48c;
+  --tp-accent: #23c48c;          /*  the brand, as a fill */
+  --tp-accent-strong: #12a877;   /*  3.05:1 — hover fill, thin indicators */
+  --tp-accent-ink: #0b7c57;      /*  5.2:1 — accent text and icons */
+  --tp-on-accent: #0f1613;       /*  8.2:1 on the accent fill */
+  --tp-accent-soft: #e6f9f1;     /*  the accent as a field */
+  --tp-accent-field: #daf7eb;    /*  the same field, one step in */
+  --tp-accent-rule: #a7e3cb;
 
-  /* --- Semantic -------------------------------------------------------- */
-  --tp-positive: #0e7350;
-  --tp-positive-soft: #e6f3ec;
-  --tp-positive-rule: #b6ddc7;
-  --tp-warning: #8a5709;
-  --tp-warning-soft: #fbf1dd;
-  --tp-warning-rule: #ead9b3;
-  --tp-danger: #ad2138;
-  --tp-danger-soft: #fdecef;
-  --tp-danger-rule: #f0c8cf;
-  --tp-info: #1f5a96;
-  --tp-info-soft: #ebf2fa;
-  --tp-info-rule: #c6daef;
+  /* --- Semantic --------------------------------------------------------
+     Green is the brand here, so positive deliberately reuses the accent's
+     ink rather than introducing a second, near-identical green. The two
+     never collide because they never take the same form: a primary action
+     is a bright accent FILL with a dark label; positive state is deep green
+     TEXT on a pale field. */
+  --tp-positive: #0b7c57;
+  --tp-positive-soft: #e6f9f1;
+  --tp-positive-rule: #a7e3cb;
+  --tp-warning: #b45309;
+  --tp-warning-soft: #fff6e5;
+  --tp-warning-rule: #fbe0ae;
+  --tp-danger: #d91a43;
+  --tp-danger-soft: #fff3f5;
+  --tp-danger-rule: #f8c8d3;
+  --tp-info: #1a65c8;
+  --tp-info-soft: #edf4fd;
+  --tp-info-rule: #c3daf7;
 
   /* Legacy alias kept so existing markup resolves to the new ink. */
-  --header-blue: #17211f;
+  --header-blue: #0f1613;
+
+  /* --- Data series: charts draw from this ramp, never from stray hexes --
+     Five hues spread across the wheel, each clearing 3:1 on white so a line
+     or a bar stays visible. Mirrors PALETTE in constants.tsx. */
+  --tp-series-1: #12a877;        /* mint   — the brand measure */
+  --tp-series-2: #1d6fd8;        /* blue */
+  --tp-series-3: #7c3aed;        /* violet */
+  --tp-series-4: #d97706;        /* amber */
+  --tp-series-5: #d91a43;        /* rose */
+  --tp-series-6: #0891b2;        /* cyan */
 
   /* --- Radius ---------------------------------------------------------- */
   --tp-r-xs: 5px;
@@ -64,19 +101,21 @@
   --tp-radius-control: var(--tp-r-sm);
   --tp-radius-popup: var(--tp-r-md);
 
-  /* --- Elevation: every shadow carries an offset and a soft blur ------- */
+  /* --- Elevation: every shadow carries an offset and a soft blur -------
+     Tinted with the ink's own cast so a raised sheet sits on the canvas
+     instead of being smudged with neutral grey. */
   --tp-elev-1:
-    0 1px 1px rgba(23, 33, 31, 0.035),
-    0 2px 6px -1px rgba(23, 33, 31, 0.05);
+    0 1px 1px rgba(15, 22, 19, 0.035),
+    0 2px 6px -1px rgba(15, 22, 19, 0.055);
   --tp-elev-2:
-    0 1px 2px rgba(23, 33, 31, 0.05),
-    0 6px 16px -4px rgba(23, 33, 31, 0.1);
+    0 1px 2px rgba(15, 22, 19, 0.05),
+    0 6px 16px -4px rgba(15, 22, 19, 0.1);
   --tp-elev-3:
-    0 2px 4px -1px rgba(23, 33, 31, 0.06),
-    0 18px 40px -10px rgba(23, 33, 31, 0.16);
+    0 2px 4px -1px rgba(15, 22, 19, 0.06),
+    0 18px 40px -10px rgba(15, 22, 19, 0.16);
   --tp-elev-4:
-    0 4px 8px -2px rgba(23, 33, 31, 0.08),
-    0 32px 64px -16px rgba(23, 33, 31, 0.22);
+    0 4px 8px -2px rgba(15, 22, 19, 0.08),
+    0 32px 64px -16px rgba(15, 22, 19, 0.22);
 
   /* --- Space: 4-unit base --------------------------------------------- */
   --tp-s1: 4px;
@@ -96,10 +135,12 @@
   --tp-dur-fast: 120ms;
 
   /* --- Type ------------------------------------------------------------
-     Instrument Sans carries a 400–700 axis only, so hierarchy is built from
-     size, colour and spacing rather than from heavy weights. Nothing in the
-     interface goes above 600 except a figure, and controls sit at 500. */
-  --tp-font: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+     Inter, served with its optical-size axis so large text tightens on its
+     own. Hierarchy is built from size, colour and spacing rather than from
+     heavy weights: nothing goes above 600 except a figure, controls sit at
+     500. Inter is wider and larger on the body than the face it replaced,
+     so every tracking step below is a notch looser than before. */
+  --tp-font: "Inter", "Inter var", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --tp-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --tp-w-regular: 400;
   --tp-w-medium: 500;   /* every control label */
@@ -122,10 +163,13 @@ body {
   background: var(--tp-canvas);
   color: var(--tp-ink-2);
   font-family: var(--tp-font);
+  /* Inter ships an optical-size axis: let large text tighten on its own
+     rather than hand-tracking every heading. */
+  font-optical-sizing: auto;
   font-size: 14px;
   font-weight: var(--tp-w-regular);
   line-height: 1.5;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -157,7 +201,7 @@ button, a, input, select, textarea, label, summary {
 }
 
 :focus-visible {
-  outline: 2px solid var(--tp-accent);
+  outline: 2px solid var(--tp-accent-ink);
   outline-offset: 2px;
   border-radius: 3px;
 }
@@ -202,7 +246,7 @@ table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
   color: var(--tp-ink);
   font-size: 18px;
   font-weight: var(--tp-w-strong);
-  letter-spacing: -0.022em;
+  letter-spacing: -0.018em;
   line-height: 1.1;
   white-space: nowrap;
 }
@@ -231,7 +275,7 @@ table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
   font-size: 13.5px;
   font-weight: var(--tp-w-medium);
   line-height: 1.2;
-  letter-spacing: -0.008em;
+  letter-spacing: -0.006em;
   white-space: nowrap;
 }
 
@@ -253,10 +297,10 @@ table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
 
 .app-navigation-item.is-active, .workspace-tab.is-active { color: var(--tp-ink); }
 .app-navigation-item.is-active::after,
-.workspace-tab.is-active::after { background: var(--tp-accent); transform: scaleX(1); }
+.workspace-tab.is-active::after { background: var(--tp-accent-strong); transform: scaleX(1); }
 .app-navigation-item:focus-visible, .workspace-tab:focus-visible { outline: 0; }
 .app-navigation-item:focus-visible::after,
-.workspace-tab:focus-visible::after { background: var(--tp-accent); transform: scaleX(1); }
+.workspace-tab:focus-visible::after { background: var(--tp-accent-strong); transform: scaleX(1); }
 
 /* ==========================================================================
    Frame and workspace rhythm
@@ -277,7 +321,7 @@ table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
 
 .workspace-context { display: flex; align-items: center; min-height: 20px; }
 .workspace-crumbs { display: flex; align-items: center; gap: var(--tp-s2); color: var(--tp-muted); font-size: 13px; font-weight: 500; }
-.workspace-root-link:hover, .workspace-current-link:hover { color: var(--tp-accent); }
+.workspace-root-link:hover, .workspace-current-link:hover { color: var(--tp-accent-ink); }
 .workspace-current-link.is-current, .workspace-current-title { color: var(--tp-ink); font-weight: var(--tp-w-strong); }
 .workspace-current-title { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-slash { color: var(--tp-faint); }
@@ -300,7 +344,7 @@ table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
   color: var(--tp-ink) !important;
   font-size: 22px !important;
   font-weight: var(--tp-w-strong) !important;
-  letter-spacing: -0.028em !important;
+  letter-spacing: -0.021em;
   line-height: 1.2;
 }
 
@@ -335,7 +379,7 @@ table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
   color: var(--tp-ink);
   font-size: 15px;
   font-weight: var(--tp-w-strong);
-  letter-spacing: -0.018em;
+  letter-spacing: -0.012em;
 }
 .tp-sheet-head-meta { color: var(--tp-meta); font-size: 12px; font-weight: var(--tp-w-regular); }
 
@@ -343,7 +387,7 @@ table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
 .card h3, .tp-sheet h3 {
   color: var(--tp-ink) !important;
   font-weight: var(--tp-w-strong) !important;
-  letter-spacing: -0.018em !important;
+  letter-spacing: -0.012em;
 }
 
 /* A quiet recessed block for a nested group. Never a second full sheet. */
@@ -369,7 +413,7 @@ main table thead th {
   color: var(--tp-muted) !important;
   font-size: 11.5px !important;
   font-weight: var(--tp-w-strong) !important;
-  letter-spacing: 0.005em !important;
+  letter-spacing: 0.012em;
   text-transform: none !important;
   white-space: nowrap;
   vertical-align: middle;
@@ -383,6 +427,11 @@ main table tbody td {
   color: var(--tp-ink-2);
   vertical-align: middle;
 }
+
+/* Two columns whose rows must register against each other — the reported
+   videos and their released dates — top-align instead, so row i of one sits
+   on row i of the other however tall the tallest cell in the row gets. */
+main table tbody td.tp-cell-rows { vertical-align: top; }
 
 main table tbody tr:first-child td { border-top: 0; }
 main table tbody tr { transition: background-color var(--tp-dur-fast) var(--tp-ease); }
@@ -434,7 +483,7 @@ main select:focus,
 main textarea:focus,
 .app-popover input:focus, .app-popover textarea:focus,
 .app-dialog input:focus, .app-dialog textarea:focus {
-  border-color: var(--tp-accent) !important;
+  border-color: var(--tp-accent-strong) !important;
   outline: 0;
   box-shadow: 0 0 0 3px var(--tp-accent-soft) !important;
 }
@@ -452,11 +501,12 @@ main button[class*="bg-[var(--accent-color)]"],
 main .primary-btn,
 main button[class*="bg-slate-900"],
 main button[class*="bg-slate-800"],
+main button[class*="bg-[var(--tp-ink)]"],
 .app-dialog button[class*="bg-[var(--accent-color)]"],
 .app-popover button[class*="bg-[var(--accent-color)]"] {
   border: 0 !important;
   background: var(--tp-accent) !important;
-  color: #ffffff !important;
+  color: var(--tp-on-accent) !important;
   font-weight: var(--tp-w-medium);
   box-shadow: var(--tp-elev-1) !important;
 }
@@ -465,6 +515,7 @@ main button[class*="bg-[var(--accent-color)]"]:hover:not(:disabled),
 main .primary-btn:hover:not(:disabled),
 main button[class*="bg-slate-900"]:hover:not(:disabled),
 main button[class*="bg-slate-800"]:hover:not(:disabled),
+main button[class*="bg-[var(--tp-ink)]"]:hover:not(:disabled),
 .app-dialog button[class*="bg-[var(--accent-color)]"]:hover:not(:disabled),
 .app-popover button[class*="bg-[var(--accent-color)]"]:hover:not(:disabled) {
   background: var(--tp-accent-strong) !important;
@@ -505,7 +556,7 @@ main .affiliate-filters .relative > button.filter-control[aria-expanded="true"],
 main .influencer-filters .relative > button.filter-control[aria-expanded="true"],
 main .influencer-filters select.filter-select:focus,
 main .tp-filter-trigger[aria-expanded="true"] {
-  border-color: var(--tp-accent) !important;
+  border-color: var(--tp-accent-strong) !important;
   background: var(--tp-surface) !important;
   box-shadow: 0 0 0 3px var(--tp-accent-soft) !important;
 }
@@ -565,7 +616,7 @@ main .influencer-filters .filter-menu input { border-radius: var(--tp-r-xs) !imp
   color: var(--tp-muted);
   font-size: 12px;
   font-weight: 550;
-  letter-spacing: -0.006em;
+  letter-spacing: -0.004em;
   white-space: nowrap;
 }
 .tp-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
@@ -603,7 +654,7 @@ button.tp-chip:hover { box-shadow: var(--tp-elev-1); }
   padding: var(--tp-s16) var(--tp-s6);
   text-align: center;
 }
-.tp-empty-title { color: var(--tp-ink); font-size: 15px; font-weight: var(--tp-w-strong); letter-spacing: -0.018em; }
+.tp-empty-title { color: var(--tp-ink); font-size: 15px; font-weight: var(--tp-w-strong); letter-spacing: -0.012em; }
 .tp-empty-body { max-width: 34ch; color: var(--tp-muted); font-size: 13px; line-height: 1.55; }
 
 .tp-skeleton {
@@ -687,8 +738,9 @@ body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
   overflow: hidden;
 }
 /* On the accent bubble the empty and loading tiles borrow the bubble's own
-   hue instead of punching a white hole through it. */
-.tp-album-tile-on-accent { background: rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.65); }
+   hue instead of punching a white hole through it. The bubble is a bright
+   mint fill, so they darken it rather than lighten it. */
+.tp-album-tile-on-accent { background: rgba(15, 22, 19, 0.1); color: rgba(15, 22, 19, 0.55); }
 .tp-album-tile-on-accent svg { color: currentColor; }
 .tp-album-tile > img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .tp-album-tile[data-interactive="true"] { cursor: zoom-in; }
@@ -699,31 +751,103 @@ body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(23, 33, 31, 0.56);
+  background: rgba(15, 22, 19, 0.6);
   color: #ffffff;
   font-size: 16px;
   font-weight: var(--tp-w-strong);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.018em;
 }
 
-/* --- Thread screenshot rail ------------------------------------------- */
+/* --- Thread screenshot dock ------------------------------------------- */
 
-/* Sits at the foot of the feed, above the composer: a quiet index of every
-   image in the thread so nobody scrolls back hunting for one. */
-.tp-rail {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
+/* The feed and the dock share one positioned region so the dock can hold the
+   feed's bottom-right corner, a hair above the composer. It used to sit in the
+   feed's flow, which put it under the last message and left a dead band
+   between it and the composer whenever the thread was short. */
+.discussion-feed-region {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+/* Room at the foot of the feed so the dock never sits on the last bubble. */
+.discussion-feed-region:has(.tp-shotdock) .discussion-message-feed {
+  padding-bottom: 60px;
+  scroll-padding-bottom: 60px;
+}
+
+.tp-shotdock {
+  position: absolute;
+  right: var(--tp-s4);
+  bottom: var(--tp-s3);
+  z-index: 6;
+  display: flex;
+  justify-content: flex-end;
+  max-width: calc(100% - var(--tp-s8));
+  pointer-events: none;   /* the feed keeps its scroll everywhere but the chip */
+}
+.tp-shotdock > * { pointer-events: auto; }
+
+/* Closed: a capsule that covers one corner of one bubble and no more. */
+.tp-shotdock-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 10px 0 11px;
+  border: 1px solid var(--tp-rule-panel);
+  border-radius: var(--tp-r-pill);
+  background: var(--tp-surface);
+  box-shadow: var(--tp-elev-3);
+  color: var(--tp-muted);
+  font-size: 11.5px;
+  font-weight: var(--tp-w-medium);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tp-shotdock-trigger:hover {
+  border-color: var(--tp-accent-rule);
+  color: var(--tp-accent-ink);
+  transform: translateY(-1px);
+  box-shadow: var(--tp-elev-3), 0 0 0 4px var(--tp-accent-soft);
+}
+.tp-shotdock-trigger:active { transform: translateY(0); }
+
+/* The three most recent thumbs, shingled, as the capsule's own evidence. */
+.tp-shotdock-peek { display: inline-flex; flex-direction: row-reverse; padding-left: 5px; }
+.tp-shotdock-peek img {
+  width: 22px;
+  height: 22px;
+  margin-left: -5px;
+  border: 1.5px solid var(--tp-surface);
+  border-radius: var(--tp-r-xs);
+  background: var(--tp-surface-sunken);
+  object-fit: cover;
+}
+
+/* Open: the same dock, widened over the full set. */
+.tp-shotdock-panel {
   display: flex;
   align-items: center;
   gap: var(--tp-s3);
-  margin: var(--tp-s2) calc(var(--tp-s6) * -1) calc(var(--tp-s4) * -1);
-  padding: var(--tp-s2) var(--tp-s6);
-  border-top: 1px solid var(--tp-rule);
+  min-width: 0;
+  max-width: 100%;
+  padding: 7px 7px 7px 12px;
+  border: 1px solid var(--tp-rule-panel);
+  border-radius: var(--tp-r-lg);
   background: var(--tp-surface);
+  box-shadow: var(--tp-elev-3);
+  animation: tp-shotdock-in var(--tp-dur) var(--tp-ease) both;
 }
 
-.tp-rail-label {
+@keyframes tp-shotdock-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.tp-shotdock-label {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -733,17 +857,18 @@ body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
   font-weight: var(--tp-w-medium);
   white-space: nowrap;
 }
-.tp-rail-count {
+.tp-shotdock-count {
   min-width: 17px;
   padding: 0 5px;
   border-radius: var(--tp-r-pill);
-  background: var(--tp-surface-hover);
-  color: var(--tp-muted);
+  background: var(--tp-accent-soft);
+  color: var(--tp-accent-ink);
   font-size: 11px;
+  font-weight: var(--tp-w-strong);
   text-align: center;
 }
 
-.tp-rail-track {
+.tp-shotdock-track {
   display: flex;
   gap: 6px;
   min-width: 0;
@@ -753,17 +878,17 @@ body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
   scrollbar-width: thin;
   overscroll-behavior-x: contain;
 }
-.tp-rail-track::-webkit-scrollbar { height: 4px; }
-.tp-rail-track::-webkit-scrollbar-thumb { border-radius: 2px; background: var(--tp-rule-strong); }
+.tp-shotdock-track::-webkit-scrollbar { height: 4px; }
+.tp-shotdock-track::-webkit-scrollbar-thumb { border-radius: 2px; background: var(--tp-rule-strong); }
 
-.tp-rail-thumb {
+.tp-shotdock-thumb {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   border: 1px solid var(--tp-rule-panel);
   border-radius: var(--tp-r-xs);
@@ -771,15 +896,31 @@ body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
   overflow: hidden;
   cursor: zoom-in;
 }
-.tp-rail-thumb > img { width: 100%; height: 100%; object-fit: cover; }
-.tp-rail-thumb:hover { border-color: var(--tp-accent-rule); }
-.tp-rail-thumb:hover > img { opacity: 0.85; }
-.tp-rail-thumb:focus-visible { outline: 2px solid var(--tp-accent); outline-offset: 2px; }
-.tp-rail-thumb:disabled { cursor: default; }
+.tp-shotdock-thumb > img { width: 100%; height: 100%; object-fit: cover; }
+.tp-shotdock-thumb:hover { border-color: var(--tp-accent-strong); }
+.tp-shotdock-thumb:hover > img { opacity: 0.85; }
+.tp-shotdock-thumb:focus-visible { outline: 2px solid var(--tp-accent-ink); outline-offset: 2px; }
+.tp-shotdock-thumb:disabled { cursor: default; }
+
+.tp-shotdock-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--tp-r-xs);
+  background: transparent;
+  color: var(--tp-meta);
+  cursor: pointer;
+}
+.tp-shotdock-collapse:hover { background: var(--tp-surface-hover); color: var(--tp-ink-2); }
 
 @media (max-width: 700px) {
-  .tp-rail { margin-right: calc(var(--tp-s4) * -1); margin-left: calc(var(--tp-s4) * -1); padding-right: var(--tp-s4); padding-left: var(--tp-s4); }
-  .tp-rail-label span:not(.tp-rail-count) { display: none; }
+  .tp-shotdock { right: var(--tp-s3); max-width: calc(100% - var(--tp-s6)); }
+  .tp-shotdock-label span:not(.tp-shotdock-count) { display: none; }
 }
 
 /* --- Rich-text composer (Tiptap) mirrors bubble rendering ------------- */

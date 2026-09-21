@@ -67,8 +67,8 @@ const findFirstInlineMatch = (
                     key={key}
                     className={`px-1.5 py-0.5 rounded-md font-mono text-[11px] ${
                         opts.isUser
-                            ? 'bg-emerald-950/50 text-emerald-100'
-                            : 'bg-slate-200/70 text-slate-800'
+                            ? 'bg-[rgba(15,22,19,0.12)] text-[var(--tp-on-accent)]'
+                            : 'bg-[var(--tp-surface-hover)] text-[var(--tp-ink)]'
                     }`}
                 >
                     {m[1]}
@@ -111,7 +111,7 @@ const findFirstInlineMatch = (
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
                     className={`underline font-medium hover:opacity-80 transition-opacity break-all ${
-                        opts.isUser ? 'text-emerald-100' : 'text-blue-600'
+                        opts.isUser ? 'text-[var(--tp-on-accent)] decoration-[rgba(15,22,19,0.4)]' : 'text-[var(--tp-accent-ink)]'
                     }`}
                 >
                     {m[0]}
@@ -125,8 +125,8 @@ const findFirstInlineMatch = (
                     key={key}
                     className={`inline-block font-semibold px-1.5 py-0.5 rounded-md text-[11px] transition-colors ${
                         opts.isUser
-                            ? 'bg-emerald-700/80 text-emerald-100 border border-emerald-500/40'
-                            : 'bg-[#176b5e]/15 text-[#176b5e] border border-[#176b5e]/30'
+                            ? 'bg-[rgba(15,22,19,0.14)] text-[var(--tp-on-accent)] border border-[rgba(15,22,19,0.22)]'
+                            : 'bg-[var(--tp-accent-soft)] text-[var(--tp-accent-ink)] border border-[var(--tp-accent-rule)]'
                     }`}
                 >
                     {m[0]}
@@ -271,8 +271,8 @@ export const renderMarkdown = (
                         key={idx}
                         className={`my-1.5 overflow-x-auto rounded-lg p-2.5 font-mono text-[11px] leading-relaxed ${
                             opts.isUser
-                                ? 'bg-emerald-950/50 text-emerald-50'
-                                : 'bg-slate-800 text-slate-100'
+                                ? 'bg-[rgba(15,22,19,0.82)] text-[#e6f9f1]'
+                                : 'bg-[var(--tp-ink)] text-[#e6f9f1]'
                         }`}
                     >
                         <code>{block.content}</code>
@@ -284,8 +284,8 @@ export const renderMarkdown = (
                         key={idx}
                         className={`my-1.5 border-l-2 pl-2.5 italic ${
                             opts.isUser
-                                ? 'border-emerald-400/60 text-emerald-50/90'
-                                : 'border-slate-300 text-slate-600'
+                                ? 'border-[rgba(15,22,19,0.3)] text-[rgba(15,22,19,0.78)]'
+                                : 'border-[var(--tp-rule-strong)] text-[var(--tp-muted)]'
                         }`}
                     >
                         {block.lines.map((l, li) => (

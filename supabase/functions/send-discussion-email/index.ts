@@ -98,17 +98,17 @@ serve(async (req) => {
         const emailHtml = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
                 <div style="margin-bottom: 20px;">
-                    <span style="font-size: 11px; font-weight: 700; color: #176b5e; text-transform: uppercase; letter-spacing: 0.5px;">TrueProfit Deal Discussion</span>
+                    <span style="font-size: 11px; font-weight: 700; color: #0b7c57; text-transform: uppercase; letter-spacing: 0.5px;">TrueProfit Deal Discussion</span>
                     <h2 style="margin: 6px 0 0; color: #0f172a; font-size: 18px; font-weight: 700;">${kolName}</h2>
                 </div>
 
-                <div style="padding: 16px; background-color: #f8fafc; border-left: 4px solid #176b5e; border-radius: 8px; margin-bottom: 24px;">
-                    <div style="font-size: 12px; font-weight: 600; color: #176b5e; margin-bottom: 6px;">${senderName}:</div>
+                <div style="padding: 16px; background-color: #f8fafc; border-left: 4px solid #23c48c; border-radius: 8px; margin-bottom: 24px;">
+                    <div style="font-size: 12px; font-weight: 600; color: #0b7c57; margin-bottom: 6px;">${senderName}:</div>
                     <div style="font-size: 14px; color: #334155; line-height: 1.5; white-space: pre-wrap;">${messageBody}</div>
                 </div>
 
                 <div style="text-align: center; margin-bottom: 24px;">
-                    <a href="${deepLinkUrl}" style="display: inline-block; background-color: #176b5e; color: #ffffff; font-size: 13px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <a href="${deepLinkUrl}" style="display: inline-block; background-color: #23c48c; color: #0f1613; font-size: 13px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                         Open Discussion in Dashboard &rarr;
                     </a>
                 </div>

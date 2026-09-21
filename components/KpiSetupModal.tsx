@@ -165,7 +165,7 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
                                         onClick={() => toggleMetric(metric.kpiName)}
                                         className={`w-full rounded-md px-3 py-2.5 text-left transition-colors ${
                                             isSelected
-                                                ? 'bg-slate-900 text-white'
+                                                ? 'bg-[var(--tp-ink)] text-white'
                                                 : 'text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-hover)]'
                                         }`}
                                     >
@@ -235,7 +235,7 @@ const KpiSetupModal: React.FC<KpiSetupModalProps> = ({ isOpen, onClose, onSave, 
                         <button
                             onClick={handleSave}
                             disabled={loading}
-                            className="flex min-w-[118px] items-center justify-center gap-2 rounded-md bg-[var(--accent-color)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--tp-accent-strong)] disabled:bg-slate-400"
+                            className="flex min-w-[118px] items-center justify-center gap-2 rounded-md bg-[var(--accent-color)] px-4 py-2 text-sm font-semibold text-[var(--tp-on-accent)] transition-colors hover:bg-[var(--tp-accent-strong)] disabled:bg-[var(--tp-faint)]"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                             <span>{loading ? 'Saving' : 'Save KPIs'}</span>

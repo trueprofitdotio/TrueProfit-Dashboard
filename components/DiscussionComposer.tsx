@@ -194,7 +194,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
             {mentionQuery !== null && filteredMembers.length > 0 && (
                 <div className="absolute bottom-full left-5 right-5 mb-2 z-50 overflow-hidden rounded-2xl border border-[var(--tp-rule)] bg-white shadow-xl animate-in fade-in zoom-in-95 duration-150">
                     <div className="flex items-center gap-1 border-b border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] px-3 py-2 text-[11px] font-semibold text-[var(--tp-muted)]">
-                        <AtSign className="h-3 w-3 text-[var(--accent-color)]" />
+                        <AtSign className="h-3 w-3 text-[var(--tp-accent-ink)]" />
                         <span>Mention Team Member</span>
                     </div>
                     <div className="max-h-48 space-y-0.5 overflow-y-auto p-1">
@@ -206,12 +206,12 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                                 onMouseEnter={() => setMentionIndex(idx)}
                                 className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors ${
                                     mentionIndex === idx
-                                        ? 'bg-emerald-50 font-semibold text-emerald-900'
+                                        ? 'bg-[var(--tp-accent-soft)] font-semibold text-[var(--tp-accent-ink)]'
                                         : 'text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-sunken)]'
                                 }`}
                             >
                                 <span className="flex min-w-0 items-center gap-2">
-                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent-color)] text-[11px] font-semibold text-white">
+                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent-color)] text-[11px] font-semibold text-[var(--tp-on-accent)]">
                                         {member.name.charAt(0)}
                                     </span>
                                     <span className="truncate">
@@ -219,7 +219,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                                         <span className="block truncate text-[11px] text-[var(--tp-meta)]">{member.email}</span>
                                     </span>
                                 </span>
-                                <span className="rounded-md bg-emerald-100/60 px-1.5 py-0.5 font-mono text-[11px] text-[var(--tp-accent-ink)]">
+                                <span className="rounded-md bg-[var(--tp-accent-soft)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--tp-accent-ink)]">
                                     @{member.name.split(' ')[0]}
                                 </span>
                             </button>
@@ -239,7 +239,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                         aria-pressed={active}
                         className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
                             active
-                                ? 'bg-emerald-100 text-[var(--accent-color)]'
+                                ? 'bg-[var(--tp-accent-field)] text-[var(--tp-accent-ink)]'
                                 : 'text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink)]'
                         }`}
                     >
@@ -247,7 +247,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                     </button>
                 ))}
 
-                <span className="mx-1 h-4 w-px bg-slate-200" />
+                <span className="mx-1 h-4 w-px bg-[var(--tp-rule)]" />
 
                 <button
                     type="button"
@@ -271,7 +271,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                 <button
                     onClick={onSend}
                     disabled={!canSend}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-color)] text-white transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-color)] text-[var(--tp-on-accent)] transition-all hover:bg-[var(--tp-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Send message"
                     title="Send message (Enter)"
                 >

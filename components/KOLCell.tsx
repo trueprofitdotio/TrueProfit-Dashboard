@@ -120,7 +120,7 @@ export const KOLCell: React.FC<KOLCellProps> = ({
                             href={channelLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-fit max-w-full truncate hover:text-[var(--tp-accent)] hover:underline"
+                            className="w-fit max-w-full truncate hover:text-[var(--tp-accent-ink)] hover:underline"
                             title={`Open ${name} on YouTube`}
                         >
                             {name}

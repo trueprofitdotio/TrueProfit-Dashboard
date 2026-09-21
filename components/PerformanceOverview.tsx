@@ -132,7 +132,7 @@ const Filters: React.FC<FiltersProps> = ({
                                     onClick={() => setCompareType(type.id as CompareType)}
                                     className={`tp-keep-pill rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition-all ${
                                         compareType === type.id
-                                        ? 'border-[var(--tp-accent)] bg-[var(--tp-accent)] text-white'
+                                        ? 'border-[var(--tp-accent)] bg-[var(--tp-accent)] text-[var(--tp-on-accent)]'
                                         : 'border-[var(--tp-rule-strong)] bg-white text-[var(--tp-muted)] hover:border-[var(--tp-accent-rule)] hover:bg-[var(--tp-accent-soft)] hover:text-[var(--tp-accent-ink)]'
                                     }`}
                                 >
@@ -142,7 +142,7 @@ const Filters: React.FC<FiltersProps> = ({
                         </div>
                     )}
                 </div>
-                <button onClick={onGetMetrics} disabled={loading} className="primary-btn h-10 shrink-0 rounded-[7px] bg-[var(--accent-color)] px-6 text-[13px] font-semibold text-white">{loading ? 'Loading…' : 'Get metrics'}</button> 
+                <button onClick={onGetMetrics} disabled={loading} className="primary-btn h-10 shrink-0 rounded-[7px] bg-[var(--accent-color)] px-6 text-[13px] font-semibold text-[var(--tp-on-accent)]">{loading ? 'Loading…' : 'Get metrics'}</button> 
             </div> 
         </div> 
     );
@@ -544,7 +544,7 @@ const PerformanceOverview: React.FC = () => {
                         {/* Section: Top Performing Affiliate Mixed Chart */}
                         <TopPerformingAffiliatesChart data={topAffiliates} />
                         
-                        <hr className="border-[#dde3d9]/30" />
+                        <hr className="border-[#e1e7e5]/30" />
                         <TopAffiliatesTable data={sortedTopAffiliates} requestSort={requestSort} sortConfig={sortConfig} showAll={showAllTopAffiliates} onToggleShowAll={() => setShowAllTopAffiliates(!showAllTopAffiliates)} />
                     </div>
                 </div>
@@ -613,7 +613,7 @@ const SummaryOverview: React.FC<{ data: SummaryData; isExpanded: boolean; setIsE
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
                     aria-expanded={isExpanded}
-                    className="text-[12.5px] font-semibold text-[var(--tp-accent)] hover:underline"
+                    className="text-[12.5px] font-semibold text-[var(--tp-accent-ink)] hover:underline"
                 >
                     {isExpanded ? 'Hide breakdown by tier' : 'Show breakdown by tier'}
                 </button>
@@ -633,17 +633,17 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                 tooltip: {
                     trigger: 'axis',
                     backgroundColor: '#ffffff',
-                    borderColor: '#dde3d9',
+                    borderColor: '#e1e7e5',
                     borderWidth: 1,
                     padding: [10, 12],
-                    textStyle: { color: '#17211f', fontSize: 12 },
-                    axisPointer: { lineStyle: { color: '#93a09c', type: 'dashed' } },
+                    textStyle: { color: '#0f1613', fontSize: 12 },
+                    axisPointer: { lineStyle: { color: '#9ba5a1', type: 'dashed' } },
                     extraCssText: 'border-radius: 6px; box-shadow: none;'
                 },
-                legend: { data: ['Signups', 'Clicks', 'Installs', 'Revenue', 'Payouts'], top: 'bottom', itemWidth: 10, itemHeight: 10, textStyle: { color: '#5d6b67', fontSize: 12 } },
+                legend: { data: ['Signups', 'Clicks', 'Installs', 'Revenue', 'Payouts'], top: 'bottom', itemWidth: 10, itemHeight: 10, textStyle: { color: '#5a635f', fontSize: 12 } },
                 grid: { left: '2%', right: '3%', bottom: '14%', top: '6%', containLabel: true },
-                xAxis: { type: 'category', boundaryGap: true, data: sortedDailyData.map(d => formatDisplayDateGmt7(d.date)), axisLine: { lineStyle: { color: '#dde3d9' } }, axisTick: { show: false }, axisLabel: { color: '#5d6b67', fontSize: 11 } },
-                yAxis: [{ type: 'value', name: 'Count', nameTextStyle: { color: '#5d6b67', fontSize: 11 }, axisLabel: { color: '#5d6b67', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#dde3d9', type: 'dashed' } } }, { type: 'value', name: 'Amount ($)', nameTextStyle: { color: '#5d6b67', fontSize: 11 }, axisLabel: { formatter: '${value}', color: '#5d6b67', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }],
+                xAxis: { type: 'category', boundaryGap: true, data: sortedDailyData.map(d => formatDisplayDateGmt7(d.date)), axisLine: { lineStyle: { color: '#e1e7e5' } }, axisTick: { show: false }, axisLabel: { color: '#5a635f', fontSize: 11 } },
+                yAxis: [{ type: 'value', name: 'Count', nameTextStyle: { color: '#5a635f', fontSize: 11 }, axisLabel: { color: '#5a635f', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#e1e7e5', type: 'dashed' } } }, { type: 'value', name: 'Amount ($)', nameTextStyle: { color: '#5a635f', fontSize: 11 }, axisLabel: { formatter: '${value}', color: '#5a635f', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }],
                 series: [ 
                     { 
                         name: 'Signups', 
@@ -724,7 +724,7 @@ const SortableHeader: React.FC<{
         <th scope="col" className={`cursor-pointer hover:text-[var(--tp-ink)] ${className}`} onClick={() => requestSort(sortKey)}>
             <div className={`flex items-center gap-1.5 ${className?.includes('text-right') ? 'justify-end' : ''}`}>
                 {label}
-                <span className={isSorted ? 'text-[var(--tp-accent)]' : 'text-[var(--tp-faint)]'}>{icon}</span>
+                <span className={isSorted ? 'text-[var(--tp-accent-ink)]' : 'text-[var(--tp-faint)]'}>{icon}</span>
             </div>
         </th>
     );
@@ -764,7 +764,7 @@ const TopAffiliatesTable: React.FC<{ data: TopAffiliateData[]; requestSort: (key
                                 <td className="text-center"><ChangeIndicator value={calculatePercentageChange(row.clicks, row.clicksPrev)} /></td>
                                 <td className="text-right tabular-nums">{formatNumber(row.installs)}</td>
                                 <td className="text-center"><ChangeIndicator value={calculatePercentageChange(row.installs, row.installsPrev)} /></td>
-                                <td className={`text-right font-semibold tabular-nums ${row.revenue > 0 ? 'text-[var(--tp-accent)]' : ''}`}>{formatCurrency(row.revenue)}</td>
+                                <td className={`text-right font-semibold tabular-nums ${row.revenue > 0 ? 'text-[var(--tp-accent-ink)]' : ''}`}>{formatCurrency(row.revenue)}</td>
                                 <td className="text-center"><ChangeIndicator value={calculatePercentageChange(row.revenue, row.revenuePrev)} /></td>
                                 <td className="pr-6 text-right tabular-nums">{formatCurrency(row.payout)}</td>
                             </tr>
@@ -774,7 +774,7 @@ const TopAffiliatesTable: React.FC<{ data: TopAffiliateData[]; requestSort: (key
             </div>
             {data.length > 10 && (
                 <div className="mt-4">
-                    <button onClick={onToggleShowAll} className="text-[12.5px] font-semibold text-[var(--tp-accent)] hover:underline">
+                    <button onClick={onToggleShowAll} className="text-[12.5px] font-semibold text-[var(--tp-accent-ink)] hover:underline">
                         {showAll ? 'Show fewer affiliates' : `Show all ${data.length} affiliates`}
                     </button>
                 </div>
@@ -852,7 +852,7 @@ const MerchantsDetailsSection: React.FC<{ metrics: any; vsDateRangeText: string 
                 <MetricBlock 
                     title="Total Paying Merchants" 
                     value={metrics.totalPayingMerchants} 
-                    colorClass="text-[var(--tp-accent)]"
+                    colorClass="text-[var(--tp-accent-ink)]"
                     changeText={renderChange(payingChange)} 
                     description="Merchants with at least one valid payout." 
                 />
@@ -866,14 +866,14 @@ const MerchantsDetailsSection: React.FC<{ metrics: any; vsDateRangeText: string 
                 <MetricBlock 
                     title="Merchants with 2-3 Payouts" 
                     value={metrics.payoutLeThreeCount} 
-                    colorClass="text-emerald-500"
+                    colorClass="text-[var(--tp-positive)]"
                     changeText={renderChange(payoutLeThreeChange)} 
                     description={`${pctLeThree}% of total paying merchants`} 
                 />
                 <MetricBlock 
                     title="Merchants with > 3 Payouts" 
                     value={metrics.payoutGtThreeCount} 
-                    colorClass="text-orange-500"
+                    colorClass="text-[var(--tp-warning)]"
                     changeText={renderChange(payoutGtThreeChange)} 
                     description={`${pctGtThree}% of total paying merchants`} 
                 />
@@ -912,15 +912,15 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                 tooltip: {
                     trigger: 'axis',
                     backgroundColor: '#ffffff',
-                    borderColor: '#dde3d9',
+                    borderColor: '#e1e7e5',
                     borderWidth: 1,
                     padding: [10, 12],
-                    textStyle: { color: '#17211f', fontSize: 12 },
+                    textStyle: { color: '#0f1613', fontSize: 12 },
                     extraCssText: 'border-radius: 6px; box-shadow: none;',
                     axisPointer: {
                         type: 'cross',
                         crossStyle: {
-                            color: '#93a09c'
+                            color: '#9ba5a1'
                         }
                     }
                 },
@@ -929,7 +929,7 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                     top: 0,
                     itemWidth: 10,
                     itemHeight: 10,
-                    textStyle: { color: '#5d6b67', fontSize: 12 }
+                    textStyle: { color: '#5a635f', fontSize: 12 }
                 },
                 grid: {
                     left: '3%',
@@ -948,13 +948,13 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                         axisLabel: {
                             interval: 0,
                             rotate: 15,
-                            color: '#5d6b67',
+                            color: '#5a635f',
                             fontSize: 11,
                             formatter: (value: string) => {
                                 return value.length > 15 ? value.substring(0, 15) + '...' : value;
                             }
                         },
-                        axisLine: { lineStyle: { color: '#dde3d9' } },
+                        axisLine: { lineStyle: { color: '#e1e7e5' } },
                         axisTick: { show: false }
                     }
                 ],
@@ -962,23 +962,23 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                     {
                         type: 'value',
                         name: 'Clicks / Installs',
-                        nameTextStyle: { color: '#5d6b67', fontSize: 11 },
+                        nameTextStyle: { color: '#5a635f', fontSize: 11 },
                         axisLabel: {
                             formatter: '{value}',
-                            color: '#5d6b67',
+                            color: '#5a635f',
                             fontSize: 11
                         },
                         axisLine: { show: false },
                         axisTick: { show: false },
-                        splitLine: { lineStyle: { color: '#dde3d9', type: 'dashed' } }
+                        splitLine: { lineStyle: { color: '#e1e7e5', type: 'dashed' } }
                     },
                     {
                         type: 'value',
                         name: 'Revenue',
-                        nameTextStyle: { color: '#5d6b67', fontSize: 11 },
+                        nameTextStyle: { color: '#5a635f', fontSize: 11 },
                         axisLabel: {
                             formatter: '${value}',
-                            color: '#5d6b67',
+                            color: '#5a635f',
                             fontSize: 11
                         },
                         axisLine: { show: false },

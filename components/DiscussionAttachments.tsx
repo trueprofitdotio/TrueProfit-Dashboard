@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, Download, X, Loader2, AlertCircle, ImageOff, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { FileText, Download, X, Loader2, AlertCircle, ImageOff, ChevronLeft, ChevronRight, ChevronDown, Image as ImageIcon } from 'lucide-react';
 import {
     DiscussionAttachment,
     getSignedUrls,
@@ -72,7 +72,7 @@ export const Lightbox: React.FC<{
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[1000000] flex items-center justify-center bg-[#0d1211]/88 p-8 animate-in fade-in duration-150"
+            className="fixed inset-0 z-[1000000] flex items-center justify-center bg-[#0a0f0d]/88 p-8 animate-in fade-in duration-150"
             onClick={onClose}
             role="dialog"
             aria-modal="true"
@@ -215,12 +215,12 @@ export const AttachmentGrid: React.FC<{
                         onClick={e => { e.stopPropagation(); if (!url) e.preventDefault(); }}
                         className={`flex items-center gap-2.5 rounded-[7px] border p-2 transition-colors ${
                             isUser
-                                ? 'border-white/20 bg-white/10 hover:bg-white/20'
+                                ? 'border-[rgba(15,22,19,0.16)] bg-[rgba(15,22,19,0.08)] hover:bg-[rgba(15,22,19,0.14)]'
                                 : 'border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] hover:bg-[var(--tp-surface-hover)]'
                         } ${url ? '' : 'pointer-events-none opacity-60'}`}
                     >
                         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] ${
-                            isUser ? 'bg-white/15 text-white' : 'bg-[var(--tp-surface)] text-[var(--tp-muted)] border border-[var(--tp-rule)]'
+                            isUser ? 'bg-[rgba(15,22,19,0.1)] text-[var(--tp-on-accent)]' : 'bg-[var(--tp-surface)] text-[var(--tp-muted)] border border-[var(--tp-rule)]'
                         }`}>
                             <FileText className="h-4 w-4" />
                         </span>
@@ -238,7 +238,7 @@ export const AttachmentGrid: React.FC<{
             })}
 
             {failed && (
-                <p className={`flex items-center gap-1 text-[11px] ${isUser ? 'text-white/75' : 'text-[var(--tp-meta)]'}`}>
+                <p className={`flex items-center gap-1 text-[11px] ${isUser ? 'text-[rgba(15,22,19,0.74)]' : 'text-[var(--tp-meta)]'}`}>
                     <AlertCircle className="h-3 w-3" />
                     <span>Some attachments could not be loaded.</span>
                 </p>
@@ -257,17 +257,26 @@ export const AttachmentGrid: React.FC<{
 };
 
 // --------------------------------------------------------------------------
-// Thread screenshot rail
+// Thread screenshot dock
 // --------------------------------------------------------------------------
 
 /**
- * Every image in the thread, collected into one strip pinned above the
- * composer. Scrolling back through the feed to find a screenshot someone
- * posted twenty messages ago is the thing this removes.
+ * Every image in the thread, collected into one index that floats over the
+ * bottom-right of the feed, a hair above the composer. Scrolling back through
+ * the feed to find a screenshot someone posted twenty messages ago is the
+ * thing this removes.
  *
- * Keyboard: the rail is a single tab stop with roving focus — Left/Right move
- * between thumbs, Enter or Space opens the lightbox, which then continues to
- * take Left/Right for the rest of the set.
+ * It docks rather than sitting in the feed flow: in the flow it landed under
+ * the last message and left a dead band between itself and the composer
+ * whenever the thread was short. Floating, it holds the same distance from the
+ * box you are typing in, whatever the thread contains.
+ *
+ * Closed it is a capsule — a count and the three most recent thumbs — so it
+ * covers one corner of one bubble. Open it becomes a panel over the full set.
+ *
+ * Keyboard: the capsule is one tab stop; opening moves focus into the track,
+ * where Left/Right walk the thumbs, Enter opens the lightbox (which then takes
+ * Left/Right for the rest of the set), and Escape closes the panel.
  */
 export const ThreadImageRail: React.FC<{
     attachments: DiscussionAttachment[];
@@ -276,7 +285,10 @@ export const ThreadImageRail: React.FC<{
     const { urls, failed } = useSignedUrls(images);
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     const [focusIndex, setFocusIndex] = useState(0);
+    const [open, setOpen] = useState(false);
     const railRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const justOpened = useRef(false);
 
     // Only images whose URL has resolved can be opened, so the rail and the
     // lightbox must walk the same list or the indexes drift apart.
@@ -287,31 +299,39 @@ export const ThreadImageRail: React.FC<{
         [images, urls]
     );
 
+    // The newest screenshots are the ones someone is most likely hunting for,
+    // so the closed capsule previews the tail of the thread, not its head.
+    const peek = useMemo(
+        () => images.slice(-3).reverse()
+            .map(att => urls.get(att.path))
+            .filter((u): u is string => Boolean(u)),
+        [images, urls]
+    );
+
     useEffect(() => {
         if (focusIndex > images.length - 1) setFocusIndex(Math.max(0, images.length - 1));
     }, [images.length, focusIndex]);
 
+    // Opening hands the keyboard straight to the thumbs; closing hands it back.
+    useEffect(() => {
+        if (open && justOpened.current) {
+            justOpened.current = false;
+            railRef.current?.querySelector<HTMLButtonElement>('[data-rail-thumb]')?.focus();
+        }
+    }, [open]);
+
     if (images.length === 0) return null;
+
+    const close = () => {
+        setOpen(false);
+        triggerRef.current?.focus();
+    };
 
     // The bucket only signs for an internal account. When nothing resolves,
     // say so once instead of parking a row of spinners that never land.
-    if (failed && openable.length === 0) {
-        return (
-            <div className="tp-rail" role="group" aria-label="Screenshots in this discussion">
-                <span className="tp-rail-label">
-                    <ImageIcon className="h-3 w-3 shrink-0" strokeWidth={2} />
-                    <span>Screenshots</span>
-                    <span className="tp-rail-count tabular-nums">{images.length}</span>
-                </span>
-                <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-[var(--tp-meta)]">
-                    <AlertCircle className="h-3 w-3 shrink-0" />
-                    <span className="truncate">Sign in with a @firegroup.io account to view these.</span>
-                </span>
-            </div>
-        );
-    }
+    const unsigned = failed && openable.length === 0;
 
-    const open = (i: number) => {
+    const openThumb = (i: number) => {
         const url = urls.get(images[i]?.path);
         if (!url) return;
         const idx = openable.findIndex(item => item.url === url);
@@ -326,7 +346,7 @@ export const ThreadImageRail: React.FC<{
         el?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     };
 
-    const onKeyDown = (e: React.KeyboardEvent) => {
+    const onTrackKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'ArrowRight') { e.preventDefault(); moveFocus(focusIndex + 1); }
         if (e.key === 'ArrowLeft') { e.preventDefault(); moveFocus(focusIndex - 1); }
         if (e.key === 'Home') { e.preventDefault(); moveFocus(0); }
@@ -334,36 +354,89 @@ export const ThreadImageRail: React.FC<{
     };
 
     return (
-        <div className="tp-rail" role="group" aria-label={`${images.length} screenshots in this discussion`}>
-            <span className="tp-rail-label">
-                <ImageIcon className="h-3 w-3 shrink-0" strokeWidth={2} />
-                <span>Screenshots</span>
-                <span className="tp-rail-count tabular-nums">{images.length}</span>
-            </span>
+        <div
+            className="tp-shotdock"
+            data-open={open}
+            onKeyDown={e => {
+                if (e.key === 'Escape' && open && lightboxIndex === null) {
+                    e.stopPropagation();
+                    close();
+                }
+            }}
+        >
+            {open ? (
+                <div
+                    className="tp-shotdock-panel"
+                    role="group"
+                    aria-label={images.length + ' screenshots in this discussion'}
+                >
+                    <span className="tp-shotdock-label">
+                        <ImageIcon className="h-3 w-3 shrink-0" strokeWidth={2} />
+                        <span>Screenshots</span>
+                        <span className="tp-shotdock-count tabular-nums">{images.length}</span>
+                    </span>
 
-            <div className="tp-rail-track" ref={railRef} onKeyDown={onKeyDown}>
-                {images.map((att, i) => {
-                    const url = urls.get(att.path);
-                    return (
-                        <button
-                            key={att.path}
-                            type="button"
-                            data-rail-thumb
-                            tabIndex={i === focusIndex ? 0 : -1}
-                            onFocus={() => setFocusIndex(i)}
-                            onClick={() => open(i)}
-                            disabled={!url}
-                            className="tp-rail-thumb"
-                            title={url ? `${att.name} — click to enlarge` : att.name}
-                            aria-label={`Open ${att.name}`}
-                        >
-                            {url
-                                ? <img src={url} alt="" loading="lazy" />
-                                : <Loader2 className="h-3 w-3 animate-spin text-[var(--tp-faint)]" />}
-                        </button>
-                    );
-                })}
-            </div>
+                    {unsigned ? (
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] text-[var(--tp-meta)]">
+                            <AlertCircle className="h-3 w-3 shrink-0" />
+                            <span className="truncate">Sign in with a @firegroup.io account to view these.</span>
+                        </span>
+                    ) : (
+                        <div className="tp-shotdock-track" ref={railRef} onKeyDown={onTrackKeyDown}>
+                            {images.map((att, i) => {
+                                const url = urls.get(att.path);
+                                return (
+                                    <button
+                                        key={att.path}
+                                        type="button"
+                                        data-rail-thumb
+                                        tabIndex={i === focusIndex ? 0 : -1}
+                                        onFocus={() => setFocusIndex(i)}
+                                        onClick={() => openThumb(i)}
+                                        disabled={!url}
+                                        className="tp-shotdock-thumb"
+                                        title={url ? att.name + ' — click to enlarge' : att.name}
+                                        aria-label={'Open ' + att.name}
+                                    >
+                                        {url
+                                            ? <img src={url} alt="" loading="lazy" />
+                                            : <Loader2 className="h-3 w-3 animate-spin text-[var(--tp-faint)]" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    <button
+                        type="button"
+                        className="tp-shotdock-collapse"
+                        onClick={close}
+                        aria-label="Hide screenshots"
+                        title="Hide screenshots"
+                    >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                </div>
+            ) : (
+                <button
+                    ref={triggerRef}
+                    type="button"
+                    className="tp-shotdock-trigger"
+                    onClick={() => { justOpened.current = true; setOpen(true); }}
+                    aria-expanded={false}
+                    aria-label={'Show ' + images.length + ' screenshots in this discussion'}
+                >
+                    <ImageIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+                    <span className="tp-shotdock-count tabular-nums">{images.length}</span>
+                    {unsigned
+                        ? <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[var(--tp-meta)]" />
+                        : peek.length > 0 && (
+                            <span className="tp-shotdock-peek" aria-hidden="true">
+                                {peek.map(url => <img key={url} src={url} alt="" loading="lazy" />)}
+                            </span>
+                        )}
+                </button>
+            )}
 
             {lightboxIndex !== null && openable.length > 0 && (
                 <Lightbox

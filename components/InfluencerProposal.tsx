@@ -71,7 +71,7 @@ const renderRichText = (text?: string | null) => {
         .replace(/&lt;u&gt;(.*?)&lt;\/u&gt;/gi, '<u>$1</u>')
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-[var(--tp-accent)] underline font-semibold">$1</a>');
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-[var(--tp-accent-ink)] underline font-semibold">$1</a>');
 
     return (
         <div
@@ -777,7 +777,7 @@ const InfluencerProposal: React.FC = () => {
                                 <th onClick={() => handleCreatorSort('name')} className="min-w-[210px] cursor-pointer hover:text-[var(--tp-ink)]">
                                     <div className="flex items-center gap-1.5">
                                         <span>KOL channel</span>
-                                        <ArrowUpDown className={`h-3 w-3 ${creatorSortField === 'name' ? 'text-[var(--tp-accent)]' : 'text-[var(--tp-faint)]'}`} />
+                                        <ArrowUpDown className={`h-3 w-3 ${creatorSortField === 'name' ? 'text-[var(--tp-accent-ink)]' : 'text-[var(--tp-faint)]'}`} />
                                     </div>
                                 </th>
 
@@ -790,7 +790,7 @@ const InfluencerProposal: React.FC = () => {
                                             className="flex items-center gap-1.5 hover:text-[var(--tp-ink)]"
                                         >
                                             <span>Status</span>
-                                            <ArrowUpDown className={`h-3 w-3 ${creatorSortField === 'status' ? 'text-[var(--tp-accent)]' : 'text-[var(--tp-faint)]'}`} />
+                                            <ArrowUpDown className={`h-3 w-3 ${creatorSortField === 'status' ? 'text-[var(--tp-accent-ink)]' : 'text-[var(--tp-faint)]'}`} />
                                         </button>
 
                                         <button
@@ -808,7 +808,7 @@ const InfluencerProposal: React.FC = () => {
                                             className={`flex h-6 w-6 items-center justify-center rounded-[5px] border transition-colors ${
                                                 isDefaultFilter && !statusFilterOpen
                                                     ? 'border-transparent text-[var(--tp-faint)] hover:border-[var(--tp-rule-strong)] hover:bg-[var(--tp-surface)] hover:text-[var(--tp-ink)]'
-                                                    : 'border-[var(--tp-accent-rule)] bg-[var(--tp-accent-soft)] text-[var(--tp-accent)]'
+                                                    : 'border-[var(--tp-accent-rule)] bg-[var(--tp-accent-soft)] text-[var(--tp-accent-ink)]'
                                             }`}
                                         >
                                             <Filter className="h-3 w-3" strokeWidth={2.4} />
@@ -820,7 +820,7 @@ const InfluencerProposal: React.FC = () => {
                                 <th onClick={() => handleCreatorSort('est_rate')} className="min-w-[130px] cursor-pointer text-right hover:text-[var(--tp-ink)]">
                                     <div className="flex items-center justify-end gap-1.5">
                                         <span>Est. rate (USD)</span>
-                                        <ArrowUpDown className={`h-3 w-3 ${creatorSortField === 'est_rate' ? 'text-[var(--tp-accent)]' : 'text-[var(--tp-faint)]'}`} />
+                                        <ArrowUpDown className={`h-3 w-3 ${creatorSortField === 'est_rate' ? 'text-[var(--tp-accent-ink)]' : 'text-[var(--tp-faint)]'}`} />
                                     </div>
                                 </th>
                                 <th className="min-w-[220px]">Deliverables</th>
@@ -830,7 +830,7 @@ const InfluencerProposal: React.FC = () => {
                                 <th onClick={() => handleCreatorSort('log')} className="min-w-[150px] cursor-pointer hover:text-[var(--tp-ink)]">
                                     <div className="flex items-center gap-1.5">
                                         <span>Log</span>
-                                        <ArrowUpDown className={`h-3 w-3 ${creatorSortField === 'log' ? 'text-[var(--tp-accent)]' : 'text-[var(--tp-faint)]'}`} />
+                                        <ArrowUpDown className={`h-3 w-3 ${creatorSortField === 'log' ? 'text-[var(--tp-accent-ink)]' : 'text-[var(--tp-faint)]'}`} />
                                     </div>
                                 </th>
                                 <th className="min-w-[70px] text-center">Action</th>
@@ -968,7 +968,7 @@ const InfluencerProposal: React.FC = () => {
                                                                     />
                                                                     {tile.source === 'discussion' ? (
                                                                         <span
-                                                                            className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white bg-[var(--tp-accent)] text-white"
+                                                                            className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white bg-[var(--tp-accent)] text-[var(--tp-on-accent)]"
                                                                             title="Shared in the discussion"
                                                                         >
                                                                             <MessageCircle className="h-2 w-2" strokeWidth={3} />
@@ -988,7 +988,7 @@ const InfluencerProposal: React.FC = () => {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setLightbox({ items: insightTiles.map(t => ({ url: t.url, name: t.name })), index: 3 })}
-                                                                    className="flex h-8 shrink-0 items-center rounded-[5px] border border-[var(--tp-rule-panel)] bg-[var(--tp-surface-sunken)] px-2 text-[11.5px] font-semibold tabular-nums text-[var(--tp-muted)] transition-colors hover:border-[var(--tp-accent-rule)] hover:bg-[var(--tp-accent-soft)] hover:text-[var(--tp-accent)]"
+                                                                    className="flex h-8 shrink-0 items-center rounded-[5px] border border-[var(--tp-rule-panel)] bg-[var(--tp-surface-sunken)] px-2 text-[11.5px] font-semibold tabular-nums text-[var(--tp-muted)] transition-colors hover:border-[var(--tp-accent-rule)] hover:bg-[var(--tp-accent-soft)] hover:text-[var(--tp-accent-ink)]"
                                                                     title={`${insightTiles.length - 3} more screenshot${insightTiles.length - 3 === 1 ? '' : 's'}`}
                                                                 >
                                                                     +{insightTiles.length - 3}
@@ -1012,7 +1012,7 @@ const InfluencerProposal: React.FC = () => {
                                                         </button>
                                                     )}
 
-                                                    <label className="flex h-8 cursor-pointer items-center gap-1 rounded-[5px] border border-[var(--tp-rule-strong)] border-dashed px-2.5 text-[12px] font-medium text-[var(--tp-muted)] transition-colors hover:border-[var(--tp-accent)] hover:bg-[var(--tp-accent-soft)] hover:text-[var(--tp-accent)]">
+                                                    <label className="flex h-8 cursor-pointer items-center gap-1 rounded-[5px] border border-[var(--tp-rule-strong)] border-dashed px-2.5 text-[12px] font-medium text-[var(--tp-muted)] transition-colors hover:border-[var(--tp-accent)] hover:bg-[var(--tp-accent-soft)] hover:text-[var(--tp-accent-ink)]">
                                                         <Upload className="h-3.5 w-3.5" />
                                                         <span>Add</span>
                                                         <input
@@ -1092,7 +1092,7 @@ const InfluencerProposal: React.FC = () => {
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             onClick={e => e.stopPropagation()}
-                                                            className="flex max-w-[150px] items-center gap-1.5 truncate text-[12.5px] font-semibold text-[var(--tp-accent)] hover:underline"
+                                                            className="flex max-w-[150px] items-center gap-1.5 truncate text-[12.5px] font-semibold text-[var(--tp-accent-ink)] hover:underline"
                                                         >
                                                             <FileText className="h-3.5 w-3.5 shrink-0 text-[var(--tp-faint)]" />
                                                             <span>Draft contract</span>
@@ -1118,7 +1118,7 @@ const InfluencerProposal: React.FC = () => {
                                                     <MessageCircle className="h-3.5 w-3.5 text-[var(--tp-faint)]" />
                                                     <span>See discussion</span>
                                                     {hasUnread && (
-                                                        <span className="ml-0.5 rounded-full bg-[var(--tp-accent)] px-1.5 text-[11px] font-semibold tabular-nums text-white">
+                                                        <span className="ml-0.5 rounded-full bg-[var(--tp-accent)] px-1.5 text-[11px] font-semibold tabular-nums text-[var(--tp-on-accent)]">
                                                             {activity?.unreadCount}
                                                         </span>
                                                     )}
@@ -1173,7 +1173,7 @@ const InfluencerProposal: React.FC = () => {
                 <div className="flex justify-center">
                     <button
                         onClick={() => setShowAddCreatorModal(true)}
-                        className="primary-btn inline-flex items-center gap-2 rounded-[7px] bg-[var(--accent-color)] px-5 py-2.5 text-[13px] font-semibold text-white"
+                        className="primary-btn inline-flex items-center gap-2 rounded-[7px] bg-[var(--accent-color)] px-5 py-2.5 text-[13px] font-semibold text-[var(--tp-on-accent)]"
                     >
                         <Plus className="h-4 w-4" />
                         <span>Add creator via YouTube URL</span>
@@ -1195,7 +1195,7 @@ const InfluencerProposal: React.FC = () => {
                             type="button"
                             onClick={() => setStatusFilter(null)}
                             disabled={isDefaultFilter}
-                            className="text-[11px] font-semibold text-[var(--tp-accent)] hover:underline disabled:cursor-default disabled:text-[var(--tp-faint)] disabled:no-underline"
+                            className="text-[11px] font-semibold text-[var(--tp-accent-ink)] hover:underline disabled:cursor-default disabled:text-[var(--tp-faint)] disabled:no-underline"
                         >
                             Reset
                         </button>
@@ -1238,7 +1238,7 @@ const InfluencerProposal: React.FC = () => {
                     ref={cellPopoverRef}
                     onClick={e => e.stopPropagation()}
                     style={calcPopoverPosition(activeCellPopover.anchorRect, 320, 360)}
-                    className="app-popover bg-white rounded-2xl border border-[#dde3d9]/80 shadow-lg p-4 w-80 font-sans"
+                    className="app-popover bg-white rounded-2xl border border-[#e1e7e5]/80 shadow-lg p-4 w-80 font-sans"
                 >
                     {/* 1. Rate Popover */}
                     {activeCellPopover.type === 'rate' && (
@@ -1269,7 +1269,7 @@ const InfluencerProposal: React.FC = () => {
                                 <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button
                                     onClick={() => updateCreatorDealField(activeCellPopover.kolId, 'est_rate', parseFloat(cellRateVal) || 0)}
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
                                 >
                                     Save Rate
                                 </button>
@@ -1302,7 +1302,7 @@ const InfluencerProposal: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => updatePresetQuantity('90s', 1)}
-                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] font-semibold flex items-center justify-center text-sm transition-colors"
+                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--tp-accent-ink)] font-semibold flex items-center justify-center text-sm transition-colors"
                                         >+</button>
                                     </div>
                                 </div>
@@ -1320,7 +1320,7 @@ const InfluencerProposal: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => updatePresetQuantity('tiktok', 1)}
-                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] font-semibold flex items-center justify-center text-sm transition-colors"
+                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--tp-accent-ink)] font-semibold flex items-center justify-center text-sm transition-colors"
                                         >+</button>
                                     </div>
                                 </div>
@@ -1338,7 +1338,7 @@ const InfluencerProposal: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => updatePresetQuantity('postX', 1)}
-                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] font-semibold flex items-center justify-center text-sm transition-colors"
+                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--tp-accent-ink)] font-semibold flex items-center justify-center text-sm transition-colors"
                                         >+</button>
                                     </div>
                                 </div>
@@ -1360,7 +1360,7 @@ const InfluencerProposal: React.FC = () => {
                                 <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button
                                     onClick={() => updateCreatorDealField(activeCellPopover.kolId, 'deliverables', cellDeliverablesVal)}
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
                                 >
                                     Save Deliverables
                                 </button>
@@ -1396,7 +1396,7 @@ const InfluencerProposal: React.FC = () => {
                                 <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button
                                     onClick={() => updateCreatorDealField(activeCellPopover.kolId, 'terms', cellTermsVal)}
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
                                 >
                                     Save Terms
                                 </button>
@@ -1428,7 +1428,7 @@ const InfluencerProposal: React.FC = () => {
                                 <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button
                                     onClick={() => updateCreatorDealField(activeCellPopover.kolId, 'contract_link', cellContractVal.trim())}
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
                                 >
                                     Save Link
                                 </button>
@@ -1448,7 +1448,7 @@ const InfluencerProposal: React.FC = () => {
                     {
                         key: 'approve',
                         label: 'Approve',
-                        icon: <Check className="w-4 h-4 text-[var(--tp-accent)]" />,
+                        icon: <Check className="w-4 h-4 text-[var(--tp-accent-ink)]" />,
                         activeWhen: menuDeal.status === 'Approved',
                         onClick: () => updateCreatorStatus(activeActionMenu.kolId, 'Approved', true)
                     },
@@ -1487,7 +1487,7 @@ const InfluencerProposal: React.FC = () => {
 
             {/* PORTAL MODAL: ADD CREATOR VIA YOUTUBE URL MODAL */}
             {showAddCreatorModal && createPortal(
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto font-sans">
+                <div className="fixed inset-0 bg-[rgba(15,21,36,0.5)] backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto font-sans">
                     <div className="app-dialog bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
                         <div className="p-5 border-b border-[var(--tp-rule)] flex justify-between items-center bg-[var(--tp-surface-sunken)]/80">
                             <h3 className="text-base font-semibold text-[var(--tp-ink)] flex items-center gap-2">
@@ -1526,7 +1526,7 @@ const InfluencerProposal: React.FC = () => {
                                 <button
                                     onClick={handleAddCreatorByYouTube}
                                     disabled={fetchingYt || !ytChannelInput.trim()}
-                                    className="px-5 py-2 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl disabled:opacity-50 flex items-center gap-1.5"
+                                    className="px-5 py-2 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl disabled:opacity-50 flex items-center gap-1.5"
                                 >
                                     {fetchingYt ? (
                                         <>

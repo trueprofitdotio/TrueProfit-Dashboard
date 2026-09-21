@@ -28,22 +28,36 @@ const formatMetricValue = (num: number, format: 'number' | 'currency') => {
 
 const getProgressColor = (progress: number) => {
     const p = progress * 100;
-    if (p <= 25) return '#DC143C';
-    if (p <= 79) return '#FA812F';
-    return 'var(--accent-color)';
+    if (p <= 25) return '#D91A43';
+    if (p <= 79) return '#B45309';
+    // On or past target is positive state, not brand: the accent stopped
+    // meaning "good" when it left the green family.
+    return 'var(--tp-positive)';
+};
+
+/**
+ * liquidFill paints the label twice: `color` over the pale well and
+ * `insideColor` over the liquid itself, which defaults to white. On the mint
+ * fill white lands at 2.25:1, so the submerged half of the figure has to be
+ * picked per state rather than left to the default.
+ */
+const getProgressLabelInside = (progress: number) => {
+    const p = progress * 100;
+    if (p <= 79) return '#ffffff';   // 5:1 on the rose and amber fills
+    return '#0F1613';                // 6:1 on the mint fill; white would be 3.1:1
 };
 
 const getProgressGradient = (progress: number) => {
     const p = progress * 100;
-    let topColor = '#3ce1a5';
-    let bottomColor = '#1aa473';
+    let topColor = '#3fdda8';
+    let bottomColor = '#12a877';
     
     if (p <= 25) {
-        topColor = '#ff4d6e';
-        bottomColor = '#b3092b';
+        topColor = '#fb7185';
+        bottomColor = '#d01a45';
     } else if (p <= 79) {
-        topColor = '#ffa05e';
-        bottomColor = '#e06410';
+        topColor = '#fbbf24';
+        bottomColor = '#b45309';
     }
     
     return {
@@ -88,7 +102,7 @@ const KpiGauge: React.FC<KpiGaugeProps> = ({ title, color: metricColor, format, 
                 radius: '80%',
                 color: [gradient],
                 backgroundStyle: {
-                    color: '#F0FDF4',
+                    color: '#EEF3F1',
                     shadowBlur: 0,
                 },
                 itemStyle: {
@@ -99,7 +113,8 @@ const KpiGauge: React.FC<KpiGaugeProps> = ({ title, color: metricColor, format, 
                     formatter: `${(progress * 100).toFixed(1)}%`,
                     fontSize: isSmall ? 24 : 40,
                     fontWeight: 'bold',
-                    color: '#004D40',
+                    color: '#0F1613',
+                    insideColor: getProgressLabelInside(progress),
                 },
             }],
         });
@@ -201,7 +216,7 @@ const KpiRunrate: React.FC<KpiRunrateProps> = ({ loading, error, data, onSave })
         <div className="workspace-page kpi-runrate">
             <div className="workspace-heading">
                 <h2>Q{quarter} {year} KPI runrate</h2>
-                <button onClick={() => setIsModalOpen(true)} className="primary-btn h-10 shrink-0 rounded-[7px] bg-[var(--accent-color)] px-5 text-[13px] font-semibold text-white">Set up KPIs</button>
+                <button onClick={() => setIsModalOpen(true)} className="primary-btn h-10 shrink-0 rounded-[7px] bg-[var(--accent-color)] px-5 text-[13px] font-semibold text-[var(--tp-on-accent)]">Set up KPIs</button>
             </div>
             {loading ? <Loader /> : error ? <div className="card flex items-start gap-2.5 p-4 text-[13px] font-medium text-[var(--tp-danger)]" role="alert"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tp-danger)]" /><span>{error}</span></div> : (
                 <>
@@ -216,8 +231,8 @@ const KpiRunrate: React.FC<KpiRunrateProps> = ({ loading, error, data, onSave })
                     {Object.keys(pastQuartersProgress).length > 0 && (
                         <div>
                             <button onClick={() => setShowPastQuarters(!showPastQuarters)} className="group mb-4 flex w-full items-center justify-between py-2 text-left" aria-expanded={showPastQuarters}>
-                                <h2 className="transition-colors group-hover:text-[var(--accent-color)]">{year} previous quarters</h2>
-                                <svg className={`h-5 w-5 text-[var(--tp-muted)] transition-transform group-hover:text-[var(--accent-color)] ${showPastQuarters ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                <h2 className="transition-colors group-hover:text-[var(--tp-accent-ink)]">{year} previous quarters</h2>
+                                <svg className={`h-5 w-5 text-[var(--tp-muted)] transition-transform group-hover:text-[var(--tp-accent-ink)] ${showPastQuarters ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                             </button>
                             {showPastQuarters && (
                                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">

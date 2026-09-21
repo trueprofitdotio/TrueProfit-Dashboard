@@ -69,7 +69,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
         <div className="relative" ref={dropdownRef}>
             <button
                 type="button"
-                className="w-full bg-white text-left p-2.5 border border-[#dde3d9]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"
+                className="w-full bg-white text-left p-2.5 border border-[#e1e7e5]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span className={selectedOption ? 'text-[var(--tp-ink)]' : 'text-[var(--tp-meta)]'}>
@@ -79,12 +79,12 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
             </button>
 
             {isOpen && (
-                <div className="absolute z-10 mt-1 w-full bg-white max-h-60 overflow-hidden rounded-2xl border border-[#dde3d9]/50">
-                    <div className="p-2 border-b border-[#dde3d9]/30">
+                <div className="absolute z-10 mt-1 w-full bg-white max-h-60 overflow-hidden rounded-2xl border border-[#e1e7e5]/50">
+                    <div className="p-2 border-b border-[#e1e7e5]/30">
                         <input
                             type="text"
                             placeholder="Search affiliates..."
-                            className="w-full px-4 py-2 border border-[#dde3d9]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] rounded-full"
+                            className="w-full px-4 py-2 border border-[#e1e7e5]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] rounded-full"
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
@@ -93,7 +93,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
                         {filteredOptions.map(option => (
                             <li
                                 key={option.publicId}
-                                className={`px-4 py-2 text-sm text-[var(--tp-ink-2)] hover:bg-emerald-50 cursor-pointer ${value === option.publicId ? 'bg-emerald-100/50' : ''}`}
+                                className={`px-4 py-2 text-sm text-[var(--tp-ink-2)] hover:bg-[var(--tp-accent-soft)] cursor-pointer ${value === option.publicId ? 'bg-[var(--tp-accent-soft)]' : ''}`}
                                 onClick={() => handleSelect(option.publicId)}
                             >
                                 {option.name} ({option.publicId})
@@ -220,7 +220,7 @@ const PartnerAnalysis: React.FC = () => {
                         id="month"
                         value={month}
                         onChange={e => setMonth(e.target.value)}
-                        className="p-2.5 border border-[#dde3d9]/50 focus:ring-1 focus:ring-[var(--accent-color)] focus:outline-none h-[42px] rounded-full px-5 w-full md:w-auto bg-white text-[var(--tp-ink)] text-sm"
+                        className="p-2.5 border border-[#e1e7e5]/50 focus:ring-1 focus:ring-[var(--accent-color)] focus:outline-none h-[42px] rounded-full px-5 w-full md:w-auto bg-white text-[var(--tp-ink)] text-sm"
                     />
                 </div>
                 <div className="w-full md:w-1/3">
@@ -233,7 +233,7 @@ const PartnerAnalysis: React.FC = () => {
                     />
                 </div>
                 <div className="w-full md:w-auto">
-                    <button onClick={handleGetMetric} disabled={loading || !selectedAffiliate} className="w-full px-8 py-2.5 text-white font-semibold rounded-full primary-btn bg-[var(--accent-color)] focus:outline-none disabled:bg-slate-300 disabled:cursor-not-allowed disabled:transform-none h-[42px] border-none">
+                    <button onClick={handleGetMetric} disabled={loading || !selectedAffiliate} className="w-full px-8 py-2.5 text-[var(--tp-on-accent)] font-semibold rounded-full primary-btn bg-[var(--accent-color)] focus:outline-none disabled:bg-[var(--tp-rule-strong)] disabled:cursor-not-allowed disabled:transform-none h-[42px] border-none">
                         {loading ? 'Loading...' : 'Get Metrics'}
                     </button>
                 </div>
@@ -254,7 +254,7 @@ const PartnerAnalysis: React.FC = () => {
                         <h3 className="text-lg font-semibold text-[var(--tp-ink)] mb-4">Daily Breakdown</h3>
                         {data.daily.length > 0 ? (
                             <table className="w-full text-sm text-left text-[var(--tp-muted)]">
-                                <thead className="text-xs text-[var(--tp-accent)] font-semibold bg-transparent">
+                                <thead className="text-xs text-[var(--tp-accent-ink)] font-semibold bg-transparent">
                                     <tr>
                                         <th scope="col" className="px-6 py-3">Date</th>
                                         <th scope="col" className="px-6 py-3 text-right">Clicks</th>
@@ -263,7 +263,7 @@ const PartnerAnalysis: React.FC = () => {
                                 </thead>
                                 <tbody>
                                     {data.daily.map(row => (
-                                        <tr key={row.date} className="bg-white border-b border-[#dde3d9]/30 hover:bg-[var(--tp-surface-sunken)]/50">
+                                        <tr key={row.date} className="bg-white border-b border-[#e1e7e5]/30 hover:bg-[var(--tp-surface-sunken)]/50">
                                             <td className="px-6 py-4 font-medium text-[var(--tp-ink)]">{row.date}</td>
                                             <td className="px-6 py-4 text-right text-[var(--tp-muted)]">{formatNumber(row.clicks)}</td>
                                             <td className="px-6 py-4 text-right text-[var(--tp-muted)]">{formatNumber(row.installs)}</td>

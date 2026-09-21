@@ -111,11 +111,11 @@ const YouTubeCardPreview: React.FC<{ url: string; isUser: boolean }> = ({ url, i
                 onClick={e => e.stopPropagation()}
                 className={`mt-2.5 flex flex-col sm:flex-row gap-2.5 p-2 rounded-xl border transition-all hover:scale-[1.01] block overflow-hidden ${
                     isUser 
-                        ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' 
+                        ? 'bg-[rgba(15,22,19,0.08)] border-[rgba(15,22,19,0.16)] text-[var(--tp-on-accent)] hover:bg-[rgba(15,22,19,0.14)]' 
                         : 'bg-white border-[var(--tp-rule-panel)] text-[var(--tp-ink)] hover:bg-[var(--tp-surface-sunken)]'
                 }`}
             >
-                <div className="relative w-full sm:w-28 h-20 bg-slate-900 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
+                <div className="relative w-full sm:w-28 h-20 bg-[var(--tp-ink)] rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
                     <img src={thumbUrl} alt="Video thumbnail" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                         <div className="w-6 h-6 rounded-full bg-red-600/90 text-white flex items-center justify-center">
@@ -128,11 +128,11 @@ const YouTubeCardPreview: React.FC<{ url: string; isUser: boolean }> = ({ url, i
                         <Youtube className="w-3 h-3 fill-current" />
                         <span>YouTube Video</span>
                     </div>
-                    <div className={`text-xs font-semibold line-clamp-2 leading-tight ${isUser ? 'text-white' : 'text-[var(--tp-ink)]'}`}>
+                    <div className={`text-xs font-semibold line-clamp-2 leading-tight ${isUser ? 'text-[var(--tp-on-accent)]' : 'text-[var(--tp-ink)]'}`}>
                         {videoInfo?.title || 'Watch on YouTube'}
                     </div>
                     {videoInfo?.channelTitle && (
-                        <div className={`text-[11px] mt-1 truncate ${isUser ? 'text-white/75' : 'text-[var(--tp-muted)]'}`}>
+                        <div className={`text-[11px] mt-1 truncate ${isUser ? 'text-[rgba(15,22,19,0.7)]' : 'text-[var(--tp-muted)]'}`}>
                             {videoInfo.channelTitle}
                         </div>
                     )}
@@ -150,14 +150,14 @@ const YouTubeCardPreview: React.FC<{ url: string; isUser: boolean }> = ({ url, i
                 onClick={e => e.stopPropagation()}
                 className={`mt-2.5 flex items-center gap-3 p-2.5 rounded-xl border transition-all hover:scale-[1.01] block ${
                     isUser 
-                        ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' 
+                        ? 'bg-[rgba(15,22,19,0.08)] border-[rgba(15,22,19,0.16)] text-[var(--tp-on-accent)] hover:bg-[rgba(15,22,19,0.14)]' 
                         : 'bg-white border-[var(--tp-rule-panel)] text-[var(--tp-ink)] hover:bg-[var(--tp-surface-sunken)]'
                 }`}
             >
                 {channelInfo?.avatarUrl ? (
-                    <img src={channelInfo.avatarUrl} alt="Channel avatar" className="w-10 h-10 rounded-full object-cover border border-white/20 shrink-0" />
+                    <img src={channelInfo.avatarUrl} alt="Channel avatar" className="w-10 h-10 rounded-full object-cover border border-[rgba(15,22,19,0.16)] shrink-0" />
                 ) : (
-                    <div className="w-10 h-10 rounded-full bg-red-100 text-[var(--tp-danger)] flex items-center justify-center shrink-0 font-semibold text-xs">
+                    <div className="w-10 h-10 rounded-full bg-[var(--tp-danger-soft)] text-[var(--tp-danger)] flex items-center justify-center shrink-0 font-semibold text-xs">
                         <Youtube className="w-5 h-5 fill-current" />
                     </div>
                 )}
@@ -166,11 +166,11 @@ const YouTubeCardPreview: React.FC<{ url: string; isUser: boolean }> = ({ url, i
                         <Youtube className="w-3 h-3 fill-current" />
                         <span>YouTube Creator</span>
                     </div>
-                    <div className={`text-xs font-semibold truncate ${isUser ? 'text-white' : 'text-[var(--tp-ink)]'}`}>
+                    <div className={`text-xs font-semibold truncate ${isUser ? 'text-[var(--tp-on-accent)]' : 'text-[var(--tp-ink)]'}`}>
                         {channelInfo?.title || 'YouTube Channel'}
                     </div>
                     {channelInfo?.subscriberCount && (
-                        <div className={`text-[11px] font-medium ${isUser ? 'text-white/75' : 'text-[var(--tp-muted)]'}`}>
+                        <div className={`text-[11px] font-medium ${isUser ? 'text-[rgba(15,22,19,0.7)]' : 'text-[var(--tp-muted)]'}`}>
                             {channelInfo.subscriberCount} subscribers
                         </div>
                     )}
@@ -796,7 +796,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
     return createPortal(
         <>
             <div
-                className="discussion-sidebar-backdrop fixed inset-0 z-[999998] bg-slate-900/30 animate-in fade-in duration-200"
+                className="discussion-sidebar-backdrop fixed inset-0 z-[999998] bg-[rgba(15,21,36,0.3)] animate-in fade-in duration-200"
                 onClick={onClose}
                 aria-hidden="true"
             />
@@ -808,7 +808,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                 onDrop={handleDrop}
             >
             {isDraggingFile && user && (
-                <div className="pointer-events-none absolute inset-3 z-50 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--accent-color)] bg-emerald-50/95 text-[var(--accent-color)]">
+                <div className="pointer-events-none absolute inset-3 z-50 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--accent-color)] bg-[#f3f4fe] text-[var(--tp-accent-ink)]">
                     <ImagePlus className="h-7 w-7 stroke-[1.5]" />
                     <p className="text-xs font-semibold">Drop to attach</p>
                     <p className="text-[11px] text-[var(--tp-accent-ink)]">PNG, JPEG, GIF, WebP or PDF — up to 10 MB</p>
@@ -864,7 +864,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     <div className="w-full max-w-[320px] space-y-2">
                         <button
                             onClick={handleGoogleLogin}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--tp-ink)] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24">
                                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -886,6 +886,11 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                 </div>
             ) : (
                 <>
+                    {/* The feed and its floating screenshot dock share one
+                        positioned region, so the dock sits against the feed's
+                        bottom edge — directly above the composer — instead of
+                        scrolling away with the messages. */}
+                    <div className="discussion-feed-region">
                     <div className="discussion-message-feed flex-1 space-y-4 overflow-y-auto px-6 py-4 bg-[var(--tp-surface-sunken)]/40">
                         {loading ? (
                             <div className="flex h-full items-center justify-center">
@@ -951,7 +956,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                         {(
                                             <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
                                                 {!isUser && (
-                                                    <span className="mb-1 pl-1 text-[11px] font-semibold text-[var(--tp-accent)]">
+                                                    <span className="mb-1 pl-1 text-[11px] font-semibold text-[var(--tp-accent-ink)]">
                                                         {msg.actor || 'Team Member'}
                                                     </span>
                                                 )}
@@ -962,7 +967,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                     parseAttachments(msg.attachments).length > 0 ? 'discussion-bubble-media' : ''
                                                 } ${
                                                     isUser
-                                                        ? 'discussion-bubble-me bg-[var(--tp-accent)] text-white'
+                                                        ? 'discussion-bubble-me bg-[var(--tp-accent)] text-[var(--tp-on-accent)]'
                                                         : 'discussion-bubble-them border border-[var(--tp-rule-panel)] bg-[var(--tp-surface)] text-[var(--tp-ink-2)]'
                                                 }`}>
                                                     {msg.body && (
@@ -978,7 +983,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                         isUser={isUser}
                                                     />
                                                     <div className={`mt-1.5 flex items-center justify-end gap-1 text-[11px] font-medium tabular-nums ${
-                                                        isUser ? 'text-white/70' : 'text-[var(--tp-meta)]'
+                                                        isUser ? 'text-[rgba(15,22,19,0.74)]' : 'text-[var(--tp-meta)]'
                                                     }`}>
                                                         <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                     </div>
@@ -991,7 +996,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                             {intent === 'Approved' && (
                                                                 <button
                                                                     onClick={() => handleExecuteActionFromChat('Approved')}
-                                                                    className="flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                                                                    className="flex items-center gap-1.5 rounded-full border border-[var(--tp-positive-rule)] bg-[var(--tp-positive-soft)] px-3 py-1 text-xs font-semibold text-[var(--tp-positive)] hover:brightness-[0.98] transition-colors"
                                                                 >
                                                                     <Check className="h-3.5 w-3.5" />
                                                                     <span>Approve deal</span>
@@ -1000,7 +1005,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                             {intent === 'Rejected' && (
                                                                 <button
                                                                     onClick={() => handleExecuteActionFromChat('Rejected')}
-                                                                    className="flex items-center gap-1.5 rounded-full border border-[var(--tp-danger-rule)] bg-[var(--tp-danger-soft)] px-3 py-1 text-xs font-semibold text-rose-800 hover:bg-rose-100 transition-colors"
+                                                                    className="flex items-center gap-1.5 rounded-full border border-[var(--tp-danger-rule)] bg-[var(--tp-danger-soft)] px-3 py-1 text-xs font-semibold text-[var(--tp-danger)] hover:brightness-[0.98] transition-colors"
                                                                 >
                                                                     <X className="h-3.5 w-3.5" />
                                                                     <span>Reject deal</span>
@@ -1009,7 +1014,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                                                             {intent === 'Re-negotiate' && (
                                                                 <button
                                                                     onClick={() => handleExecuteActionFromChat('Re-negotiate')}
-                                                                    className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-[var(--tp-warning-soft)] px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                                                                    className="flex items-center gap-1.5 rounded-full border border-[var(--tp-warning-rule)] bg-[var(--tp-warning-soft)] px-3 py-1 text-xs font-semibold text-[var(--tp-warning)] hover:brightness-[0.98] transition-colors"
                                                                 >
                                                                     <RefreshCw className="h-3.5 w-3.5" />
                                                                     <span>Re-negotiate deal</span>
@@ -1026,17 +1031,18 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                         )}
                         {otherReaders.length > 0 && (
                             <div className="pt-1 flex items-center justify-end gap-1.5 text-[11px] text-[var(--tp-meta)] font-medium select-none">
-                                <CheckCheck className="w-3.5 h-3.5 text-[var(--tp-accent)] shrink-0" />
+                                <CheckCheck className="w-3.5 h-3.5 text-[var(--tp-accent-ink)] shrink-0" />
                                 <span>
                                     Seen by {otherReaders.map(r => r.user_name).join(', ')} at {new Date(otherReaders[0].last_read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
                         )}
                         <div ref={messagesEndRef} />
+                    </div>
 
-                        {/* Pinned to the foot of the feed, above the composer:
-                            every screenshot in the thread, in one place. */}
-                        <ThreadImageRail attachments={threadAttachments} />
+                    {/* Every screenshot in the thread, in one place, floating
+                        at the foot of the feed within reach of the composer. */}
+                    <ThreadImageRail attachments={threadAttachments} />
                     </div>
 
                     <div className="discussion-composer px-5 pb-5 pt-3 border-t border-[var(--tp-rule)] bg-white relative">

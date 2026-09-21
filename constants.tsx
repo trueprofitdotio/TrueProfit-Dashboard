@@ -3,12 +3,16 @@ import React from 'react';
 export const API_KEY = '2RG6k3b7b96qXzeSty7SbEkQKMgASchi';
 export const API_BASE_URL = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://trueprofit.trackdesk.com';
 
+/* The data ramp. Five hues spread across the wheel so no two series read as
+   the same measure at a glance, and each one sits within a few points of the
+   others in lightness so none of them shouts. Mirrors --tp-series-* in
+   index.css; ECharts takes literals, so the two are kept in step by hand. */
 export const PALETTE = {
-  signups: '#657C6A',
-  clicks: '#23C48C',
-  installs: '#F75270',
-  revenue: '#05339C',
-  payouts: '#E9A319',
+  signups: '#1D6FD8',   // blue
+  clicks: '#7C3AED',    // violet
+  installs: '#D91A43',  // rose
+  revenue: '#12A877',   // mint — money in, and the brand's own measure
+  payouts: '#D97706',   // amber — money out
   action: '#23C48C',
 };
 

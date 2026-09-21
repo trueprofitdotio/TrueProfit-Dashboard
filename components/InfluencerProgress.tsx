@@ -311,9 +311,9 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
                             onClick={() => handleDateClick(day)}
                             className={`py-1 text-xs rounded-lg transition-all font-medium ${
                                 selected
-                                    ? 'bg-[var(--accent-color)] text-white font-semibold'
+                                    ? 'bg-[var(--accent-color)] text-[var(--tp-on-accent)] font-semibold'
                                     : today
-                                    ? 'bg-emerald-50 text-[var(--tp-accent-ink)] font-semibold border border-emerald-300'
+                                    ? 'bg-[var(--tp-accent-soft)] text-[var(--tp-accent-ink)] font-semibold border border-[var(--tp-accent-rule)]'
                                     : 'hover:bg-[var(--tp-surface-hover)] text-[var(--tp-ink-2)]'
                             }`}
                         >
@@ -334,7 +334,7 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
                         onSelectDate(formatted);
                         onClose();
                     }}
-                    className="text-[11px] font-medium text-[var(--tp-accent)] hover:text-[var(--tp-accent-ink)] hover:underline"
+                    className="text-[11px] font-medium text-[var(--tp-accent-ink)] hover:text-[var(--tp-accent-ink)] hover:underline"
                 >
                     Today
                 </button>
@@ -1092,7 +1092,7 @@ const InfluencerProgress: React.FC = () => {
                                                 <button 
                                                     type="button"
                                                     onClick={() => setSelectedStatuses([...allActiveStatuses])} 
-                                                    className="text-[11px] font-semibold text-[var(--tp-accent)] hover:underline"
+                                                    className="text-[11px] font-semibold text-[var(--tp-accent-ink)] hover:underline"
                                                 >
                                                     All
                                                 </button>
@@ -1145,7 +1145,7 @@ const InfluencerProgress: React.FC = () => {
                         setShowAddModal(true);
                         setNewStartMonth(formatDateDisplay(new Date().toISOString()));
                     }}
-                    className="primary-btn flex h-10 w-fit shrink-0 items-center justify-center gap-1.5 rounded-[7px] bg-[var(--accent-color)] px-5 text-[13px] font-semibold text-white"
+                    className="primary-btn flex h-10 w-fit shrink-0 items-center justify-center gap-1.5 rounded-[7px] bg-[var(--accent-color)] px-5 text-[13px] font-semibold text-[var(--tp-on-accent)]"
                 >
                     <Plus className="w-4 h-4" />
                     <span>Add new deal</span>
@@ -1260,18 +1260,18 @@ const InfluencerProgress: React.FC = () => {
                                                     <span className="text-[var(--tp-ink-2)] text-[11px] font-medium">
                                                         {formatCurrencyUSD(actualSpent)}/{formatCurrencyUSD(c.total_package)} Paid
                                                     </span>
-                                                    <span className={`${paymentPercent === 100 ? 'text-[var(--tp-accent)]' : 'text-[var(--tp-info)]'} font-semibold`}>
+                                                    <span className={`${paymentPercent === 100 ? 'text-[var(--tp-accent-ink)]' : 'text-[var(--tp-info)]'} font-semibold`}>
                                                         {paymentPercent}%
                                                     </span>
                                                 </div>
-                                                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                                                <div className="w-full bg-[var(--tp-rule-panel)] rounded-full h-2 overflow-hidden">
                                                     <div 
                                                         className={`h-full rounded-full transition-all duration-500 ${
                                                             paymentPercent === 100 
-                                                                ? 'bg-gradient-to-r from-emerald-500 to-teal-400' 
+                                                                ? 'bg-[var(--tp-positive)]' 
                                                                 : paymentPercent > 0 
-                                                                ? 'bg-gradient-to-r from-blue-500 to-amber-400' 
-                                                                : 'bg-slate-300'
+                                                                ? 'bg-[var(--tp-accent)]' 
+                                                                : 'bg-[var(--tp-rule-strong)]'
                                                         }`}
                                                         style={{ width: `${paymentPercent}%` }}
                                                     />
@@ -1296,18 +1296,18 @@ const InfluencerProgress: React.FC = () => {
                                                             <span className="text-[var(--tp-ink-2)] font-semibold text-[11px]">
                                                                 {recordedCount} / {agreedCount} <span className="text-[11px] font-normal text-[var(--tp-muted)]">vids</span>
                                                             </span>
-                                                            <span className={`${percent === 100 ? 'text-[var(--tp-accent)]' : 'text-[var(--tp-info)]'} font-semibold text-[11px]`}>
+                                                            <span className={`${percent === 100 ? 'text-[var(--tp-accent-ink)]' : 'text-[var(--tp-info)]'} font-semibold text-[11px]`}>
                                                                 {percent}%
                                                             </span>
                                                         </div>
-                                                        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                                                        <div className="w-full bg-[var(--tp-rule-panel)] rounded-full h-2 overflow-hidden">
                                                             <div 
                                                                 className={`h-full rounded-full transition-all duration-500 ${
                                                                     percent === 100 
-                                                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-400' 
+                                                                        ? 'bg-[var(--tp-positive)]' 
                                                                         : percent > 0 
-                                                                        ? 'bg-gradient-to-r from-blue-500 to-indigo-400' 
-                                                                        : 'bg-slate-300'
+                                                                        ? 'bg-[var(--tp-accent)]' 
+                                                                        : 'bg-[var(--tp-rule-strong)]'
                                                                 }`}
                                                                 style={{ width: `${percent}%` }}
                                                             />
@@ -1317,8 +1317,12 @@ const InfluencerProgress: React.FC = () => {
                                             })()}
                                         </td>
 
-                                        {/* 7. Reported Videos Column (Shrink to 4 links max + "+XX more ▼" toggle) */}
-                                        <td className="px-4 py-3 max-w-[260px]">
+                                        {/* 7. Reported Videos Column (Shrink to 4 links max + "+XX more ▼" toggle)
+                                            Its row metrics — the 8px box inset, the 24px rows, the 6px
+                                            gaps — are mirrored by the Released date column next door, so
+                                            each date sits on the same baseline as the video it belongs to.
+                                            Change one and you must change the other. */}
+                                        <td className="tp-cell-rows px-4 py-3 max-w-[260px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'videos')}
                                                 className="cursor-pointer hover:bg-[var(--tp-surface-hover)]/80 p-2 rounded-xl border border-transparent hover:border-[var(--tp-rule)] transition-all min-h-[42px]"
@@ -1335,7 +1339,7 @@ const InfluencerProgress: React.FC = () => {
                                                                         target="_blank" 
                                                                         rel="noopener noreferrer" 
                                                                         onClick={e => e.stopPropagation()}
-                                                                        className="font-medium text-[var(--tp-info)] hover:text-[var(--tp-accent)] hover:underline flex items-center gap-1.5 truncate max-w-[240px]"
+                                                                        className="font-medium text-[var(--tp-info)] hover:text-[var(--tp-accent-ink)] hover:underline flex items-center gap-1.5 truncate max-w-[240px]"
                                                                         title={vid.video_url}
                                                                     >
                                                                         {renderPlatformIcon(vid.video_url)}
@@ -1351,7 +1355,7 @@ const InfluencerProgress: React.FC = () => {
                                                                     e.stopPropagation();
                                                                     setExpandedVideoRows(prev => ({ ...prev, [c.id]: !prev[c.id] }));
                                                                 }}
-                                                                className="text-[11px] font-semibold text-[var(--tp-accent)] hover:text-[var(--tp-accent-ink)] pt-1 block"
+                                                                className="text-[11px] font-semibold text-[var(--tp-accent-ink)] hover:text-[var(--tp-accent-ink)] pt-1 block"
                                                             >
                                                                 {isExpanded ? '▲ Show less' : `▼ +${allVids.length - 4} more video${allVids.length - 4 > 1 ? 's' : ''}`}
                                                             </button>
@@ -1365,9 +1369,31 @@ const InfluencerProgress: React.FC = () => {
                                             </div>
                                         </td>
 
-                                        {/* 8. Released Date Column */}
-                                        <td className="px-4 py-3 whitespace-nowrap text-xs font-normal text-[var(--tp-muted)]">
-                                            {formatDateDisplay(c.released_date)}
+                                        {/* 8. Released Date Column — one date per reported video.
+                                            It used to print c.released_date, which is only the newest
+                                            date rolled up onto the row, so a deal with five videos showed
+                                            one date and gave no way to tell which video it belonged to. */}
+                                        <td className="tp-cell-rows px-4 py-3 whitespace-nowrap text-xs font-normal text-[var(--tp-muted)]">
+                                            {/* Mirrors the videos cell's box so the rows register. */}
+                                            <div className="p-2 border border-transparent min-h-[42px]">
+                                                {allVids.length > 0 ? (
+                                                    <div className="space-y-1.5">
+                                                        {displayedVids.map((vid, idx) => (
+                                                            <div
+                                                                key={vid.id || idx}
+                                                                className="h-6 flex items-center text-xs tabular-nums"
+                                                                title={vid.title || vid.video_url}
+                                                            >
+                                                                {vid.released_date
+                                                                    ? formatDateDisplay(vid.released_date)
+                                                                    : <span className="text-[var(--tp-meta)]">Not released yet</span>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="h-6 flex items-center text-xs text-[var(--tp-meta)]">—</span>
+                                                )}
+                                            </div>
                                         </td>
 
                                         {/* 9. Agreement / Contract Documents Column */}
@@ -1393,10 +1419,10 @@ const InfluencerProgress: React.FC = () => {
                                                                                 target="_blank"
                                                                                 rel="noopener noreferrer"
                                                                                 onClick={e => e.stopPropagation()}
-                                                                                className="font-medium text-[var(--tp-accent)] hover:text-[var(--tp-accent-ink)] hover:underline flex items-center gap-1.5 truncate max-w-[160px]"
+                                                                                className="font-medium text-[var(--tp-accent-ink)] hover:text-[var(--tp-accent-ink)] hover:underline flex items-center gap-1.5 truncate max-w-[160px]"
                                                                                 title={url}
                                                                             >
-                                                                                <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                                                                <FileText className="w-3.5 h-3.5 text-[var(--tp-accent-ink)] shrink-0" />
                                                                                 <span className="truncate">{docName.length > 20 ? `${docName.substring(0, 18)}...` : docName}</span>
                                                                             </a>
                                                                         </div>
@@ -1438,7 +1464,7 @@ const InfluencerProgress: React.FC = () => {
                     ref={popoverRef}
                     onClick={e => e.stopPropagation()}
                     style={calcPopoverPosition(activePopover.anchorRect, 320, 360)}
-                    className="bg-white rounded-2xl border border-[#dde3d9]/80 shadow-lg p-4 w-80 font-sans"
+                    className="bg-white rounded-2xl border border-[#e1e7e5]/80 shadow-lg p-4 w-80 font-sans"
                 >
                     {/* 1. Date Single Mini Calendar Popover */}
                     {activePopover.type === 'date' && (
@@ -1476,7 +1502,7 @@ const InfluencerProgress: React.FC = () => {
                                                 />
                                                 <button 
                                                     onClick={() => handleSaveEditTag(idx)} 
-                                                    className="p-1 text-[var(--tp-accent)] hover:bg-emerald-50 rounded-lg shrink-0"
+                                                    className="p-1 text-[var(--tp-accent-ink)] hover:bg-[var(--tp-accent-soft)] rounded-lg shrink-0"
                                                     title="Save name"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
@@ -1528,7 +1554,7 @@ const InfluencerProgress: React.FC = () => {
                                 />
                                 <button 
                                     onClick={handleAddCustomTag}
-                                    className="px-3 py-1.5 text-xs font-medium text-white bg-slate-800 hover:bg-slate-900 rounded-xl shrink-0"
+                                    className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--tp-ink)] hover:bg-[var(--tp-ink-2)] rounded-xl shrink-0"
                                 >
                                     Add
                                 </button>
@@ -1574,7 +1600,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'actual_spent', parseFloat(spentInputVal) || 0)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
                                 >
                                     Save
                                 </button>
@@ -1609,7 +1635,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'total_package', pkgInputVal)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
                                 >
                                     Save
                                 </button>
@@ -1644,7 +1670,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'content_count', countInputVal)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
                                 >
                                     Save
                                 </button>
@@ -1680,7 +1706,7 @@ const InfluencerProgress: React.FC = () => {
                                                         setVideoUrlsList(copy);
                                                         setEditingUrlIdx(null);
                                                     }} 
-                                                    className="p-1 text-[var(--tp-accent)] hover:bg-emerald-50 rounded-lg shrink-0"
+                                                    className="p-1 text-[var(--tp-accent-ink)] hover:bg-[var(--tp-accent-soft)] rounded-lg shrink-0"
                                                     title="Save URL"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
@@ -1733,7 +1759,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => handleSaveVideosPopover(activePopover.rowId)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
                                 >
                                     Save Videos
                                 </button>
@@ -1769,7 +1795,7 @@ const InfluencerProgress: React.FC = () => {
                                                         setAgreementUrlsList(copy);
                                                         setEditingAgreementIdx(null);
                                                     }} 
-                                                    className="p-1 text-[var(--tp-accent)] hover:bg-emerald-50 rounded-lg shrink-0"
+                                                    className="p-1 text-[var(--tp-accent-ink)] hover:bg-[var(--tp-accent-soft)] rounded-lg shrink-0"
                                                     title="Save URL link"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
@@ -1822,7 +1848,7 @@ const InfluencerProgress: React.FC = () => {
                                 <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
                                 <button 
                                     onClick={() => handleSaveAgreementPopover(activePopover.rowId)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
                                 >
                                     Save Documents
                                 </button>
@@ -1835,7 +1861,7 @@ const InfluencerProgress: React.FC = () => {
 
             {/* ENHANCED ADD NEW DEAL MODAL — Rendered via Portal to escape parent container scroll */}
             {showAddModal && createPortal(
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto">
+                <div className="fixed inset-0 bg-[rgba(15,21,36,0.5)] backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-visible animate-in fade-in zoom-in-95 duration-200 my-auto border border-[var(--tp-rule)]">
                         <div className="p-5 border-b border-[var(--tp-rule)] flex justify-between items-center bg-[var(--tp-surface-sunken)]/80 rounded-t-2xl">
                             <h3 className="text-base font-semibold text-[var(--tp-ink)] flex items-center gap-2">
@@ -1919,7 +1945,7 @@ const InfluencerProgress: React.FC = () => {
                                             type="button"
                                             onClick={handleFetchYtChannel}
                                             disabled={fetchingYt || !ytChannelUrlInput.trim()}
-                                            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+                                            className="px-4 py-2 bg-[var(--tp-ink)] hover:bg-[var(--tp-ink-2)] text-white rounded-xl text-xs font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0"
                                         >
                                             {fetchingYt ? (
                                                 <>
@@ -2011,7 +2037,7 @@ const InfluencerProgress: React.FC = () => {
                                 </button>
                                 <button 
                                     type="submit" 
-                                    className="px-6 py-2.5 rounded-full font-medium text-white bg-[var(--accent-color)] hover:bg-emerald-600 transition-colors text-sm"
+                                    className="px-6 py-2.5 rounded-full font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] transition-colors text-sm"
                                 >
                                     Create Deal
                                 </button>
@@ -2023,7 +2049,7 @@ const InfluencerProgress: React.FC = () => {
             )}
             {/* DELETE DEAL CONFIRMATION MODAL */}
             {deleteConfirmCollab && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-[rgba(15,21,36,0.4)] backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-[var(--tp-rule)] space-y-4">
                         <div className="flex items-center gap-3 text-[var(--tp-warning)]">
                             <div className="p-3 bg-[var(--tp-warning-soft)] rounded-2xl">
@@ -2043,7 +2069,7 @@ const InfluencerProgress: React.FC = () => {
                             </button>
                             <button
                                 onClick={() => handleDeleteCollaboration(deleteConfirmCollab.id)}
-                                className="px-5 py-2.5 text-xs font-semibold text-white bg-[var(--tp-danger)] hover:bg-rose-700 rounded-xl transition-colors"
+                                className="px-5 py-2.5 text-xs font-semibold text-white bg-[var(--tp-danger)] hover:brightness-90 rounded-xl transition-colors"
                             >
                                 Yes, Remove Deal
                             </button>
