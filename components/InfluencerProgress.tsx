@@ -124,6 +124,77 @@ const parsePackageNumber = (val?: string | number | null): number => {
     return isNaN(num) ? 0 : num;
 };
 
+/* Payment and content progress are the same control measuring two different
+   things, so they are one component with two call sites rather than two
+   near-identical blocks that drift apart on the next edit.
+
+   Three states, and none of them is carried by hue alone:
+
+     not started   empty track, figure in `meta`
+     in progress   blue fill, figure in blue
+     complete      green fill, figure in green ink behind a check
+
+   Blue for in-flight and green for done is the point of the split. Both states
+   used to be green — `accent` at 1.79:1 against its own track and `positive`
+   one step darker — so "half paid" and "paid in full" read as the same row at a
+   glance. Blue `info` sits at 4.48:1 against the track, and the check mark
+   means the complete state survives greyscale and colour blindness too. */
+type ProgressState = 'none' | 'partial' | 'done';
+
+const PROGRESS_TONE: Record<ProgressState, { fill: string; text: string }> = {
+    // `faint` would be the natural tint for a dormant row, but it is a 2.5:1
+    // divider colour and never legal for text; `meta` is the recessive step
+    // that still reads.
+    none:    { fill: '',                             text: 'text-[var(--tp-meta)]' },
+    partial: { fill: 'bg-[var(--tp-info)]',          text: 'text-[var(--tp-info)]' },
+    // `accent-strong`, not `accent`: the brand mint reads at 2.25:1 on white,
+    // under the 3:1 a filled bar owes its surface. This is the same mint, one
+    // step down, and it is the documented progress-fill token.
+    done:    { fill: 'bg-[var(--tp-accent-strong)]', text: 'text-[var(--tp-accent-ink)]' },
+};
+
+const ProgressMeter: React.FC<{
+    percent: number;
+    label: React.ReactNode;
+    title: string;
+    onClick: (e: React.MouseEvent) => void;
+}> = ({ percent, label, title, onClick }) => {
+    const state: ProgressState = percent >= 100 ? 'done' : percent > 0 ? 'partial' : 'none';
+    const tone = PROGRESS_TONE[state];
+    return (
+        <div
+            onClick={onClick}
+            title={title}
+            className="cursor-pointer rounded-lg border border-transparent p-1.5 transition-colors hover:border-[var(--tp-rule)] hover:bg-[var(--tp-surface-hover)]/80"
+        >
+            {/* The figure never wraps: it is shrink-0 and the amount beside it
+                takes min-w-0 + truncate, so a long budget ellipsizes on its own
+                line instead of pushing the percentage onto a second one and
+                knocking every bar in the column out of alignment. */}
+            {/* Fixed 16px band, not a baseline row: the check on a complete
+                row grows the line box by 2px otherwise, and every bar in the
+                column below it shifts down against its neighbours. */}
+            <div className="flex h-4 items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-[11px] font-medium tabular-nums text-[var(--tp-ink-2)]">
+                    {label}
+                </span>
+                <span className={`flex shrink-0 items-center gap-0.5 text-[11px] font-semibold tabular-nums ${tone.text}`}>
+                    {state === 'done' && <Check className="h-3 w-3 shrink-0" strokeWidth={3} />}
+                    {percent}%
+                </span>
+            </div>
+            <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[var(--tp-rule-panel)]">
+                {percent > 0 && (
+                    <div
+                        className={`h-full rounded-full transition-[width] duration-500 ${tone.fill}`}
+                        style={{ width: `${percent}%` }}
+                    />
+                )}
+            </div>
+        </div>
+    );
+};
+
 // Date Formatter: YYYY-MM-DD or text -> MMM DD, YYYY
 const formatDateDisplay = (dateStr?: string | null): string => {
     if (!dateStr) return 'Select Date';
@@ -1187,7 +1258,7 @@ const InfluencerProgress: React.FC = () => {
                                     <ArrowUpDown className="h-3 w-3 shrink-0 text-[var(--tp-faint)]" />
                                 </div>
                             </th>
-                            <th className="min-w-[130px]">Content progress</th>
+                            <th className="min-w-[150px]">Content progress</th>
                             <th className="min-w-[240px]">Reported videos</th>
                             <th className="min-w-[120px]">Released date</th>
                             <th className="min-w-[140px]">Contract</th>
@@ -1249,70 +1320,34 @@ const InfluencerProgress: React.FC = () => {
                                             </button>
                                         </td>
 
-                                        {/* 5. Payment Progress Column ($AA/$BBB Paid) */}
+                                        {/* 5. Payment Progress Column
+                                            The denominator is deliberately absent: Package sits in the
+                                            very next column to the left, so "$8,500 / $10,000 paid"
+                                            printed the same figure twice and was what overflowed the
+                                            cell on large budgets. The full sentence is in the title. */}
                                         <td className="px-4 py-3 min-w-[180px]">
-                                            <div 
+                                            <ProgressMeter
+                                                percent={paymentPercent}
+                                                label={<>{formatCurrencyUSD(actualSpent)} paid</>}
+                                                title={`${formatCurrencyUSD(actualSpent)} of ${formatCurrencyUSD(c.total_package)} paid — click to update actual budget spent`}
                                                 onClick={e => openPopover(e, c, 'payment')}
-                                                className="cursor-pointer group/bar p-1.5 rounded-lg hover:bg-[var(--tp-surface-hover)]/80 transition-colors border border-transparent hover:border-[var(--tp-rule)]"
-                                                title="Click to update Actual Budget Spent"
-                                            >
-                                                <div className="flex justify-between items-center text-xs mb-1 font-medium">
-                                                    <span className="text-[var(--tp-ink-2)] text-[11px] font-medium">
-                                                        {formatCurrencyUSD(actualSpent)}/{formatCurrencyUSD(c.total_package)} Paid
-                                                    </span>
-                                                    <span className={`${paymentPercent === 100 ? 'text-[var(--tp-accent-ink)]' : 'text-[var(--tp-info)]'} font-semibold`}>
-                                                        {paymentPercent}%
-                                                    </span>
-                                                </div>
-                                                <div className="w-full bg-[var(--tp-rule-panel)] rounded-full h-2 overflow-hidden">
-                                                    <div 
-                                                        className={`h-full rounded-full transition-all duration-500 ${
-                                                            paymentPercent === 100 
-                                                                ? 'bg-[var(--tp-positive)]' 
-                                                                : paymentPercent > 0 
-                                                                ? 'bg-[var(--tp-accent)]' 
-                                                                : 'bg-[var(--tp-rule-strong)]'
-                                                        }`}
-                                                        style={{ width: `${paymentPercent}%` }}
-                                                    />
-                                                </div>
-                                            </div>
+                                            />
                                         </td>
 
                                         {/* 6. Content Progress Column */}
-                                        <td className="px-4 py-3 min-w-[130px]">
+                                        <td className="px-4 py-3 min-w-[150px]">
                                             {(() => {
                                                 const recordedCount = c.videosList?.length || 0;
                                                 const agreedCount = c.content_count || 1;
                                                 const percent = Math.min(100, Math.round((recordedCount / agreedCount) * 100));
 
                                                 return (
-                                                    <div 
+                                                    <ProgressMeter
+                                                        percent={percent}
+                                                        label={<>{recordedCount} / {agreedCount} <span className="font-normal text-[var(--tp-muted)]">vids</span></>}
+                                                        title={`${recordedCount} of ${agreedCount} agreed videos reported — click to edit the agreed content count`}
                                                         onClick={e => openPopover(e, c, 'count')}
-                                                        className="cursor-pointer group/cnt p-1.5 rounded-lg hover:bg-[var(--tp-surface-hover)]/80 transition-colors border border-transparent hover:border-[var(--tp-rule)]"
-                                                        title="Click to edit agreed content count"
-                                                    >
-                                                        <div className="flex justify-between items-center text-xs mb-1 font-medium">
-                                                            <span className="text-[var(--tp-ink-2)] font-semibold text-[11px]">
-                                                                {recordedCount} / {agreedCount} <span className="text-[11px] font-normal text-[var(--tp-muted)]">vids</span>
-                                                            </span>
-                                                            <span className={`${percent === 100 ? 'text-[var(--tp-accent-ink)]' : 'text-[var(--tp-info)]'} font-semibold text-[11px]`}>
-                                                                {percent}%
-                                                            </span>
-                                                        </div>
-                                                        <div className="w-full bg-[var(--tp-rule-panel)] rounded-full h-2 overflow-hidden">
-                                                            <div 
-                                                                className={`h-full rounded-full transition-all duration-500 ${
-                                                                    percent === 100 
-                                                                        ? 'bg-[var(--tp-positive)]' 
-                                                                        : percent > 0 
-                                                                        ? 'bg-[var(--tp-accent)]' 
-                                                                        : 'bg-[var(--tp-rule-strong)]'
-                                                                }`}
-                                                                style={{ width: `${percent}%` }}
-                                                            />
-                                                        </div>
-                                                    </div>
+                                                    />
                                                 );
                                             })()}
                                         </td>
