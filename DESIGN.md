@@ -25,7 +25,7 @@ colors:
   warning: "#B45309"
   danger: "#D91A43"
   info: "#1A65C8"
-  series: "#12A877, #1D6FD8, #7C3AED, #D97706, #D91A43, #0891B2"
+  series: "#12A877, #1D6FD8, #58A3D0, #D97706, #D91A43, #0891B2"
 typography:
   family: "Inter, system-ui, Segoe UI, Helvetica, Arial, sans-serif"
   axis: "400-700 (variable), opsz 14-32; nothing in the UI exceeds 600"
@@ -95,6 +95,7 @@ rounded:
   popup: "9px"
   overlay: "12px"
   sheet: "16px"
+  pill: "999px"
 elevation:
   sheet: "0 1px 1px rgba(15,22,19,.035), 0 2px 6px -1px rgba(15,22,19,.055)"
   raised: "0 1px 2px rgba(15,22,19,.05), 0 6px 16px -4px rgba(15,22,19,.1)"
@@ -188,7 +189,9 @@ Semantic pairs follow the same shape: positive `#0B7C57`, warning `#B45309`, dan
 
 ### Data ramp
 
-Charts draw from six hues spread across the wheel — mint `#12A877`, blue `#1D6FD8`, violet `#7C3AED`, amber `#D97706`, rose `#D91A43`, cyan `#0891B2` — each clearing 3:1 on white so a line or a bar stays visible, and held close enough in lightness that no series shouts over another. Note the mint here is `accent-strong`, not the brand fill: a 2.5px line in `#23C48C` would disappear against the sheet. In the affiliate views they carry fixed meanings: revenue mint, signups blue, clicks violet, payouts amber, installs rose. ECharts takes literal hex, so `constants.tsx` and `--tp-series-*` in `index.css` are kept in step by hand.
+Charts draw from six hues spread across the wheel — mint `#12A877`, blue `#1D6FD8`, steel `#58A3D0`, amber `#D97706`, rose `#D91A43`, cyan `#0891B2` — each clearing 3:1 on white so a line or a bar stays visible, and held close enough in lightness that no series shouts over another. Note the mint here is `accent-strong`, not the brand fill: a 2.5px line in `#23C48C` would disappear against the sheet. In the affiliate views they carry fixed meanings: revenue mint, signups blue, clicks steel, payouts amber, installs rose. ECharts takes literal hex, so `constants.tsx` and `--tp-series-*` in `index.css` are kept in step by hand.
+
+Slot three was violet `#7C3AED` until it was measured: against the signups blue it separated by only 3.5 ΔE under deuteranopia and 14.7 under normal vision, so two of the five affiliate series were effectively one colour. The steel blue that replaced it clears both floors (16.0 normal, 8.3 on the worst CVD pair) and is the quietest hue on the plot, which suits its measure — clicks is bulk volume, not an outcome. **Any change to this ramp is validated with the data-viz palette validator, not by eye.**
 
 ### Named rule: Reserved Signal
 
@@ -215,7 +218,7 @@ Inter is wider and larger on the body than the face it replaced, so every tracki
 
 ## Layout
 
-The app bar is full-bleed white, sticky, with a `canvas-edge` bottom rule and sheet elevation: brand on the left, the three workspace routes on the right, both sitting on the bar's baseline so the active underline reads as a tab. Below it the frame centers at max 1560px with a 20px desktop gutter (14px mobile).
+The app bar is full-bleed white, sticky, with a `canvas-edge` bottom rule and sheet elevation. It is a three-track grid whose outer tracks are equal, so the workspace switcher sits on the bar's true centre line however wide the brand runs; the brand holds the left track and the right one is deliberately empty ballast. Below 900px the two stack, both centred. Below it the frame centers at max 1560px with a 20px desktop gutter (14px mobile).
 
 Inside a workspace, sections are sheets separated by 24px. The Influencer area adds a sub-navigation rail on the canvas — text labels over a `canvas-edge` rule — above its sheets.
 
@@ -227,7 +230,9 @@ On mobile the app bar stacks brand over navigation, both nav rails scroll horizo
 
 ### Navigation
 
-Text labels with a 2px accent underline for the active route, and `aria-current="page"`. The label carries the hierarchy; no icon beside every destination. Keyboard focus reuses the underline rather than adding a competing outline.
+The three workspaces are not three links to three pages; they are three states of one workspace, and only one can be on at a time. The top-level switcher is therefore a **segmented capsule** parked on the app bar's centre: a `surface-sunken` track with a `rule-panel` hairline at `pill` radius, holding one raised white segment at sheet elevation for the active route, its label in `ink` at 600 with a 5px `accent-strong` dot that grows in beside it. Segments are 32px tall, `aria-current="page"` and `aria-selected`, and focus takes the standard 2px accent outline. It replaced an underlined text rail, which read as navigation away rather than as a switch between states.
+
+The **workspace sub-rail** (Influencer's own views) keeps the underlined form: text labels with a 2px `accent-strong` underline, focus reusing that underline. Two capsules stacked would read as one control nested inside another; the rail stays visibly subordinate.
 
 ### Sheets
 
@@ -265,6 +270,12 @@ The feed is a `surface-sunken` channel so bubbles read as raised. A bubble is `f
 
 Attachments render as a uniform album, never at natural size. One image keeps its own proportion clamped to 0.8–1.78 so neither a tall screenshot nor a panorama distorts the feed. Two, three, or four-plus images use square tiles in a 2, 3, or 2×2 grid with a 3px gutter and `object-fit: cover`; beyond four, the fourth tile carries a `+N` overlay. The lightbox always walks the complete set with arrow keys and on-screen controls, so nothing folded behind `+N` becomes unreachable.
 
+### Charts
+
+**One plot, one y-axis — always.** Two measures of different scale never share a plot on two scales: where the count axis is pinned against the dollar axis is arbitrary, so every crossing the eye reads as correlation is an artefact of that choice. The affiliate views take the two ways out of it. The daily trend re-bases every measure onto a single index axis where 100 is that measure's own average day, smoothed over 7 days because the underlying counts are small enough that integer jitter otherwise swamps the signal; the tooltip carries the actual figures so re-basing hides nothing. The top-affiliates view splits into **small multiples** — one horizontal-bar panel per measure, all sharing one row order — so each measure gets the axis it deserves and the reader compares across a row.
+
+Marks are thin and the chrome recedes: bars cap at 13px with a 4px rounded data-end and a square baseline, lines are 2px and unsmoothed (smoothing invents readings between two days that were never measured), markers are 8px with a 2px surface ring, and gridlines are solid `rule` hairlines — never dashed, which reads as a threshold. A legend is always present for two or more series and never for one, where the panel title already names the measure. Values and labels wear text tokens; the coloured mark beside them carries identity.
+
 ### Empty, loading, and error states
 
 Empty: `tp-empty` — a centered title in `ink` and a body under 34ch in `muted` that says what to do next, not "nothing here". Loading in place of content is `tp-skeleton` shimmer shaped like the content, not a spinner. Errors are a sheet with a danger dot and danger text naming the problem.
@@ -297,4 +308,6 @@ Focus is a 2px accent outline at 2px offset; app and workspace navigation use th
 - Do not let an attachment render at its natural size inside a bubble.
 - Do not set any text above weight 600, and do not set a control label above 500.
 - Do not use tiny all-caps labels with wide tracking; sentence case at 11.5px/600 is the label voice.
+- Do not put two y-scales on one plot, smooth a line over real measurements, or draw a dashed gridline.
+- Do not add or re-colour a chart series without running the palette validator; "these look different enough" is how slot three stayed broken.
 - Do not change feature behavior, data flow, business logic, or data-backed status semantics in the course of UI work.

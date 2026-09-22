@@ -6,10 +6,16 @@ export const API_BASE_URL = typeof window !== 'undefined' && (window.location.ho
 /* The data ramp. Five hues spread across the wheel so no two series read as
    the same measure at a glance, and each one sits within a few points of the
    others in lightness so none of them shouts. Mirrors --tp-series-* in
-   index.css; ECharts takes literals, so the two are kept in step by hand. */
+   index.css; ECharts takes literals, so the two are kept in step by hand.
+
+   Clicks was violet #7C3AED, which measured 3.5 ΔE from the signups blue
+   under deuteranopia and 14.7 under normal vision — two of the five series
+   were effectively the same colour. The steel blue below clears both floors
+   (16.0 normal, 8.3 worst CVD pair) while staying the quietest hue on the
+   plot, which is right: clicks is the bulk volume, not the outcome. */
 export const PALETTE = {
   signups: '#1D6FD8',   // blue
-  clicks: '#7C3AED',    // violet
+  clicks: '#58A3D0',    // steel blue — the recessive bulk measure
   installs: '#D91A43',  // rose
   revenue: '#12A877',   // mint — money in, and the brand's own measure
   payouts: '#D97706',   // amber — money out

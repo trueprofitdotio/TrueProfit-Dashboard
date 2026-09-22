@@ -12,8 +12,10 @@ type Tab = 'affiliate' | 'conversion' | 'influencer' | 'kpi';
 
 // --- App Component ---
 
-// The top bar carries product identity and the three workspace routes on one
-// white plane, so the canvas below is reserved entirely for work sheets.
+// The top bar carries product identity on the left and the three workspace
+// routes in a segmented capsule on the bar's centre line, so the canvas below
+// is reserved entirely for work sheets. The capsule is a switcher, not a link
+// rail: one workspace is on at a time, and the raised white segment says so.
 const AppBar: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ activeTab, setActiveTab }) => {
     const tabs: { id: Tab; label: string; disabled?: boolean }[] = [
         { id: 'affiliate', label: 'Affiliate' },
@@ -31,12 +33,15 @@ const AppBar: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = (
         </div>
 
         <nav className="app-navigation" aria-label="Workspace sections">
-          <div className="app-navigation-list">
+          <div className="app-navigation-list" role="tablist">
             {tabs.map(tab => (
               <button
                 key={tab.id}
+                type="button"
+                role="tab"
                 onClick={() => !tab.disabled && setActiveTab(tab.id)}
                 disabled={tab.disabled}
+                aria-selected={activeTab === tab.id}
                 aria-current={activeTab === tab.id ? 'page' : undefined}
                 className={`app-navigation-item ${activeTab === tab.id ? 'is-active' : ''} ${tab.disabled ? 'cursor-not-allowed opacity-50' : ''}`}
               >
@@ -46,6 +51,9 @@ const AppBar: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = (
             ))}
           </div>
         </nav>
+
+        {/* Balances the brand so the capsule lands on the bar's centre line. */}
+        <div className="app-bar-trailing" aria-hidden="true" />
       </div>
     </header>
   );

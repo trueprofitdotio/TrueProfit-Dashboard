@@ -26,12 +26,6 @@ const Loader: React.FC = () => ( <div className="flex justify-center items-cente
 const formatNumber = (num: number) => new Intl.NumberFormat('en-US').format(num);
 const formatCurrency = (num: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
 
-const hexToRgba = (hex: string, opacity: number) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-};
 
 const ChangeIndicator: React.FC<{ value: number }> = ({ value }) => {
     if (value === Infinity) return <span className="text-[12.5px] font-semibold text-[var(--tp-info)]">New</span>;
@@ -622,14 +616,45 @@ const SummaryOverview: React.FC<{ data: SummaryData; isExpanded: boolean; setIsE
     );
 };
 
+const hexToRgba = (hex: string, opacity: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
+
+// Axis ticks stay short so the two scales never crowd the plot between them.
+const formatAxisCount = (value: number) =>
+    Math.abs(value) >= 1000 ? `${(value / 1000).toFixed(Math.abs(value) >= 10000 ? 0 : 1)}k` : `${value}`;
+const formatAxisMoney = (value: number) =>
+    Math.abs(value) >= 1000 ? `$${(value / 1000).toFixed(Math.abs(value) >= 10000 ? 0 : 1)}k` : `$${value}`;
+
+/* The five measures, grouped by the axis each one is read against. Counts take
+   the left scale, money the right. The grouping is not decoration: it decides
+   the mark each series gets, and the legend prints the axis in the label. */
+const TREND_SERIES = [
+    { key: 'clicks',   label: 'Clicks',   color: PALETTE.clicks,   isMoney: false },
+    { key: 'installs', label: 'Installs', color: PALETTE.installs, isMoney: false },
+    { key: 'signups',  label: 'Signups',  color: PALETTE.signups,  isMoney: false },
+    { key: 'revenue',  label: 'Revenue',  color: PALETTE.revenue,  isMoney: true  },
+    { key: 'payouts',  label: 'Payouts',  color: PALETTE.payouts,  isMoney: true  },
+] as const;
+
 const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) => {
     const chartRef = useRef<HTMLDivElement>(null);
-    useEffect(() => { 
+
+    const sorted = useMemo(
+        () => [...dailyData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+        [dailyData]
+    );
+
+    useEffect(() => {
         if (!chartRef.current) return;
         const chart = echarts.init(chartRef.current);
-        if (dailyData.length > 0) {
-            const sortedDailyData = [...dailyData].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-            const option = { 
+        if (sorted.length > 0) {
+            const valueOf = (d: DailyData, key: string) => Number((d as unknown as Record<string, unknown>)[key]) || 0;
+
+            const option = {
                 tooltip: {
                     trigger: 'axis',
                     backgroundColor: '#ffffff',
@@ -637,69 +662,144 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                     borderWidth: 1,
                     padding: [10, 12],
                     textStyle: { color: '#0f1613', fontSize: 12 },
-                    axisPointer: { lineStyle: { color: '#9ba5a1', type: 'dashed' } },
-                    extraCssText: 'border-radius: 6px; box-shadow: none;'
+                    extraCssText: 'border-radius: 9px; box-shadow: 0 2px 4px -1px rgba(15,22,19,.06), 0 18px 40px -10px rgba(15,22,19,.16);',
+                    axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(15, 22, 19, 0.04)' } },
+                    // One tooltip, two blocks, split by the axis each measure is
+                    // read against — so the grouping the plot implies is stated
+                    // outright wherever anyone actually reads a number.
+                    formatter: (params: { dataIndex: number }[]) => {
+                        if (!params || params.length === 0) return '';
+                        const i = params[0].dataIndex;
+                        const row = (group: boolean) => TREND_SERIES.filter(s => s.isMoney === group).map(s => {
+                            const value = valueOf(sorted[i], s.key);
+                            return '<div style="display:flex;align-items:center;gap:10px;line-height:1.75">'
+                                + '<span style="width:8px;height:8px;border-radius:999px;flex:none;background:' + s.color + '"></span>'
+                                + '<span style="flex:1;color:#5a635f">' + s.label + '</span>'
+                                + '<span style="color:#0f1613;font-weight:600;font-variant-numeric:tabular-nums">'
+                                + (s.isMoney ? formatCurrency(value) : formatNumber(value)) + '</span>'
+                                + '</div>';
+                        }).join('');
+                        const heading = (text: string) =>
+                            '<div style="font-size:11px;font-weight:600;color:#6a736f;margin:2px 0 1px">'
+                            + text + '</div>';
+                        return '<div style="font-weight:600;color:#0f1613;margin-bottom:6px">'
+                            + formatDisplayDateGmt7(sorted[i].date, { weekday: 'short', month: 'short', day: 'numeric' })
+                            + '</div>'
+                            + heading('Count') + row(false)
+                            + '<div style="height:1px;background:#ecf0ee;margin:7px 0 3px"></div>'
+                            + heading('US$') + row(true);
+                    },
                 },
-                legend: { data: ['Signups', 'Clicks', 'Installs', 'Revenue', 'Payouts'], top: 'bottom', itemWidth: 10, itemHeight: 10, textStyle: { color: '#5a635f', fontSize: 12 } },
-                grid: { left: '2%', right: '3%', bottom: '14%', top: '6%', containLabel: true },
-                xAxis: { type: 'category', boundaryGap: true, data: sortedDailyData.map(d => formatDisplayDateGmt7(d.date)), axisLine: { lineStyle: { color: '#e1e7e5' } }, axisTick: { show: false }, axisLabel: { color: '#5a635f', fontSize: 11 } },
-                yAxis: [{ type: 'value', name: 'Count', nameTextStyle: { color: '#5a635f', fontSize: 11 }, axisLabel: { color: '#5a635f', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#e1e7e5', type: 'dashed' } } }, { type: 'value', name: 'Amount ($)', nameTextStyle: { color: '#5a635f', fontSize: 11 }, axisLabel: { formatter: '${value}', color: '#5a635f', fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }],
-                series: [ 
-                    { 
-                        name: 'Signups', 
-                        type: 'line', 
-                        smooth: true, 
-                        itemStyle: { color: PALETTE.signups }, 
-                        lineStyle: { width: 2.5 },
-                        showSymbol: false,
-                        areaStyle: { color: hexToRgba(PALETTE.signups, 0.09) },
-                        data: sortedDailyData.map(d => d.signups) 
-                    }, 
-                    { 
-                        name: 'Installs', 
-                        type: 'bar', 
-                        stack: 'clicks_installs',
-                        itemStyle: { color: PALETTE.installs, borderRadius: [3, 3, 0, 0] },
-                        data: sortedDailyData.map(d => d.installs) 
-                    }, 
-                    { 
-                        name: 'Clicks', 
-                        type: 'bar', 
-                        stack: 'clicks_installs',
-                        itemStyle: { color: PALETTE.clicks, borderRadius: [3, 3, 0, 0] },
-                        data: sortedDailyData.map(d => d.clicks) 
-                    }, 
-                    { 
-                        name: 'Revenue', 
-                        type: 'line', 
-                        smooth: true, 
-                        yAxisIndex: 1, 
-                        itemStyle: { color: PALETTE.revenue }, 
-                        lineStyle: { width: 2.5 },
-                        showSymbol: false,
-                        areaStyle: { color: hexToRgba(PALETTE.revenue, 0.07) },
-                        data: sortedDailyData.map(d => d.revenue) 
-                    }, 
-                    { 
-                        name: 'Payouts', 
-                        type: 'line', 
-                        smooth: true, 
-                        yAxisIndex: 1, 
-                        itemStyle: { color: PALETTE.payouts }, 
-                        lineStyle: { width: 2.5 },
-                        showSymbol: false,
-                        areaStyle: { color: hexToRgba(PALETTE.payouts, 0.07) },
-                        data: sortedDailyData.map(d => d.payouts) 
+                legend: {
+                    // The axis is printed in the label, because on a two-scale
+                    // plot the single most common misreading is comparing a
+                    // dollar line against a count bar as if they shared a scale.
+                    data: TREND_SERIES.map(s => (s.isMoney ? `${s.label} ($)` : s.label)),
+                    bottom: 0,
+                    itemWidth: 14,
+                    itemHeight: 3,
+                    itemGap: 16,
+                    icon: 'roundRect',
+                    textStyle: { color: '#5a635f', fontSize: 12 },
+                },
+                grid: { left: 6, right: 6, top: 30, bottom: 34, containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: sorted.map(d => formatDisplayDateGmt7(d.date, { month: 'short', day: 'numeric' })),
+                    axisLine: { lineStyle: { color: '#e1e7e5' } },
+                    axisTick: { show: false },
+                    axisLabel: { color: '#6a736f', fontSize: 11, hideOverlap: true },
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: 'Count',
+                        nameTextStyle: { color: '#9ba5a1', fontSize: 11, align: 'left' },
+                        nameGap: 12,
+                        min: 0,
+                        // Both scales are pinned to zero and cut into the same
+                        // number of steps, so the right axis lands on the left
+                        // axis's gridlines instead of floating a second, unseen
+                        // grid across the plot.
+                        splitNumber: 5,
+                        axisLabel: { color: '#6a736f', fontSize: 11, formatter: formatAxisCount },
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                        splitLine: { lineStyle: { color: '#ecf0ee', type: 'solid' } },
+                    },
+                    {
+                        type: 'value',
+                        name: 'US$',
+                        nameTextStyle: { color: '#9ba5a1', fontSize: 11, align: 'right' },
+                        nameGap: 12,
+                        min: 0,
+                        splitNumber: 5,
+                        axisLabel: { color: '#6a736f', fontSize: 11, formatter: formatAxisMoney },
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                        splitLine: { show: false },
+                    },
+                ],
+                series: TREND_SERIES.map(s => {
+                    const data = sorted.map(d => valueOf(d, s.key));
+                    const isBar = s.key === 'clicks' || s.key === 'installs';
+                    if (isBar) {
+                        return {
+                            name: s.label,
+                            type: 'bar',
+                            stack: 'volume',
+                            yAxisIndex: 0,
+                            // Capped rather than filling the band, so the day's
+                            // slot keeps air on both sides of its bar.
+                            barMaxWidth: 18,
+                            itemStyle: {
+                                color: s.color,
+                                // Only the cap of the stack is rounded; the
+                                // segment sitting on the baseline stays square.
+                                borderRadius: s.key === 'installs' ? [3, 3, 0, 0] : 0,
+                            },
+                            data,
+                        };
                     }
-                ] 
-            }; 
+                    return {
+                        name: s.isMoney ? `${s.label} ($)` : s.label,
+                        type: 'line',
+                        yAxisIndex: s.isMoney ? 1 : 0,
+                        // Straight segments: smoothing invents readings between
+                        // two days that were never measured.
+                        smooth: false,
+                        showSymbol: false,
+                        symbol: 'circle',
+                        symbolSize: 8,
+                        lineStyle: { width: 2, cap: 'round', join: 'round', color: s.color },
+                        // The 2px surface ring keeps a marker legible where lines cross.
+                        itemStyle: { color: s.color, borderColor: '#ffffff', borderWidth: 2 },
+                        // A flat wash, not a gradient: it groups the money pair
+                        // without adding a second visual language to the sheet.
+                        ...(s.key === 'revenue' ? { areaStyle: { color: hexToRgba(s.color, 0.07) } } : {}),
+                        data,
+                    };
+                }),
+            };
             chart.setOption(option);
         } else {
             chart.clear();
         }
-        const resizeHandler = () => chart?.resize(); window.addEventListener('resize', resizeHandler); return () => { chart.dispose(); window.removeEventListener('resize', resizeHandler); }; 
-    }, [dailyData]);
-    return (<div><h3 className="text-lg font-semibold text-[var(--tp-ink)] mb-4">Daily Performance Trend</h3><div ref={chartRef} style={{ width: '100%', height: '360px' }}></div></div>);
+        const resizeHandler = () => chart?.resize();
+        window.addEventListener('resize', resizeHandler);
+        return () => { chart.dispose(); window.removeEventListener('resize', resizeHandler); };
+    }, [sorted]);
+
+    return (
+        <div>
+            <h3 className="text-[15px] font-semibold tracking-[-0.012em] text-[var(--tp-ink)]">Daily performance trend</h3>
+            <p className="mt-1 max-w-[86ch] text-[12.5px] leading-snug text-[var(--tp-meta)]">
+                Counts read against the left axis, dollars against the right — the two are separate scales, so a line crossing a bar
+                means nothing on its own. Click a legend key to isolate a measure, or hover a day for every figure.
+            </p>
+            <div ref={chartRef} className="mt-4" style={{ width: '100%', height: '380px' }}></div>
+        </div>
+    );
 };
 
 
@@ -890,6 +990,35 @@ const MerchantsDetailsSection: React.FC<{ metrics: any; vsDateRangeText: string 
     );
 };
 
+/* Three panels, one measure each, sharing one row order. The previous single
+   plot stacked clicks and installs as bars against a left axis while revenue
+   rode a second right-hand axis — so a revenue line crossing a bar top meant
+   nothing at all. Small multiples give each measure the axis it deserves and
+   let the eye compare rows across panels, which is the actual question:
+   is the affiliate that drives the most clicks also the one that earns? */
+const AFFILIATE_PANELS = [
+    { key: 'clicks',   label: 'Clicks',   color: PALETTE.clicks,   isMoney: false },
+    { key: 'installs', label: 'Installs', color: PALETTE.installs, isMoney: false },
+    { key: 'revenue',  label: 'Revenue',  color: PALETTE.revenue,  isMoney: true  },
+] as const;
+
+// Tip labels sit in the gutter beside each panel, so they are compacted. The
+// full precision stays in the tooltip and in the table below.
+const formatCompact = (value: number, isMoney: boolean) => {
+    const prefix = isMoney ? '$' : '';
+    if (Math.abs(value) >= 1000) {
+        const k = value / 1000;
+        return prefix + (Math.abs(value) >= 10000 ? Math.round(k).toString() : k.toFixed(1)) + 'k';
+    }
+    return prefix + (isMoney ? value.toFixed(0) : formatNumber(value));
+};
+
+// Each panel occupies a quarter of the width; the band to the left of the
+// first one carries the affiliate names for all three.
+const PANEL_LEFT = ['17%', '44%', '71%'];
+const PANEL_WIDTH = '21%';
+const ROW_HEIGHT = 30;
+
 const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ data }) => {
     const chartRef = useRef<HTMLDivElement>(null);
     const [sortBy, setSortBy] = useState<'clicks' | 'installs' | 'revenue'>('clicks');
@@ -904,117 +1033,114 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
             .slice(0, 10);
     }, [data, sortBy]);
 
+    const chartHeight = 44 + Math.max(top10.length, 1) * ROW_HEIGHT;
+
     useEffect(() => {
         if (!chartRef.current) return;
         const chart = echarts.init(chartRef.current);
         if (top10.length > 0) {
+            const names = top10.map(d => d.affiliateName);
             const option = {
                 tooltip: {
-                    trigger: 'axis',
+                    trigger: 'item',
                     backgroundColor: '#ffffff',
                     borderColor: '#e1e7e5',
                     borderWidth: 1,
                     padding: [10, 12],
                     textStyle: { color: '#0f1613', fontSize: 12 },
-                    extraCssText: 'border-radius: 6px; box-shadow: none;',
-                    axisPointer: {
-                        type: 'cross',
-                        crossStyle: {
-                            color: '#9ba5a1'
-                        }
-                    }
+                    extraCssText: 'border-radius: 9px; box-shadow: 0 2px 4px -1px rgba(15,22,19,.06), 0 18px 40px -10px rgba(15,22,19,.16);',
+                    // Hovering any panel reports all three measures, so the
+                    // panels stay one reading rather than three separate ones.
+                    formatter: (param: { dataIndex: number }) => {
+                        const row = top10[param.dataIndex];
+                        if (!row) return '';
+                        const head = '<div style="font-weight:600;color:#0f1613;margin-bottom:7px">' + row.affiliateName + '</div>';
+                        const rows = AFFILIATE_PANELS.map(panel => {
+                            const value = row[panel.key] as number;
+                            const shown = panel.isMoney ? formatCurrency(value) : formatNumber(value);
+                            return '<div style="display:flex;align-items:center;gap:10px;line-height:1.8">'
+                                + '<span style="width:8px;height:8px;border-radius:999px;flex:none;background:' + panel.color + '"></span>'
+                                + '<span style="flex:1;color:#5a635f">' + panel.label + '</span>'
+                                + '<span style="color:#0f1613;font-weight:600;font-variant-numeric:tabular-nums">' + shown + '</span>'
+                                + '</div>';
+                        }).join('');
+                        return head + rows;
+                    },
                 },
-                legend: {
-                    data: ['Revenue', 'Clicks', 'Installs'],
+                // One series per panel, so each panel names itself and no
+                // legend box is needed.
+                title: AFFILIATE_PANELS.map((panel, i) => ({
+                    text: panel.label,
+                    left: PANEL_LEFT[i],
                     top: 0,
-                    itemWidth: 10,
-                    itemHeight: 10,
-                    textStyle: { color: '#5a635f', fontSize: 12 }
-                },
-                grid: {
-                    left: '3%',
-                    right: '4%',
-                    top: '14%',
-                    bottom: '10%',
-                    containLabel: true
-                },
-                xAxis: [
-                    {
-                        type: 'category',
-                        data: top10.map(d => d.affiliateName),
-                        axisPointer: {
-                            type: 'shadow'
-                        },
-                        axisLabel: {
-                            interval: 0,
-                            rotate: 15,
-                            color: '#5a635f',
-                            fontSize: 11,
-                            formatter: (value: string) => {
-                                return value.length > 15 ? value.substring(0, 15) + '...' : value;
-                            }
-                        },
-                        axisLine: { lineStyle: { color: '#e1e7e5' } },
-                        axisTick: { show: false }
-                    }
-                ],
-                yAxis: [
-                    {
-                        type: 'value',
-                        name: 'Clicks / Installs',
-                        nameTextStyle: { color: '#5a635f', fontSize: 11 },
-                        axisLabel: {
-                            formatter: '{value}',
-                            color: '#5a635f',
-                            fontSize: 11
-                        },
-                        axisLine: { show: false },
-                        axisTick: { show: false },
-                        splitLine: { lineStyle: { color: '#e1e7e5', type: 'dashed' } }
+                    textStyle: { color: '#5a635f', fontSize: 11.5, fontWeight: 600, letterSpacing: 0.14 },
+                })),
+                grid: AFFILIATE_PANELS.map((_, i) => ({
+                    left: PANEL_LEFT[i],
+                    width: PANEL_WIDTH,
+                    top: 30,
+                    bottom: 8,
+                    containLabel: false,
+                })),
+                xAxis: AFFILIATE_PANELS.map((_, i) => ({
+                    type: 'value',
+                    gridIndex: i,
+                    show: false,
+                    // Headroom so the longest bar's tip label stays inside the gutter.
+                    max: (value: { max: number }) => value.max * 1.02,
+                })),
+                yAxis: AFFILIATE_PANELS.map((_, i) => ({
+                    type: 'category',
+                    gridIndex: i,
+                    data: names,
+                    inverse: true,
+                    axisLine: { show: false },
+                    axisTick: { show: false },
+                    splitLine: { show: false },
+                    axisLabel: i === 0
+                        ? {
+                            color: '#262e2b',
+                            fontSize: 12,
+                            margin: 14,
+                            width: 150,
+                            overflow: 'truncate',
+                            ellipsis: '…',
+                        }
+                        : { show: false },
+                })),
+                series: AFFILIATE_PANELS.map((panel, i) => ({
+                    name: panel.label,
+                    type: 'bar',
+                    xAxisIndex: i,
+                    yAxisIndex: i,
+                    // ECharts honours a callback on label.formatter but not on
+                    // label.color — passing one there silently falls back to a
+                    // default tint. Per-item label style is the way in.
+                    data: top10.map(d => {
+                        const value = d[panel.key] as number;
+                        return {
+                            value,
+                            // A zero has no bar to anchor it, so a column of them
+                            // reads as clutter at the axis. They stay — an empty
+                            // row would be ambiguous between "none" and "not
+                            // measured" — but recede to the divider tint.
+                            label: { color: value > 0 ? '#6a736f' : '#9ba5a1' },
+                        };
+                    }),
+                    // Capped well under the band height, so the leftover is air.
+                    barWidth: 13,
+                    // Rounded data-end, square at the baseline.
+                    itemStyle: { color: panel.color, borderRadius: [0, 4, 4, 0] },
+                    label: {
+                        show: true,
+                        position: 'right',
+                        distance: 7,
+                        fontSize: 11,
+                        color: '#6a736f',
+                        formatter: (p: { value: number }) => formatCompact(p.value, panel.isMoney),
                     },
-                    {
-                        type: 'value',
-                        name: 'Revenue',
-                        nameTextStyle: { color: '#5a635f', fontSize: 11 },
-                        axisLabel: {
-                            formatter: '${value}',
-                            color: '#5a635f',
-                            fontSize: 11
-                        },
-                        axisLine: { show: false },
-                        axisTick: { show: false },
-                        splitLine: { show: false }
-                    }
-                ],
-                series: [
-                    {
-                        name: 'Revenue',
-                        type: 'line',
-                        smooth: true,
-                        lineStyle: { width: 2.5 },
-                        showSymbol: false,
-                        areaStyle: { color: hexToRgba(PALETTE.revenue, 0.08) },
-                        yAxisIndex: 1,
-                        itemStyle: { color: PALETTE.revenue },
-                        data: top10.map(d => d.revenue)
-                    },
-                    {
-                        name: 'Installs',
-                        type: 'bar',
-                        yAxisIndex: 0,
-                        stack: 'clicks_installs',
-                        itemStyle: { color: PALETTE.installs, borderRadius: [3, 3, 0, 0] },
-                        data: top10.map(d => d.installs)
-                    },
-                    {
-                        name: 'Clicks',
-                        type: 'bar',
-                        yAxisIndex: 0,
-                        stack: 'clicks_installs',
-                        itemStyle: { color: PALETTE.clicks, borderRadius: [3, 3, 0, 0] },
-                        data: top10.map(d => d.clicks)
-                    }
-                ]
+                    emphasis: { itemStyle: { color: panel.color } },
+                })),
             };
             chart.setOption(option);
         } else {
@@ -1032,10 +1158,16 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                <h3 className="text-[15px] font-semibold tracking-[-0.006em] text-[var(--tp-ink)]">Top performing affiliates</h3>
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                <div>
+                    <h3 className="text-[15px] font-semibold tracking-[-0.012em] text-[var(--tp-ink)]">Top performing affiliates</h3>
+                    <p className="mt-1 max-w-[56ch] text-[12.5px] leading-snug text-[var(--tp-meta)]">
+                        Three measures, one row per affiliate, ranked by the measure you choose. Each panel has its own scale, so
+                        compare across a row rather than between panels.
+                    </p>
+                </div>
                 <div
-                    className="flex w-fit gap-0.5 rounded-[7px] border border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] p-0.5"
+                    className="flex w-fit shrink-0 gap-0.5 rounded-[7px] border border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] p-0.5"
                     role="group"
                     aria-label="Rank affiliates by"
                 >
@@ -1055,7 +1187,7 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                     ))}
                 </div>
             </div>
-            <div ref={chartRef} style={{ width: '100%', height: '400px' }}></div>
+            <div ref={chartRef} style={{ width: '100%', height: `${chartHeight}px` }}></div>
         </div>
     );
 };
