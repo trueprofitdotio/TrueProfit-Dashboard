@@ -5,6 +5,7 @@ import { supabaseClient } from '../services/supabaseClient';
 import { DateRange, Video, VideoPerformanceData, TrendlineData, Kol, OverviewStats } from '../types';
 import DateRangePicker from './DateRangePicker';
 import KOLCell from './KOLCell';
+import { PALETTE, CHART_INK, CHART_FONT } from '../constants';
 import { 
     getPresetDateRange, 
     formatDisplayDateGmt7, 
@@ -15,7 +16,7 @@ import {
 
 declare const echarts: {
     init: (el: HTMLElement) => {
-        setOption: (option: object) => void;
+        setOption: (option: object, notMerge?: boolean) => void;
         resize: () => void;
         dispose: () => void;
     };
@@ -31,6 +32,8 @@ interface KolPerformanceData {
     startViews: number;
     endViews: number;
     viewGrowth: number;
+    /** The same measure over the period immediately before this one. */
+    prevViewGrowth?: number;
     growthPercentage: number;
     videos: VideoPerformanceData[];
 }
@@ -48,7 +51,7 @@ const formatNumber = (num: number) => new Intl.NumberFormat('en-US').format(num)
 const getPlatformTag = (url: string) => {
     if (!url) return { label: 'Unknown', color: 'bg-[var(--tp-surface-sunken)] text-[var(--tp-muted)]' };
     const lowerUrl = url.toLowerCase();
-    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return { label: 'Youtube', color: 'bg-[var(--tp-danger-soft)] text-[var(--tp-danger)]' };
+    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return { label: 'YouTube', color: 'tp-chip' };
     if (lowerUrl.includes('tiktok.com')) return { label: 'TikTok', color: 'bg-[var(--tp-ink)] text-white' };
     if (lowerUrl.includes('x.com') || lowerUrl.includes('twitter.com')) return { label: 'X', color: 'bg-[var(--tp-surface-hover)] text-[var(--tp-ink)]' };
     if (lowerUrl.includes('instagram.com')) return { label: 'Instagram', color: 'bg-[var(--tp-accent-soft)] text-[var(--tp-accent-ink)]' };
@@ -87,13 +90,50 @@ const utcInputStringToDate = (dateString: string | null | undefined): Date | nul
     }
 };
 
+/* The period-over-period change on a single growth figure.
+
+   Deliberately quiet: it rides beside the number it qualifies, never
+   replaces it, and it carries an arrow so the direction does not depend on
+   anyone seeing the colour. A video with no measured previous period reads
+   "new" rather than "+100%", which would be arithmetic on nothing. */
+export const GrowthDelta: React.FC<{ current: number; previous: number; className?: string }> = ({ current, previous, className = '' }) => {
+    if (!previous) {
+        if (!current) return null;
+        return <span className={`text-[10.5px] font-medium text-[var(--tp-pen)] ${className}`}>new</span>;
+    }
+    const pct = ((current - previous) / Math.abs(previous)) * 100;
+    if (!isFinite(pct) || Math.round(pct * 10) === 0) {
+        return <span className={`text-[10.5px] text-[var(--tp-meta)] ${className}`}>0%</span>;
+    }
+    const up = pct > 0;
+    const Icon = up ? ArrowUp : ArrowDown;
+    return (
+        <span
+            className={`inline-flex items-center gap-0.5 text-[10.5px] font-medium ${up ? 'text-[var(--tp-positive)]' : 'text-[var(--tp-danger)]'} ${className}`}
+            title={`${formatNumber(current)} this period vs ${formatNumber(previous)} in the period before`}
+        >
+            <Icon className="h-2.5 w-2.5 shrink-0" strokeWidth={3} aria-hidden="true" />
+            {Math.abs(pct).toFixed(0)}%
+        </span>
+    );
+};
+
 const ChangeIndicatorText: React.FC<{ value: number; vsDateRange: DateRange }> = ({ value, vsDateRange }) => {
     if (value === 0 || isNaN(value) || !isFinite(value)) return <span className="text-sm text-[var(--tp-muted)]">— vs previous period</span>;
     const isPositive = value > 0;
     const color = isPositive ? 'text-[var(--tp-positive)]' : 'text-[var(--tp-danger)]';
     const sign = isPositive ? '+' : '';
     const formattedDateRange = `vs ${formatDisplayDateGmt7(vsDateRange.from)} to ${formatDisplayDateGmt7(vsDateRange.to)}`;
-    return <span className={`text-sm font-medium ${color}`}>{sign}{value.toFixed(1)}% <span className="text-[var(--tp-muted)] font-normal">{formattedDateRange}</span></span>;
+    const Icon = isPositive ? ArrowUp : ArrowDown;
+    // The arrow is not decoration: direction may never be carried by colour
+    // alone. Its affiliate twin has always had one; this one did not.
+    return (
+        <span className={`inline-flex items-baseline gap-1 text-[11.5px] font-medium ${color}`}>
+            <Icon className="h-3 w-3 shrink-0 self-center" strokeWidth={2.5} aria-hidden="true" />
+            <span className="tp-num">{sign}{value.toFixed(1)}%</span>
+            <span className="font-normal text-[var(--tp-meta)]">{formattedDateRange}</span>
+        </span>
+    );
 };
 
 // --- SORTING LOGIC ---
@@ -203,13 +243,13 @@ const VideoTable: React.FC<{
                 <table className="w-full text-sm text-left text-[var(--tp-muted)] table-fixed">
                     <thead className="text-xs text-[var(--header-blue)] font-semibold bg-[var(--tp-surface-sunken)]">
                         <tr>
-                            <SortableHeader label="Video Title" sortKey="title" currentSort={sortConfig} onSort={requestSort} className="w-[22%]" />
-                            <SortableHeader label="Channel" sortKey="video_url" currentSort={sortConfig} onSort={requestSort} className="w-[10%]" />
-                            <SortableHeader label="KOL Name" sortKey="kols.name" currentSort={sortConfig} onSort={requestSort} className="w-[12%]" />
+                            <SortableHeader label="Video title" sortKey="title" currentSort={sortConfig} onSort={requestSort} className="w-[20%]" />
+                            <SortableHeader label="Channel" sortKey="video_url" currentSort={sortConfig} onSort={requestSort} className="w-[8%]" />
+                            <SortableHeader label="KOL" sortKey="kols.name" currentSort={sortConfig} onSort={requestSort} className="w-[11%]" />
                             <SortableHeader label="Released" sortKey="released_date" currentSort={sortConfig} onSort={requestSort} className="w-[9%]" />
-                            <SortableHeader label={`Views from ${formatDisplayDateGmt7(dateRange.from)}`} sortKey="startViews" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[9%]" />
-                            <SortableHeader label={`Views from ${formatDisplayDateGmt7(dateRange.to)}`} sortKey="endViews" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[9%]" />
-                            <SortableHeader label="View Growth" sortKey="viewGrowth" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[9%]" />
+                            <SortableHeader label={`Views ${formatDisplayDateGmt7(dateRange.from, { month: 'short', day: 'numeric' })}`} sortKey="startViews" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[11%]" />
+                            <SortableHeader label={`Views ${formatDisplayDateGmt7(dateRange.to, { month: 'short', day: 'numeric' })}`} sortKey="endViews" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[11%]" />
+                            <SortableHeader label="View growth" sortKey="viewGrowth" currentSort={sortConfig} onSort={requestSort} align="right" className="w-[10%]" />
                             {showStatus && <th className="px-4 py-3 text-center w-[10%]">Status</th>}
                             <th className="px-4 py-3 text-center w-[10%]">Action</th>
                         </tr>
@@ -232,7 +272,12 @@ const VideoTable: React.FC<{
                                 <td className="px-4 py-3">{formatDisplayDateGmt7(utcInputStringToDate(v.released_date))}</td>
                                 <td className="px-4 py-3 text-right">{formatNumber(v.startViews)}</td>
                                 <td className="px-4 py-3 text-right">{formatNumber(v.endViews)}</td>
-                                <td className="px-4 py-3 text-right font-semibold text-[var(--tp-accent-ink)]">{formatNumber(v.viewGrowth)}</td>
+                                <td className="px-4 py-3 text-right">
+                                    <span className="inline-flex items-baseline justify-end gap-1.5">
+                                        <span className="tp-num font-semibold text-[var(--tp-ink)]">{formatNumber(v.viewGrowth)}</span>
+                                        <GrowthDelta current={v.viewGrowth} previous={v.prevViewGrowth ?? 0} />
+                                    </span>
+                                </td>
                                 {showStatus && (
                                     <td className="px-4 py-3 text-center">
                                         {(() => {
@@ -338,7 +383,7 @@ const Filters: React.FC<FiltersProps> = ({
                     </div>
                 </div>
                 <div className="self-end">
-                     <button onClick={onFetch} disabled={loading} className="primary-btn h-10 w-full rounded-[7px] bg-[var(--accent-color)] px-6 text-[13px] font-semibold text-[var(--tp-on-accent)]">
+                     <button onClick={onFetch} disabled={loading} className="primary-btn h-10 w-full rounded-[3px] bg-[var(--accent-color)] px-6 text-[13px] font-semibold text-[var(--tp-on-accent)]">
                         {loading ? 'Loading…' : 'Get performance'}
                     </button>
                 </div>
@@ -374,7 +419,7 @@ const Filters: React.FC<FiltersProps> = ({
                                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
                                     compareType === type.id 
                                     ? 'bg-[var(--accent-color)] text-[var(--tp-on-accent)] border-[var(--accent-color)]' 
-                                    : 'bg-white text-[var(--tp-muted)] border-[#e1e7e5]/50 hover:bg-[var(--tp-surface-sunken)]'
+                                    : 'bg-white text-[var(--tp-muted)] border-[var(--tp-rule-panel)]/50 hover:bg-[var(--tp-surface-sunken)]'
                                 }`}
                             >
                                 {type.label}
@@ -387,7 +432,55 @@ const Filters: React.FC<FiltersProps> = ({
     );
 };
 
+
+/* Growth between the first and last reading inside a window. Reading the
+   edges rather than summing deltas means a gap in the recording schedule
+   cannot invent or swallow views. */
+const growthWithin = (history: { at: Date; views: number }[], from?: Date, to?: Date) => {
+    const inWindow = from && to
+        ? history.filter(pt => pt.at >= from && pt.at <= to)
+        : history;
+    if (inWindow.length < 2) return inWindow.length === 1 ? 0 : 0;
+    return inWindow[inWindow.length - 1].views - inWindow[0].views;
+};
+
+/** Monday of the GMT+7 week a moment falls in. */
+const weekStart = (d: Date) => {
+    const local = new Date(d.getTime() + 7 * 3600_000);
+    const day = (local.getUTCDay() + 6) % 7;
+    const monday = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() - day));
+    return new Date(monday.getTime() - 7 * 3600_000);
+};
+
+/* Week-by-week growth across the whole tracked life of a video.
+
+   Deliberately independent of the dashboard's date filter: this answers
+   "how has this video behaved since we started watching it", which is a
+   different question from "what did it do in the range I selected", and
+   folding the filter into it would make the two impossible to tell apart. */
+const weeklyGrowth = (history: { at: Date; views: number }[]) => {
+    if (history.length < 2) return [];
+    const byWeek = new Map<number, { start: Date; first: number; last: number }>();
+    history.forEach(pt => {
+        const ws = weekStart(pt.at);
+        const key = ws.getTime();
+        const bucket = byWeek.get(key);
+        if (!bucket) byWeek.set(key, { start: ws, first: pt.views, last: pt.views });
+        else bucket.last = pt.views;
+    });
+
+    const weeks = Array.from(byWeek.values()).sort((a, b) => a.start.getTime() - b.start.getTime());
+    // A week's growth is measured against the previous week's close, so views
+    // added between two recordings are never dropped on the boundary.
+    return weeks.map((w, i) => ({
+        start: w.start,
+        views: w.last,
+        growth: i === 0 ? w.last - w.first : w.last - weeks[i - 1].last,
+    }));
+};
+
 // --- DATA PROCESSING LOGIC ---
+
 // --- DATA PROCESSING LOGIC ---
 const processVideoData = async (videos: Video[], dateRange: DateRange): Promise<{ performanceData: VideoPerformanceData[] }> => {
     const videoIds = videos.map(v => v.id);
@@ -458,7 +551,12 @@ const TopKolTable: React.FC<{ title: string; data: KolPerformanceData[]; dateRan
                             </td>
                             <td className="px-4 py-3 text-right">{formatNumber(kol.startViews)}</td>
                             <td className="px-4 py-3 text-right">{formatNumber(kol.endViews)}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-[var(--tp-accent-ink)]">{formatNumber(kol.viewGrowth)}</td>
+                            <td className="px-4 py-3 text-right">
+                                <span className="inline-flex items-baseline justify-end gap-1.5">
+                                    <span className="tp-num font-semibold text-[var(--tp-ink)]">{formatNumber(kol.viewGrowth)}</span>
+                                    <GrowthDelta current={kol.viewGrowth} previous={kol.prevViewGrowth ?? 0} />
+                                </span>
+                            </td>
                             <td className="px-4 py-3 text-right">{kol.growthPercentage === Infinity ? 'New' : `${kol.growthPercentage.toFixed(1)}%`}</td>
                         </tr>
                         {expandedKolId === kol.kolId && (
@@ -486,7 +584,12 @@ const TopKolTable: React.FC<{ title: string; data: KolPerformanceData[]; dateRan
                                                         <td className="px-2 py-2">{formatDisplayDateGmt7(utcInputStringToDate(video.released_date))}</td>
                                                         <td className="px-2 py-2 text-right">{formatNumber(video.startViews)}</td>
                                                         <td className="px-2 py-2 text-right">{formatNumber(video.endViews)}</td>
-                                                        <td className="px-2 py-2 text-right font-semibold text-[var(--tp-accent-ink)]">{formatNumber(video.viewGrowth)}</td>
+                                                        <td className="px-2 py-2 text-right">
+                                                            <span className="inline-flex items-baseline justify-end gap-1.5">
+                                                                <span className="tp-num font-semibold text-[var(--tp-ink)]">{formatNumber(video.viewGrowth)}</span>
+                                                                <GrowthDelta current={video.viewGrowth} previous={video.prevViewGrowth ?? 0} />
+                                                            </span>
+                                                        </td>
                                                         <td className="px-2 py-2 text-right">{video.growthPercentage === Infinity ? 'New' : `${video.growthPercentage.toFixed(1)}%`}</td>
                                                     </tr>
                                                 ))}
@@ -558,7 +661,12 @@ const PerformanceTable: React.FC<{ title: string; data: VideoPerformanceData[]; 
                         </td>
                         <td className="px-4 py-3">{formatDisplayDateGmt7(utcInputStringToDate(video.released_date))}</td><td className="px-4 py-3">{video.kols?.name || 'N/A'}</td>
                         <td className="px-4 py-3 text-right">{formatNumber(video.startViews)}</td><td className="px-4 py-3 text-right">{formatNumber(video.endViews)}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-[var(--tp-accent-ink)]">{formatNumber(video.viewGrowth)}</td>
+                        <td className="px-4 py-3 text-right">
+                            <span className="inline-flex items-baseline justify-end gap-1.5">
+                                <span className="tp-num font-semibold text-[var(--tp-ink)]">{formatNumber(video.viewGrowth)}</span>
+                                <GrowthDelta current={video.viewGrowth} previous={video.prevViewGrowth ?? 0} />
+                            </span>
+                        </td>
                         <td className="px-4 py-3 text-right">{video.growthPercentage === Infinity ? 'New' : `${video.growthPercentage.toFixed(1)}%`}</td>
                         <td className="px-4 py-3 text-center"><button onClick={() => onSeeTrendline(video)} className="text-[var(--tp-accent-ink)] font-semibold hover:underline">See trendline</button></td>
                     </tr>
@@ -628,8 +736,8 @@ const DetailedPerformanceModal: React.FC<{
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-[#ffffff] rounded-2xl w-full max-w-[1600px] max-h-[90vh] overflow-hidden flex flex-col border border-[#e1e7e5]/50">
-                <div className="p-6 border-b border-[#e1e7e5]/30 flex justify-between items-center bg-[var(--tp-surface-sunken)]/50">
+            <div className="bg-[#ffffff] rounded-[4px] w-full max-w-[1600px] max-h-[90vh] overflow-hidden flex flex-col border border-[var(--tp-rule-panel)]/50">
+                <div className="p-6 border-b border-[var(--tp-rule-panel)]/30 flex justify-between items-center bg-[var(--tp-surface-sunken)]/50">
                     <div>
                         <h2 className="text-2xl font-semibold text-[var(--tp-ink)]">{title}</h2>
                         <p className="text-[var(--tp-muted)] text-sm">Detailed view growth from release date</p>
@@ -646,7 +754,14 @@ const DetailedPerformanceModal: React.FC<{
                     ) : (
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                             {allTrendlines.map(td => (
-                                <TrendlineChart key={td.videoId} data={td} />
+                                <div key={td.videoId} className="tp-section">
+                                    <div className="tp-section-head">
+                                        <h3 className="truncate" title={td.videoTitle}>{td.videoTitle}</h3>
+                                    </div>
+                                    <TrendlineChart
+                                        points={td.points.map(pt => ({ at: utcInputStringToDate(pt.date), views: pt.views }))}
+                                    />
+                                </div>
                             ))}
                         </div>
                     )}
@@ -656,93 +771,94 @@ const DetailedPerformanceModal: React.FC<{
     );
 };
 
-const TrendlineChart: React.FC<{ data: TrendlineData; onSeeFull?: () => void; isFull?: boolean; loadingFull?: boolean }> = ({ data, onSeeFull, isFull, loadingFull }) => {
+const TrendlineChart: React.FC<{ points: { at: Date; views: number }[] }> = ({ points }) => {
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<any>(null);
-    
+
     useEffect(() => {
-        if (chartRef.current && data.points.length > 0) {
-            if (!chartInstance.current) {
-                chartInstance.current = echarts.init(chartRef.current);
-            }
-            const chart = chartInstance.current;
-            const option = {
-                tooltip: { 
-                    trigger: 'axis',
-                    backgroundColor: '#ffffff',
-                    borderColor: '#e1e7e5',
-                    borderWidth: 1,
-                    padding: [10, 12],
-                    textStyle: { color: '#0f1613', fontSize: 12 },
-                    extraCssText: 'border-radius: 6px; box-shadow: none;',
-                    formatter: (params: any[]) => {
-                        const point = params[0];
-                        return `<div style="font-size:11px;color:#5a635f;margin-bottom:4px">${point.axisValueLabel}</div><div style="font-weight:700;font-size:14px;color:#0f1613">${formatNumber(point.value)} views</div>`;
-                    }
-                },
-                xAxis: { 
-                    type: 'category', 
-                    data: data.points.map(p => formatDisplayDateGmt7(utcInputStringToDate(p.date))),
-                    axisLine: { show: false },
-                    axisTick: { show: false },
-                    axisLabel: { color: '#5a635f', fontSize: 10, interval: 'auto' },
-                    boundaryGap: false,
-                },
-                yAxis: { 
-                    type: 'value',
-                    axisLabel: { color: '#5a635f', fontSize: 10, formatter: (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}` },
-                    splitLine: { lineStyle: { color: '#e1e7e5', type: 'dashed' } },
-                    axisLine: { show: false },
-                    axisTick: { show: false },
-                },
-                series: [{ 
-                    name: 'Views',
-                    data: data.points.map(p => p.views), 
-                    type: 'line', 
-                    smooth: true, 
-                    showSymbol: false,
-                    lineStyle: { width: 2.5, color: '#12a877' },
-                    areaStyle: { color: 'rgba(23, 107, 94, 0.10)' },
-                    emphasis: { disabled: true }
-                }],
-                grid: { left: 8, right: 16, bottom: 8, top: 8, containLabel: true },
-            };
-            chart.setOption(option); 
-            
-            const handleResize = () => chart.resize();
-            window.addEventListener('resize', handleResize);
-            return () => {
-                window.removeEventListener('resize', handleResize);
-            };
+        if (!chartRef.current) return;
+        if (!chartInstance.current) chartInstance.current = echarts.init(chartRef.current);
+        const chart = chartInstance.current;
+
+        if (points.length === 0) {
+            chart.clear();
+            return;
         }
-    }, [data]);
-    
-    return (
-        <div className="w-full">
-            {data.points.length === 0 ? (
-                <div className="h-52 flex items-center justify-center text-[var(--tp-meta)] text-sm">No data points available</div>
-            ) : (
-                <div ref={chartRef} style={{ width: '100%', height: '220px' }} />
-            )}
-            <div className="mt-4 flex justify-center">
-                {!isFull && onSeeFull && (
-                    <button 
-                        onClick={onSeeFull}
-                        disabled={loadingFull}
-                        className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--tp-accent-ink)] bg-[var(--tp-accent-soft)] hover:bg-[var(--tp-accent-field)] border border-[var(--tp-accent-rule)] px-4 py-2 rounded-full transition-all disabled:opacity-60"
-                    >
-                        {loadingFull ? 'Loading history…' : 'See full history from release date'}
-                    </button>
-                )}
-                {isFull && (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--tp-muted)] bg-[var(--tp-surface-hover)] border border-[var(--tp-rule)] px-4 py-2 rounded-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--tp-positive)] inline-block"></span>
-                        Showing full history from release date
-                    </span>
-                )}
+
+        chart.setOption({
+            animationDuration: 200,
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: CHART_INK.surface,
+                borderColor: CHART_INK.axis,
+                borderWidth: 1,
+                padding: [8, 10],
+                textStyle: { color: CHART_INK.text, fontSize: 12, fontFamily: CHART_FONT.ui },
+                formatter: (params: any[]) => {
+                    const p = params[0];
+                    return `<div style="font-size:11px;color:${CHART_INK.label};margin-bottom:2px">${p.axisValueLabel}</div>`
+                         + `<div style="font-weight:600;font-size:13px;color:${CHART_INK.text}">${formatNumber(p.value)} views</div>`;
+                },
+            },
+            grid: { left: 4, right: 10, top: 12, bottom: 4, containLabel: true },
+            xAxis: {
+                type: 'category',
+                data: points.map(p => formatDisplayDateGmt7(p.at, { month: 'short', day: 'numeric' })),
+                boundaryGap: false,
+                axisLine: { lineStyle: { color: CHART_INK.axis } },
+                axisTick: { show: false },
+                axisLabel: { color: CHART_INK.label, fontSize: 10.5, hideOverlap: true, fontFamily: CHART_FONT.mono },
+            },
+            yAxis: {
+                type: 'value',
+                scale: true,
+                splitNumber: 3,
+                axisLine: { show: false },
+                axisTick: { show: false },
+                axisLabel: {
+                    color: CHART_INK.label,
+                    fontSize: 10.5,
+                    fontFamily: CHART_FONT.mono,
+                    formatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`),
+                },
+                splitLine: { lineStyle: { color: CHART_INK.grid, type: 'solid' } },
+            },
+            series: [{
+                type: 'line',
+                data: points.map(p => p.views),
+                smooth: 0.35,
+                smoothMonotone: 'x',
+                showSymbol: points.length <= 2,
+                symbol: 'circle',
+                symbolSize: 7,
+                lineStyle: { width: 2, color: PALETTE.revenue, cap: 'round', join: 'round' },
+                itemStyle: { color: PALETTE.revenue, borderColor: CHART_INK.surface, borderWidth: 2 },
+                areaStyle: {
+                    color: {
+                        type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                        colorStops: [
+                            { offset: 0, color: 'rgba(73, 84, 188, 0.22)' },
+                            { offset: 1, color: 'rgba(73, 84, 188, 0.01)' },
+                        ],
+                    },
+                },
+            }],
+        }, true);
+
+        const handleResize = () => chart.resize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [points]);
+
+    if (points.length === 0) {
+        return (
+            <div className="tp-plot flex h-[200px] items-center justify-center text-[12px] text-[var(--tp-meta)]">
+                No readings in this range
             </div>
-        </div>
-    );
+        );
+    }
+
+    return <div ref={chartRef} className="tp-plot" style={{ width: '100%', height: '200px' }} />;
 };
 
 // --- MAIN COMPONENT ---
@@ -756,7 +872,8 @@ const InfluencerPerformance: React.FC = () => {
     const [rawCurrentData, setRawCurrentData] = useState<VideoPerformanceData[]>([]);
     const [rawPreviousData, setRawPreviousData] = useState<VideoPerformanceData[]>([]);
     const [prevDateRange, setPrevDateRange] = useState<DateRange | null>(null);
-    const [trendlineData, setTrendlineData] = useState<TrendlineData | null>(null);
+    const [videoHistory, setVideoHistory] = useState<{ at: Date; views: number }[]>([]);
+    const [historyScope, setHistoryScope] = useState<'period' | 'full'>('period');
     const [showAllKols, setShowAllKols] = useState(false);
     const [compareEnabled, setCompareEnabled] = useState(false);
     const [compareType, setCompareType] = useState<CompareType>('previous_period');
@@ -769,8 +886,6 @@ const InfluencerPerformance: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [sidebarMounted, setSidebarMounted] = useState(false);
     const [selectedVideo, setSelectedVideo] = useState<VideoPerformanceData | null>(null);
-    const [isFullTrendline, setIsFullTrendline] = useState(false);
-    const [loadingFullTrendline, setLoadingFullTrendline] = useState(false);
 
     useEffect(() => {
         const fetchKols = async () => {
@@ -797,55 +912,53 @@ const InfluencerPerformance: React.FC = () => {
         }
     };
 
-    const handleSeeTrendline = useCallback(async (video: VideoPerformanceData, showFull = false) => {
-        setIsTrendlineLoading(true); 
-        if (!showFull) {
-            setTrendlineData(null);
-            setIsFullTrendline(false);
-        } else {
-            setLoadingFullTrendline(true);
-            setIsFullTrendline(true);
-        }
-        
+    // A panel that covers the page needs the key everyone already reaches for.
+    useEffect(() => {
+        if (!isSidebarOpen) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarState(false); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [isSidebarOpen]);
+
+    /* Opening a video pulls its ENTIRE measurement history in one query, and
+       every figure in the panel is derived from that one array.
+
+       It used to re-query per view: once for the selected range, and again
+       for "full history" — which is why the growth figure kept showing the
+       range's growth while the chart showed the whole life of the video. One
+       dataset makes that disagreement impossible, and a video carries only a
+       few hundred readings, so there is nothing to save by slicing it server
+       side. */
+    const handleSeeTrendline = useCallback(async (video: VideoPerformanceData) => {
         setSelectedVideo(video);
         setSidebarState(true);
+        setHistoryScope('period');
+        setIsTrendlineLoading(true);
+        setVideoHistory([]);
 
         try {
-            let start = dateRange.from.toISOString();
-            let end = toGmt7EndOfDay(dateRange.to).toISOString();
-
-            if (showFull) {
-                // If full, start from released_date to current time
-                start = `${video.released_date}T00:00:00Z`;
-                end = new Date().toISOString();
-            }
-
             const { data, error } = await supabaseClient
                 .from('video_metrics')
                 .select('recorded_at, view_count')
                 .eq('video_id', video.id)
-                .gte('recorded_at', start)
-                .lte('recorded_at', end)
                 .order('recorded_at');
 
-            if (error) throw new Error(`Failed to fetch trendline data: ${error.message}`);
-            
-            setTrendlineData({ 
-                videoId: video.id, 
-                videoTitle: video.title, 
-                points: data.map(d => ({ date: getGmt7DateString(d.recorded_at), views: d.view_count })) 
-            });
-        } catch (err) { 
+            if (error) throw new Error(error.message);
+
+            setVideoHistory((data || []).map(d => ({
+                at: new Date(d.recorded_at),
+                views: Number(d.view_count) || 0,
+            })));
+        } catch (err) {
             console.error(err);
-            setError('Failed to fetch trendline data.'); 
-        } finally { 
-            setIsTrendlineLoading(false); 
-            setLoadingFullTrendline(false);
+            setError('Failed to fetch trendline data.');
+        } finally {
+            setIsTrendlineLoading(false);
         }
-    }, [dateRange]);
+    }, []);
 
     const handleFetchData = useCallback(async () => {
-        setLoading(true); setError(null); setTrendlineData(null); setRawCurrentData([]); setRawPreviousData([]); setPrevDateRange(null);
+        setLoading(true); setError(null); setVideoHistory([]); setRawCurrentData([]); setRawPreviousData([]); setPrevDateRange(null);
         try {
             let prevDateRangeVal: DateRange;
             
@@ -910,13 +1023,19 @@ const InfluencerPerformance: React.FC = () => {
             return { filteredVideos: [], kolPerformance: [], overviewStats: null };
         }
         
-        const currentFiltered = selectedKolId 
-            ? rawCurrentData.filter(v => v.kol_id === selectedKolId)
-            : rawCurrentData;
-            
         const previousFiltered = selectedKolId
             ? rawPreviousData.filter(v => v.kol_id === selectedKolId)
             : rawPreviousData;
+
+        // A growth figure on its own says nothing about whether a video is
+        // speeding up or dying. Every video carries the same measure from the
+        // period before, so each table can print the change beside it.
+        const prevGrowthByVideo = new Map(previousFiltered.map(v => [v.id, v.viewGrowth]));
+
+        const currentFiltered = (selectedKolId
+            ? rawCurrentData.filter(v => v.kol_id === selectedKolId)
+            : rawCurrentData
+        ).map(v => ({ ...v, prevViewGrowth: prevGrowthByVideo.get(v.id) ?? 0 }));
             
         // --- Previous Period KOL Growth Aggregation ---
         const prevGrowthByKol = new Map<string, number>();
@@ -950,6 +1069,7 @@ const InfluencerPerformance: React.FC = () => {
             const prevGrowth = prevGrowthByKol.get(kol.kolId) || 0;
             return {
                 ...kol,
+                prevViewGrowth: prevGrowth,
                 growthPercentage: calculatePercentageChange(kol.viewGrowth, prevGrowth),
                 videos: kol.videos.sort((a, b) => b.viewGrowth - a.viewGrowth)
             };
@@ -1031,32 +1151,29 @@ const InfluencerPerformance: React.FC = () => {
                     {error && <div className="card flex items-start gap-2.5 p-4 text-[13px] font-medium text-[var(--tp-danger)] animate-in fade-in duration-300" role="alert"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tp-danger)]" /><span>{error}</span></div>}
                     {!loading && !error && overviewStats && (
                         <>
-                            <div className="card space-y-7 p-6">
+                            <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-[15px] font-semibold tracking-[-0.006em] text-[var(--tp-ink)]">Performance overview</h3>
+                                    <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--tp-ink)]">Performance overview</h3>
                                     <span className="tp-chip tp-chip-accent"><span className="tp-chip-dot" aria-hidden="true" />Live</span>
                                 </div>
-                                {/* One recessed rail divided by hairlines: the three
-                                    figures compare across a shared baseline instead of
-                                    sitting in three competing boxes. */}
-                                <div className="tp-inset grid grid-cols-1 divide-y divide-[var(--tp-rule)] md:grid-cols-3 md:divide-x md:divide-y-0">
-                                    <div className="p-5">
-                                        <p className="mb-1.5 text-[12px] font-semibold text-[var(--tp-accent-ink)]">Total view growth</p>
-                                        <p className="mb-1 text-[30px] font-semibold leading-none tracking-[-0.025em] tabular-nums text-[var(--tp-accent-ink)]">{formatNumber(overviewStats.current.totalGrowth)}</p>
-                                        <ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.totalGrowth, overviewStats.previous.totalGrowth)} vsDateRange={overviewStats.vsDateRange} />
+                                <div className="tp-readout-strip">
+                                    <div className="tp-readout">
+                                        <p className="tp-readout-label">Total view growth</p>
+                                        <p className="tp-readout-value">{formatNumber(overviewStats.current.totalGrowth)}</p>
+                                        <div className="tp-readout-foot"><ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.totalGrowth, overviewStats.previous.totalGrowth)} vsDateRange={overviewStats.vsDateRange} /></div>
                                     </div>
-                                    <div className="p-5">
-                                        <p className="mb-1.5 text-[12px] font-semibold text-[var(--tp-muted)]">New video views</p>
-                                        <p className="mb-1 text-[30px] font-semibold leading-none tracking-[-0.025em] tabular-nums text-[var(--tp-ink)]">{formatNumber(overviewStats.current.newVideoGrowth)}</p>
-                                        <ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.newVideoGrowth, overviewStats.previous.newVideoGrowth)} vsDateRange={overviewStats.vsDateRange} />
+                                    <div className="tp-readout">
+                                        <p className="tp-readout-label">New video views</p>
+                                        <p className="tp-readout-value">{formatNumber(overviewStats.current.newVideoGrowth)}</p>
+                                        <div className="tp-readout-foot"><ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.newVideoGrowth, overviewStats.previous.newVideoGrowth)} vsDateRange={overviewStats.vsDateRange} /></div>
                                     </div>
-                                    <div className="p-5">
-                                        <p className="mb-1.5 text-[12px] font-semibold text-[var(--tp-muted)]">Old video views</p>
-                                        <p className="mb-1 text-[30px] font-semibold leading-none tracking-[-0.025em] tabular-nums text-[var(--tp-ink)]">{formatNumber(overviewStats.current.oldVideoGrowth)}</p>
-                                        <ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.oldVideoGrowth, overviewStats.previous.oldVideoGrowth)} vsDateRange={overviewStats.vsDateRange} />
+                                    <div className="tp-readout">
+                                        <p className="tp-readout-label">Old video views</p>
+                                        <p className="tp-readout-value">{formatNumber(overviewStats.current.oldVideoGrowth)}</p>
+                                        <div className="tp-readout-foot"><ChangeIndicatorText value={calculatePercentageChange(overviewStats.current.oldVideoGrowth, overviewStats.previous.oldVideoGrowth)} vsDateRange={overviewStats.vsDateRange} /></div>
                                     </div>
                                 </div>
-                                <div className="space-y-8">
+                                <div className="card space-y-6 p-4">
                                     <VideoTable 
                                         title="New videos released in period"
                                         videos={overviewStats.current.newVideos}
@@ -1115,121 +1232,197 @@ const InfluencerPerformance: React.FC = () => {
                     />
 
                     {/* Sidebar panel */}
-                    <div className={`trendline-sidebar fixed top-0 right-0 h-full w-[520px] max-w-full bg-white z-[100] flex flex-col border-l border-[#e1e7e5]/50 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                    <div className={`trendline-sidebar fixed top-0 right-0 h-full w-[560px] max-w-full bg-[var(--tp-paper)] z-[100] flex flex-col border-l border-[var(--tp-rule-panel)] transition-transform duration-200 ease-[cubic-bezier(0.2,0,0,1)] ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                        {(() => {
+                            const history = videoHistory;
+                            const hasHistory = history.length > 0;
+                            const rangeFrom = dateRange.from;
+                            const rangeTo = toGmt7EndOfDay(dateRange.to);
 
-                        {/* ── Header ── */}
-                        <div className="trendline-sidebar-header flex-none px-6 py-5">
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-[var(--tp-accent-ink)] mb-1">Video trendline</p>
-                                    <h2 className="text-base font-semibold text-[var(--tp-ink)] leading-snug line-clamp-2">
-                                        {selectedVideo?.title || 'Loading…'}
-                                    </h2>
-                                    {selectedVideo && (
-                                        <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                                            {(() => {
-                                                const platform = getPlatformTag(selectedVideo.video_url);
-                                                return <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${platform.color}`}>{platform.label}</span>;
-                                            })()}
-                                            <span className="text-[11px] text-[var(--tp-meta)]">·</span>
-                                            <span className="text-[11px] text-[var(--tp-meta)]">{selectedVideo.kols?.name}</span>
-                                            <span className="text-[11px] text-[var(--tp-meta)]">·</span>
-                                            <span className="text-[11px] text-[var(--tp-meta)]">{formatDisplayDateGmt7(utcInputStringToDate(selectedVideo.released_date))}</span>
+                            // The headline growth follows the scope the reader
+                            // chose. On "full" it is the whole life of the
+                            // video — last reading minus first — which is the
+                            // figure the old panel kept getting wrong by
+                            // leaving the selected period's number in place.
+                            const periodGrowth = growthWithin(history, rangeFrom, rangeTo);
+                            const lifetimeGrowth = growthWithin(history);
+                            const shownGrowth = historyScope === 'full' ? lifetimeGrowth : periodGrowth;
+
+                            const prevFrom = prevDateRange?.from;
+                            const prevTo = prevDateRange ? toGmt7EndOfDay(prevDateRange.to) : undefined;
+                            const prevGrowth = prevFrom && prevTo ? growthWithin(history, prevFrom, prevTo) : 0;
+
+                            const latestViews = hasHistory ? history[history.length - 1].views : 0;
+                            const firstSeen = hasHistory ? history[0].at : null;
+                            const lastSeen = hasHistory ? history[history.length - 1].at : null;
+                            const daysTracked = firstSeen && lastSeen
+                                ? Math.max(1, Math.round((lastSeen.getTime() - firstSeen.getTime()) / 864e5))
+                                : 0;
+
+                            const points = (historyScope === 'full'
+                                ? history
+                                : history.filter(pt => pt.at >= rangeFrom && pt.at <= rangeTo));
+
+                            const weeks = weeklyGrowth(history);
+                            const peakWeek = weeks.reduce((m, w) => Math.max(m, w.growth), 0);
+                            const platform = selectedVideo ? getPlatformTag(selectedVideo.video_url) : null;
+
+                            return (
+                                <>
+                                    {/* ── Identity: what this video is ── */}
+                                    <header className="flex-none border-b border-[var(--tp-rule-panel)] bg-[var(--tp-surface)] px-4 py-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <h2 className="min-w-0 text-[14px] font-semibold leading-snug text-[var(--tp-ink)] line-clamp-2">
+                                                {selectedVideo?.title || 'Loading…'}
+                                            </h2>
+                                            <button
+                                                onClick={() => setSidebarState(false)}
+                                                className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-[3px] text-[var(--tp-meta)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink)]"
+                                                aria-label="Close"
+                                            >
+                                                <X size={16} />
+                                            </button>
                                         </div>
-                                    )}
-                                </div>
-                                <button
-                                    onClick={() => setSidebarState(false)}
-                                    className="flex-none mt-0.5 w-8 h-8 flex items-center justify-center rounded-md text-[var(--tp-meta)] hover:text-[var(--tp-ink)] hover:bg-[var(--tp-surface-hover)] transition-all"
-                                >
-                                    <X size={18} />
-                                </button>
-                            </div>
-                        </div>
 
-                        {/* ── View Growth Badge ── */}
-                        {selectedVideo && (
-                            <div className="trendline-growth-row flex-none px-6 py-3 border-b border-[#e1e7e5]/30 flex items-center justify-between">
-                                <span className="text-xs text-[var(--tp-muted)] font-medium">View Growth (selected period)</span>
-                                <span className="text-sm font-semibold text-[var(--tp-accent-ink)]">+{formatNumber(selectedVideo.viewGrowth)}</span>
-                            </div>
-                        )}
+                                        {selectedVideo && (
+                                            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-[var(--tp-meta)]">
+                                                {platform && <span className={`tp-chip ${platform.color} !h-[20px] !text-[11px]`}>{platform.label}</span>}
+                                                <span className="text-[var(--tp-ink-2)]">{selectedVideo.kols?.name || 'Unknown creator'}</span>
+                                                <span>Released {formatDisplayDateGmt7(utcInputStringToDate(selectedVideo.released_date))}</span>
+                                                <a
+                                                    href={selectedVideo.video_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="font-medium text-[var(--tp-pen)] hover:underline"
+                                                >
+                                                    Open video ↗
+                                                </a>
+                                            </div>
+                                        )}
+                                    </header>
 
-                        {/* ── Scrollable Body ── */}
-                        <div className="flex-1 overflow-y-auto">
+                                    <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                                        {isTrendlineLoading ? (
+                                            <div className="flex h-56 flex-col items-center justify-center gap-3">
+                                                <div className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--tp-pen)] border-t-transparent" />
+                                                <p className="text-[12px] text-[var(--tp-meta)]">Loading history…</p>
+                                            </div>
+                                        ) : !hasHistory ? (
+                                            <div className="tp-empty">
+                                                <p className="tp-empty-title">No readings yet</p>
+                                                <p className="tp-empty-body">This video has not been picked up by the view-count worker.</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {/* ── Performance: the numbers, together ── */}
+                                                <section className="tp-section">
+                                                    <div className="tp-section-head">
+                                                        <h3>Performance</h3>
+                                                        <span className="tp-section-head-meta">
+                                                            {historyScope === 'full' ? 'Whole tracked life' : 'Selected period'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="tp-readout-strip">
+                                                        <div className="tp-readout">
+                                                            <p className="tp-readout-label">Views now</p>
+                                                            <p className="tp-readout-value">{formatNumber(latestViews)}</p>
+                                                            <div className="tp-readout-foot">
+                                                                <span className="text-[11.5px] text-[var(--tp-meta)]">
+                                                                    {lastSeen ? `as of ${formatDisplayDateGmt7(lastSeen)}` : ''}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="tp-readout">
+                                                            <p className="tp-readout-label">View growth</p>
+                                                            <p className="tp-readout-value">{formatNumber(shownGrowth)}</p>
+                                                            <div className="tp-readout-foot">
+                                                                {historyScope === 'full'
+                                                                    ? <span className="text-[11.5px] text-[var(--tp-meta)]">over {formatNumber(daysTracked)} days</span>
+                                                                    : <GrowthDelta current={periodGrowth} previous={prevGrowth} className="!text-[11.5px]" />}
+                                                            </div>
+                                                        </div>
+                                                        <div className="tp-readout">
+                                                            <p className="tp-readout-label">Average per day</p>
+                                                            <p className="tp-readout-value">
+                                                                {formatNumber(Math.round(lifetimeGrowth / Math.max(daysTracked, 1)))}
+                                                            </p>
+                                                            <div className="tp-readout-foot">
+                                                                <span className="text-[11.5px] text-[var(--tp-meta)]">since tracking began</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {historyScope === 'period' && prevDateRange && (
+                                                        <p className="text-[11.5px] text-[var(--tp-meta)]">
+                                                            Compared with {formatDisplayDateGmt7(prevDateRange.from)} – {formatDisplayDateGmt7(prevDateRange.to)}, which grew {formatNumber(prevGrowth)}.
+                                                        </p>
+                                                    )}
+                                                </section>
 
-                            {/* Chart section */}
-                            <div className="px-6 pt-5 pb-2">
-                                <div className="flex items-center justify-between mb-3">
-                                    <p className="text-xs font-semibold text-[var(--tp-muted)]">View count over time</p>
-                                </div>
+                                                {/* ── The curve ── */}
+                                                <section className="tp-section">
+                                                    <div className="tp-section-head">
+                                                        <h3>View count over time</h3>
+                                                        <div className="flex gap-0.5 rounded-[3px] border border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] p-0.5">
+                                                            {(['period', 'full'] as const).map(scope => (
+                                                                <button
+                                                                    key={scope}
+                                                                    onClick={() => setHistoryScope(scope)}
+                                                                    aria-pressed={historyScope === scope}
+                                                                    className={`rounded-[3px] px-2 py-0.5 text-[11px] font-medium transition-all ${
+                                                                        historyScope === scope
+                                                                            ? 'bg-[var(--tp-surface)] text-[var(--tp-ink)] shadow-[var(--tp-elev-1)]'
+                                                                            : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
+                                                                    }`}
+                                                                >
+                                                                    {scope === 'period' ? 'Selected period' : 'Full history'}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <TrendlineChart points={points} />
+                                                </section>
 
-                                {isTrendlineLoading ? (
-                                    <div className="h-56 flex flex-col items-center justify-center gap-3">
-                                        <div className="w-8 h-8 border-2 border-[var(--tp-accent)] border-t-transparent rounded-full animate-spin" />
-                                        <p className="text-xs text-[var(--tp-meta)] font-medium">Analyzing trends…</p>
+                                                {/* ── Week by week, whole life ── */}
+                                                <section className="tp-section">
+                                                    <div className="tp-section-head">
+                                                        <h3>View growth by week</h3>
+                                                        <span className="tp-section-head-meta">Every tracked week · not filtered</span>
+                                                    </div>
+                                                    <div className="card max-h-[260px] overflow-y-auto p-3">
+                                                        {weeks.length === 0 ? (
+                                                            <p className="text-[12px] text-[var(--tp-meta)]">Not enough readings yet.</p>
+                                                        ) : (
+                                                            <ol className="space-y-1.5">
+                                                                {[...weeks].reverse().map(w => (
+                                                                    <li key={w.start.getTime()} className="flex items-center gap-2">
+                                                                        <span className="w-[66px] shrink-0 text-[11px] text-[var(--tp-muted)]">
+                                                                            {formatDisplayDateGmt7(w.start, { month: 'short', day: 'numeric' })}
+                                                                        </span>
+                                                                        <span className="relative h-3 flex-1 overflow-hidden rounded-[2px] bg-[var(--tp-surface-sunken)]">
+                                                                            <span
+                                                                                className="absolute inset-y-0 left-0 rounded-[2px]"
+                                                                                style={{
+                                                                                    width: `${peakWeek > 0 ? Math.max(0, (w.growth / peakWeek) * 100) : 0}%`,
+                                                                                    backgroundImage: 'linear-gradient(90deg, var(--tp-pen-deep), var(--tp-pen))',
+                                                                                }}
+                                                                            />
+                                                                        </span>
+                                                                        <span className="tp-num w-[58px] shrink-0 text-right text-[11.5px] font-medium text-[var(--tp-ink)]">
+                                                                            {w.growth >= 0 ? '+' : ''}{formatNumber(w.growth)}
+                                                                        </span>
+                                                                    </li>
+                                                                ))}
+                                                            </ol>
+                                                        )}
+                                                    </div>
+                                                </section>
+                                            </>
+                                        )}
                                     </div>
-                                ) : trendlineData ? (
-                                    <TrendlineChart
-                                        data={trendlineData}
-                                        onSeeFull={() => selectedVideo && handleSeeTrendline(selectedVideo, true)}
-                                        isFull={isFullTrendline}
-                                        loadingFull={loadingFullTrendline}
-                                    />
-                                ) : (
-                                    <div className="h-56 flex flex-col items-center justify-center gap-2 text-center">
-                                        <div className="w-10 h-10 bg-[var(--tp-surface-hover)] rounded-full flex items-center justify-center">
-                                            <ArrowUp className="text-[var(--tp-faint)]" size={20} />
-                                        </div>
-                                        <p className="text-sm font-semibold text-[var(--tp-muted)]">No chart data</p>
-                                        <p className="text-xs text-[var(--tp-meta)]">Could not load trendline data.</p>
-                                    </div>
-                                )}
-                                                    {/* Divider */}
-                            <div className="mx-6 my-3 border-t border-[#e1e7e5]/30" />
-
-                            {/* Video details */}
-                            {selectedVideo && (
-                                <div className="px-6 pb-6 space-y-1">
-                                    <p className="text-[11px] font-semibold text-[var(--tp-meta)] mb-3">Video Details</p>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-[#f7faf9] rounded-xl p-3.5 border border-[#e1e7e5]/40">
-                                            <p className="text-[11px] text-[var(--tp-meta)] font-semibold mb-1">Platform</p>
-                                            {(() => {
-                                                const platform = getPlatformTag(selectedVideo.video_url);
-                                                return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${platform.color}`}>{platform.label}</span>;
-                                            })()}
-                                        </div>
-                                        <div className="bg-[#f7faf9] rounded-xl p-3.5 border border-[#e1e7e5]/40">
-                                            <p className="text-[11px] text-[var(--tp-meta)] font-semibold mb-1">KOL</p>
-                                            <p className="text-sm font-semibold text-[var(--tp-ink)] truncate">{selectedVideo.kols?.name || '—'}</p>
-                                        </div>
-                                        <div className="bg-[#f7faf9] rounded-xl p-3.5 border border-[#e1e7e5]/40">
-                                            <p className="text-[11px] text-[var(--tp-meta)] font-semibold mb-1">Released</p>
-                                            <p className="text-sm font-semibold text-[var(--tp-ink)]">{formatDisplayDateGmt7(utcInputStringToDate(selectedVideo.released_date))}</p>
-                                        </div>
-                                        <div className="bg-[var(--tp-accent-soft)] rounded-xl p-3.5 border border-[var(--tp-accent-rule)]">
-                                            <p className="text-[11px] text-[var(--tp-accent-ink)] font-semibold mb-1">View Growth</p>
-                                            <p className="text-sm font-semibold text-[var(--tp-accent-ink)]">+{formatNumber(selectedVideo.viewGrowth)}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-4">
-                                        <a
-                                            href={selectedVideo.video_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex w-full items-center justify-center gap-2 px-6 py-2.5 bg-[var(--tp-ink)] hover:bg-[var(--tp-ink-2)] text-white text-sm font-semibold rounded-full transition-all border border-[#e1e7e5]/30"
-                                        >
-                                            Open Video ↗
-                                        </a>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                                </>
+                            );
+                        })()}
                     </div>
-                </div>
             </>
             , document.body) }
         </div>

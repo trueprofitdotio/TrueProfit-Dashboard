@@ -174,46 +174,6 @@ export const getPresetDateRange = (preset: string): DateRange => {
 /**
  * Returns the start and end dates for a specific quarter in GMT+7.
  */
-export const getQuarterDateRange = (year: number, quarter: number): { start: Date; end: Date } => {
-    const startMonth = (quarter - 1) * 3;
-    // Start of quarter: 1st day of startMonth at 00:00 GMT+7
-    const start = createBangkokDate(year, startMonth, 1);
-    
-    // End of quarter: Last day of (startMonth + 2) at 23:59:59.999 GMT+7
-    const endMonth = startMonth + 2;
-    // createBangkokDate(year, endMonth + 1, 0) gives the start of the last day of the quarter
-    const lastDayStart = createBangkokDate(year, endMonth + 1, 0);
-    // Add 24h - 1ms to get end of day
-    const end = new Date(lastDayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
-    
-    return { start, end };
-};
-
-/**
- * Returns current quarter information based on GMT+7 time.
- */
-export const getQuarterInfo = () => {
-    const now = new Date();
-    // Get current year and month in GMT+7
-    const { year, month } = getBangkokDateParts(now); // month is 0-indexed
-    
-    let quarter: 1 | 2 | 3 | 4;
-    if (month < 3) quarter = 1;
-    else if (month < 6) quarter = 2;
-    else if (month < 9) quarter = 3;
-    else quarter = 4;
-    
-    const { start, end } = getQuarterDateRange(year, quarter);
-    
-    // Calculate percentage passed
-    // Ensure we don't divide by zero (though quarter length is never 0)
-    const totalDuration = end.getTime() - start.getTime();
-    const elapsed = now.getTime() - start.getTime();
-    const timePassedPercent = Math.max(0, Math.min(1, elapsed / totalDuration));
-    
-    return { quarter, year, start, timePassedPercent };
-};
-
 export const getBangkokParts = getBangkokDateParts;
 
 /**

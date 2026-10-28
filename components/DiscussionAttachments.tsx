@@ -106,7 +106,7 @@ export const Lightbox: React.FC<{
             )}
 
             <figure className="flex max-h-full max-w-full flex-col items-center gap-3" onClick={e => e.stopPropagation()}>
-                <img src={current.url} alt={current.name} className="max-h-[80vh] max-w-full rounded-xl object-contain" />
+                <img src={current.url} alt={current.name} className="max-h-[80vh] max-w-full rounded-[4px] object-contain" />
                 <figcaption className="flex items-center gap-3 text-xs text-white/75">
                     {count > 1 && <span className="tabular-nums text-white/55">{index + 1} / {count}</span>}
                     <span className="max-w-[400px] truncate">{current.name}</span>
@@ -114,7 +114,7 @@ export const Lightbox: React.FC<{
                         href={current.url}
                         download={current.name}
                         onClick={e => e.stopPropagation()}
-                        className="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 font-medium text-white transition-colors hover:bg-white/25"
+                        className="flex items-center gap-1 rounded-[4px] bg-white/10 px-2.5 py-1 font-medium text-white transition-colors hover:bg-white/25"
                     >
                         <Download className="h-3 w-3" />
                         <span>Download</span>
@@ -213,13 +213,13 @@ export const AttachmentGrid: React.FC<{
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => { e.stopPropagation(); if (!url) e.preventDefault(); }}
-                        className={`flex items-center gap-2.5 rounded-[7px] border p-2 transition-colors ${
+                        className={`flex items-center gap-2.5 rounded-[3px] border p-2 transition-colors ${
                             isUser
                                 ? 'border-[rgba(15,22,19,0.16)] bg-[rgba(15,22,19,0.08)] hover:bg-[rgba(15,22,19,0.14)]'
                                 : 'border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] hover:bg-[var(--tp-surface-hover)]'
                         } ${url ? '' : 'pointer-events-none opacity-60'}`}
                     >
-                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] ${
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] ${
                             isUser ? 'bg-[rgba(15,22,19,0.1)] text-[var(--tp-on-accent)]' : 'bg-[var(--tp-surface)] text-[var(--tp-muted)] border border-[var(--tp-rule)]'
                         }`}>
                             <FileText className="h-4 w-4" />
@@ -470,16 +470,16 @@ export const PendingAttachmentStrip: React.FC<{
     if (pending.length === 0) return null;
 
     return (
-        <div className="mb-2 flex flex-wrap gap-2 rounded-[9px] border border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] p-2">
+        <div className="mb-2 flex flex-wrap gap-2 rounded-[4px] border border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] p-2">
             {pending.map(item => (
                 <div
                     key={item.localId}
-                    className={`relative flex items-center gap-2 rounded-[7px] border bg-[var(--tp-surface)] p-1.5 pr-7 ${
+                    className={`relative flex items-center gap-2 rounded-[3px] border bg-[var(--tp-surface)] p-1.5 pr-7 ${
                         item.status === 'error' ? 'border-[var(--tp-danger-rule)]' : 'border-[var(--tp-rule-strong)]'
                     }`}
                     title={item.error || item.file.name}
                 >
-                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-[var(--tp-surface-sunken)]">
+                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[3px] bg-[var(--tp-surface-sunken)]">
                         {item.previewUrl
                             ? <img src={item.previewUrl} alt="" className="h-full w-full object-cover" />
                             : <FileText className="h-4 w-4 text-[var(--tp-faint)]" />}

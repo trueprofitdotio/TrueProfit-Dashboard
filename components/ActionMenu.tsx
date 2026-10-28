@@ -37,7 +37,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ anchorRect, items, onRequestClo
         <div
             ref={menuRef}
             style={style}
-            className="z-[999999] bg-white rounded-xl shadow-lg border border-[var(--tp-rule)] py-1.5 animate-in fade-in zoom-in-95 duration-150 font-sans"
+            className="z-[999999] bg-white rounded-[4px] shadow-lg border border-[var(--tp-rule)] py-1.5 animate-in fade-in zoom-in-95 duration-150 font-sans"
         >
             {items.map((item) => (
                 <button

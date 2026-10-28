@@ -1,313 +1,344 @@
 ---
 name: TrueProfit Operations Workspace
-description: A layered operating sheet — white sheets on a bright porcelain canvas, signalled by the brand mint
+description: A flat field of discrete white containers under one indigo pen
 colors:
-  canvas: "#F4F7F6"
-  canvas-edge: "#E6EBE9"
+  paper: "#EEF0F6"
+  grid-minor: "#E6E9F4"
+  grid-major: "#D7DCEE"
+  canvas-edge: "#DDE0EA"
   surface: "#FFFFFF"
-  surface-sunken: "#F7FAF9"
-  surface-hover: "#F2F7F5"
-  rule: "#ECF0EE"
-  rule-panel: "#E1E7E5"
-  rule-strong: "#C9D2CE"
-  ink: "#0F1613"
-  ink-2: "#262E2B"
-  muted: "#5A635F"
-  meta: "#6A736F"
-  faint: "#9BA5A1"
-  accent: "#23C48C"
-  accent-strong: "#12A877"
-  accent-ink: "#0B7C57"
-  on-accent: "#0F1613"
-  accent-soft: "#E6F9F1"
-  accent-field: "#DAF7EB"
-  positive: "#0B7C57"
-  warning: "#B45309"
-  danger: "#D91A43"
-  info: "#1A65C8"
-  series: "#12A877, #1D6FD8, #58A3D0, #D97706, #D91A43, #0891B2"
+  surface-sunken: "#F4F6FC"
+  surface-hover: "#F1F3FC"
+  surface-active: "#E6E9F9"
+  rule: "#EAECF4"
+  rule-panel: "#DDE1EE"
+  rule-strong: "#C2C8DC"
+  rule-stronger: "#A8B0C9"
+  ink: "#15171F"
+  ink-2: "#2B2F3D"
+  muted: "#585E72"
+  meta: "#6E7488"
+  faint: "#A4A9BC"
+  pen: "#4954BC"
+  pen-deep: "#38429A"
+  pen-wash: "#EFF0FB"
+  pen-field: "#E2E5F7"
+  pen-rule: "#C5CAEA"
+  on-pen: "#FFFFFF"
+  positive: "#0F7A52"
+  positive-bright: "#19A86D"
+  warning: "#B4530A"
+  danger: "#C0203C"
+  series: "#35802B, #0E9AC2, #DE4A6B, #4954BC, #DFA022, #7A5BBF"
+  aired-1-ink: "#8A5A00"
+  aired-1-field: "#FFF7E0"
+  aired-1-rule: "#F3DC9B"
+  aired-2-ink: "#9C4708"
+  aired-2-field: "#FFF0E4"
+  aired-2-rule: "#F7CBA5"
+  aired-3-ink: "#A93624"
+  aired-3-field: "#FFEEEB"
+  aired-3-rule: "#F6C5BA"
+  aired-4-ink: "#9C2A64"
+  aired-4-field: "#FDEDF4"
+  aired-4-rule: "#F2C0D6"
+  aired-5-ink: "#6A3DA2"
+  aired-5-field: "#F3EDFD"
+  aired-5-rule: "#D8C6F3"
+  aired-all-ink: "#582D9E"
+  aired-all-field: "#ECE3FC"
+  aired-all-rule: "#CAB4F0"
 typography:
-  family: "Inter, system-ui, Segoe UI, Helvetica, Arial, sans-serif"
-  axis: "400-700 (variable), opsz 14-32; nothing in the UI exceeds 600"
-  display:
-    fontSize: "22px"
-    fontWeight: 600
-    lineHeight: 1.2
-    letterSpacing: "-0.021em"
+  family: "Archivo, system-ui, Segoe UI, Helvetica, Arial, sans-serif"
+  narrow: "Archivo Narrow"
+  mono: "Roboto Mono"
+  families: "Archivo, Archivo Narrow, Roboto Mono"
+  narrow-use: "column heads and channel labels only"
+  mono-use: "every figure in a column"
+  axis: "400-600; nothing in the UI is set above 600"
   brand:
-    fontSize: "18px"
-    fontWeight: 600
-    letterSpacing: "-0.012em"
-  brand-compact:
     fontSize: "16px"
     fontWeight: 600
-  display-compact:
+    letterSpacing: "-0.015em"
+  page-title:
     fontSize: "19px"
     fontWeight: 600
-    letterSpacing: "-0.021em"
+    letterSpacing: "-0.018em"
   sheet-title:
-    fontSize: "15px"
+    fontSize: "14px"
     fontWeight: 600
-    letterSpacing: "-0.012em"
+    letterSpacing: "-0.01em"
   nav:
-    fontSize: "13.5px"
+    fontSize: "13px"
     fontWeight: 500
-    letterSpacing: "-0.006em"
   control:
     fontSize: "13px"
     fontWeight: 500
   body:
-    fontSize: "14px"
+    fontSize: "13.5px"
     fontWeight: 400
     lineHeight: 1.5
-    letterSpacing: "-0.006em"
-  data:
+    letterSpacing: "-0.004em"
+  table-cell:
     fontSize: "13px"
-    fontVariantNumeric: "tabular-nums"
-  table-label:
-    fontSize: "11.5px"
-    fontWeight: 600
-    letterSpacing: "0.012em"
-  chip:
-    fontSize: "12px"
-    fontWeight: 550
-  meta:
-    fontSize: "11.5px"
     fontWeight: 400
-  figure:
+  table-label:
+    fontFamily: "Archivo Narrow"
+    fontSize: "12px"
+    fontWeight: 600
+    letterSpacing: "0.01em"
+  readout-label:
+    fontFamily: "Archivo Narrow"
+    fontSize: "12px"
+    fontWeight: 600
+  readout-figure:
     fontSize: "26px"
     fontWeight: 600
     letterSpacing: "-0.025em"
-  figure-lg:
-    fontSize: "30px"
-    fontWeight: 600
-    letterSpacing: "-0.025em"
-  figure-xl:
-    fontSize: "32px"
-    fontWeight: 600
-    letterSpacing: "-0.025em"
+    fontVariantNumeric: "tabular-nums"
+  meta:
+    fontSize: "11.5px"
+    fontWeight: 400
+  axis:
+    fontSize: "10.5px"
+    note: "chart ticks and the inline growth delta only; the floor for any text"
 rounded:
-  hairline: "2px"
-  focus: "3px"
-  xs: "5px"
-  dot: "6px"
-  control: "7px"
-  popup: "9px"
-  overlay: "12px"
-  sheet: "16px"
+  xs: "2px"
+  sm: "3px"
+  md: "4px"
+  lg: "4px"
+  xl: "5px"
   pill: "999px"
 elevation:
-  sheet: "0 1px 1px rgba(15,22,19,.035), 0 2px 6px -1px rgba(15,22,19,.055)"
-  raised: "0 1px 2px rgba(15,22,19,.05), 0 6px 16px -4px rgba(15,22,19,.1)"
-  overlay: "0 2px 4px -1px rgba(15,22,19,.06), 0 18px 40px -10px rgba(15,22,19,.16)"
-  dialog: "0 4px 8px -2px rgba(15,22,19,.08), 0 32px 64px -16px rgba(15,22,19,.22)"
+  flat: "0 1px 0 rgba(21,23,31,.03)"
+  raised: "0 1px 2px rgba(21,23,31,.05), 0 2px 6px -2px rgba(21,23,31,.07)"
+  overlay: "0 2px 4px -1px rgba(21,23,31,.07), 0 14px 32px -10px rgba(21,23,31,.16)"
+  dialog: "0 4px 8px -2px rgba(21,23,31,.09), 0 28px 56px -16px rgba(21,23,31,.22)"
 spacing:
-  base: "4px"
-  compact: "8px"
-  control: "16px"
-  sheet-padding: "24px"
-  section: "24px"
+  scale: "4 / 8 / 16 / 32 — there is nothing between these steps"
+  touching: "4px"
+  grouped: "8px"
+  near: "16px"
+  separate: "32px"
   page: "64px"
 components:
   sheet:
     backgroundColor: "{colors.surface}"
     borderColor: "{colors.rule-panel}"
-    rounded: "{rounded.sheet}"
-    boxShadow: "{elevation.sheet}"
-    padding: "{spacing.sheet-padding}"
+    rounded: "{rounded.md}"
+    boxShadow: "{elevation.flat}"
+  readout-strip:
+    backgroundColor: "{colors.surface}"
+    borderColor: "{colors.rule-panel}"
+    dividerColor: "{colors.rule}"
+    rounded: "{rounded.md}"
   button-primary:
-    backgroundColor: "{colors.accent}"
-    textColor: "{colors.on-accent}"
-    rounded: "{rounded.control}"
-    height: "40px"
+    backgroundColor: "{colors.pen}"
+    textColor: "{colors.on-pen}"
+    rounded: "{rounded.sm}"
+    height: "34px"
   field:
     backgroundColor: "{colors.surface}"
     borderColor: "{colors.rule-strong}"
-    rounded: "{rounded.control}"
-    height: "40px"
+    rounded: "{rounded.sm}"
+    height: "34px"
   chip:
     height: "24px"
     rounded: "{rounded.xs}"
     fontSize: "12px"
-    fontWeight: 550
+    fontWeight: 500
 ---
 
-# Design System: TrueProfit Operations Workspace
+# Design System: TrueProfit Chart Recorder
 
 ## Overview
 
-**Creative North Star: "Layered Operating Sheet"**
+**Creative North Star: "One Field, Discrete Instruments"**
 
-TrueProfit is an internal operations workspace for affiliate performance, influencer management, deal proposals, progress tracking, and quarterly KPIs. The canvas is a bright porcelain ground that never carries text. All work — every figure, label, table row, and chart — sits on a white sheet raised off that ground by a hairline edge and a soft shadow. The layering is functional, not decorative: it guarantees that operational text is always read on a surface built for reading, and it tells the eye where one unit of work ends and the next begins.
+The application is a single flat field carrying discrete white containers. Each
+section is an object with its own edge, and the eye counts them down the page.
+Over them, one indigo pen marks the live route, focus, the primary action, and
+the revenue series; every other colour is owned by a data series or a state.
 
-The ground was a warm sage until the palette was refreshed; sage plus a muted teal-green accent read as vintage rather than current. Porcelain is a brighter ground that makes white sheets read as raised without any warmth of its own, and the signal on it is TrueProfit's own mint, `#23C48C`.
+An earlier build drew the field as ruled engineering graph paper, on the idea
+that the whole page should read as a measuring surface. It did not survive
+contact with use: the lattice textured every pixel to make one point about
+plots, it competed with the containers for the eye, and sections scattered
+across it read as loose rather than as parts of one page. The ground is now a
+step deeper than the sheets, which is all the separation a white container
+needs, and the containers themselves carry the structure.
 
-An earlier flat treatment placed text directly on the canvas. That version was quiet but hard to read, and it gave the eye nothing to group by; hierarchy came only from whitespace, which collapsed under real data density.
+Density is a feature. This is read all day by people who already know where to
+look, so spacing is tight, the type ramp is small, and figures are given room
+to be compared rather than decorated.
 
 ### Principles
 
-- **The canvas is ground, never page.** No text, figure, table, or control renders directly on `canvas`. If content needs to be read, it belongs on a sheet.
-- **One sheet deep.** A sheet holds content. Nested sheets are forbidden; a group inside a sheet uses `surface-sunken` with a hairline (`tp-inset`), or hairline dividers and proximity alone.
-- **Depth is a two-step ladder.** Canvas → sheet for content; sheet → overlay for things that interrupt. There is no third step, and depth never signals importance, only plane.
-- **Color is a reserved signal.** The mint marks current location, focus, the primary action, and genuine positive state. Every other color is semantic and data-owned.
-- **The mint is a fill, never an ink.** White text on `#23C48C` reads at 2.25:1 and the mint itself reads at 2.25:1 on white. It therefore only ever fills a large shape, and that shape's label is near-black. Accent text and thin accent graphics use the two darker steps below.
-- **Figures line up.** All numerals are tabular. Numeric columns right-align. A column of figures is read by comparing digits in place, so nothing may shift them.
-- **Dense data stays legible and stays whole.** Tables scroll horizontally inside their sheet rather than truncating operational fields. A long free-text cell clamps to three lines with the full value in `title` and in its edit popover, so one verbose row cannot set the height of the table.
-- **Movement confirms change.** 120–180ms ease-out on state change and page entry. Nothing else moves.
+- **Figures are the product.** Nothing may make a column of numbers harder to compare, and no information already on screen may be dropped to tidy a layout.
+- **The field is ground, never page.** Data, tables and running text sit on a container. What the field may carry is annotation — a section heading, its meta line, a single text control — set directly above the container it names.
+- **A container is a discrete object.** It reads as separate because it is white on a deeper field, with its own hairline edge and the faintest lift. Heavier shadows are reserved for things that interrupt.
+- **One spacing ladder: 4, 8, 16, 32.** 4 for what is touching, 8 for what belongs together, 16 for what is merely near, 32 for what is separate. Nothing in between, ever.
+- **One pen.** `#4954BC` marks the live route, focus, the primary action, and the revenue series. It is the only decorative colour in the product.
+- **Colour is a reserved signal.** Every other colour is owned by a data series or a semantic state, and text wears text tokens — a figure is never tinted with its own series colour.
+- **Corners are cut, not moulded.** 4px on a sheet, 3px on a control, 2px on a chip.
+- **Movement confirms a change and nothing else.** 140ms, flat ease; the pen is either down or it is not.
 
 ## Color
 
-### Ground and surfaces
+### The field
 
-- **Canvas** `#F4F7F6` — the application ground. Bright porcelain carrying the faintest green cast so it sits under the mint without turning sage, and deliberately deeper than the sheets so white reads as raised.
-- **Canvas edge** `#E6EBE9` — the seam where a full-bleed element (the app bar) meets the canvas.
-- **Surface** `#FFFFFF` — every sheet, overlay, dialog, menu, and input.
-- **Surface sunken** `#F7FAF9` — table heads, recessed groups inside a sheet, the message feed channel.
-- **Surface hover** `#F2F7F5` — row and control hover. **Surface active** `#E8F6F0` — a held or open control.
+- **Paper** `#EEF0F6` — the application ground, one flat fill. Never carries data or running text. It is deliberately a step deeper than `surface` so a white container reads as lifted without a shadow saying so.
+- **Grid minor** `#E6E9F4` and **grid major** `#D7DCEE` survive only as chart gridline colours. They are no longer painted on the page.
+- **Canvas edge** `#DDE0EA` — the seam where a full-bleed element (the app bar) meets the field.
+
+### Surfaces
+
+**Surface** `#FFFFFF` is every sheet, overlay, dialog, menu and input — opaque, so it masks the lattice. **Surface sunken** `#F4F6FC` is table heads and recessed groups; **surface hover** `#F1F3FC` is row and control hover; **surface active** `#E6E9F9` is a held or open control.
 
 ### Rules
 
-Three weights, each with a job: **rule** `#ECF0EE` for hairlines inside a sheet; **rule panel** `#E1E7E5` for a sheet's own edge; **rule strong** `#C9D2CE` for control edges (inputs, selects, filter triggers), with **rule stronger** `#B0BCB7` on hover. Never use a heavier rule to add emphasis.
+Three weights, each with a job: **rule** `#EAECF4` for hairlines inside a sheet; **rule panel** `#DDE1EE` for a sheet's own edge; **rule strong** `#C2C8DC` for control edges, with **rule stronger** `#A8B0C9` on hover. Never use a heavier rule to add emphasis.
 
 ### Ink ladder
 
-Measured against `surface`: **ink** `#0F1613` (18.4:1) for headings and key figures; **ink-2** `#262E2B` (13.9:1) for body and table cells; **muted** `#5A635F` (6.2:1) for secondary labels; **meta** `#6A736F` (4.9:1) for metadata and placeholders. **faint** `#9BA5A1` (2.5:1) is for dividers and small icon strokes only — never for text. Every step carries the ink's own green cast, including the shadows, so nothing on the page is neutral grey.
+Measured against `surface`: **ink** `#15171F` (17.6:1) for headings and key figures; **ink-2** `#2B2F3D` (12.6:1) for body and table cells; **muted** `#585E72` (6.3:1) for secondary labels; **meta** `#6E7488` (4.9:1) for metadata and placeholders. **faint** `#A4A9BC` (2.5:1) is for dividers and small icon strokes only — never for text. Every step carries a cool cast so nothing sits neutral-grey beside the indigo.
 
-### Accent and semantics
+### The pen
 
-The brand mint is bright — bright enough that it fails as text and fails under white text — so the accent is three steps and each has exactly one job. Reaching for the wrong one is how this palette breaks.
+`#4954BC` reads **6.4:1 on white, and white reads 6.4:1 on it**. That two-way legality is the single most important property of this palette and the reason the system needs one accent step where its predecessor needed three: the pen can fill a button and carry white type, *and* it can be the text colour, *and* it can draw a 2px trace — all without a darker stand-in.
 
-| Step | Value | On white | Use |
-|---|---|---|---|
-| `accent` | `#23C48C` | 2.25:1 | **Fills only.** Buttons, the sender's chat bubble, count badges. Its label is `on-accent`. |
-| `accent-strong` | `#12A877` | 3.05:1 | Hover fill, and every thin graphic that must survive on white: the active tab underline, progress fills, field focus borders, the mint chart series. |
-| `accent-ink` | `#0B7C57` | 5.2:1 | Accent **text** and icons on a light surface, and focus outlines. |
+| Step | Value | Use |
+|---|---|---|
+| `pen` | `#4954BC` | traces, fills, the live route, focus, accent text |
+| `pen-deep` | `#38429A` | hover and pressed, and ink on a pen-coloured wash |
+| `pen-wash` | `#EFF0FB` | the pen as a field |
+| `pen-field` | `#E2E5F7` | one step in: a selected row or date |
+| `pen-rule` | `#C5CAEA` | the edge of a pen-coloured field |
+| `on-pen` | `#FFFFFF` | the label on a pen fill |
 
-`on-accent` `#0F1613` is the label on an accent fill (8.2:1) — never white. `accent-soft` `#E6F9F1` is the accent as a field, `accent-field` `#DAF7EB` one step in for a selected row or date, and `accent-rule` `#A7E3CB` is its edge.
+### Semantic state
 
-Semantic pairs follow the same shape: positive `#0B7C57`, warning `#B45309`, danger `#D91A43`, info `#1A65C8`, each with a soft field and a rule.
+Positive `#0F7A52` (lit end `#19A86D` for a completed fill), warning `#B4530A`, danger `#C0203C`, each with a soft field and a rule. These steps are deliberately **not** series colours: a status never appears as a mark on a plot. They also never travel on colour alone — a delta carries its arrow, a chip carries its dot and its word.
 
 ### Data ramp
 
-Charts draw from six hues spread across the wheel — mint `#12A877`, blue `#1D6FD8`, steel `#58A3D0`, amber `#D97706`, rose `#D91A43`, cyan `#0891B2` — each clearing 3:1 on white so a line or a bar stays visible, and held close enough in lightness that no series shouts over another. Note the mint here is `accent-strong`, not the brand fill: a 2.5px line in `#23C48C` would disappear against the sheet. In the affiliate views they carry fixed meanings: revenue mint, signups blue, clicks steel, payouts amber, installs rose. ECharts takes literal hex, so `constants.tsx` and `--tp-series-*` in `index.css` are kept in step by hand.
+Six slots, assigned in fixed order and never cycled: green `#35802B` signups, cyan `#0E9AC2` clicks, rose `#DE4A6B` installs, indigo `#4954BC` revenue, amber `#DFA022` payouts, violet `#7A5BBF` spare.
 
-Slot three was violet `#7C3AED` until it was measured: against the signups blue it separated by only 3.5 ΔE under deuteranopia and 14.7 under normal vision, so two of the five affiliate series were effectively one colour. The steel blue that replaced it clears both floors (16.0 normal, 8.3 on the worst CVD pair) and is the quietest hue on the plot, which suits its measure — clicks is bulk volume, not an outcome. **Any change to this ramp is validated with the data-viz palette validator, not by eye.**
+Revenue is drawn with the brand pen because it is the measure the product exists to move. Clicks takes the cyan — present, but the quietest hue on the plot, which suits bulk volume rather than an outcome.
 
-### Named rule: Reserved Signal
-
-The mint is not a wash. It marks current navigation, keyboard focus, the primary action, and genuine positive state. Because the brand *is* green, positive deliberately reuses `accent-ink` rather than introducing a second, near-identical green; the two never collide because they never take the same form — a primary action is a bright accent **fill** with a dark label, positive state is deep green **text** on a pale field. Status colors tied to data keep their meaning and are never repurposed for layout. A user-created custom tag hashes into the existing chip variants — it can never introduce a new hue.
+The set is validated with the data-viz palette validator at **`--pairs all`**, not at `--pairs adjacent`, because the daily trace puts all five on one surface and the top-affiliate view splits them into small multiples; both arrangements make every pair adjacent to every other. Worst pair is ΔE 10.3 under deuteranopia and 18.9 under normal vision, clearing the 8 target and the 15 floor. ECharts takes literal hex, so `PALETTE` in `constants.tsx` and `--tp-series-*` in `index.css` are kept in step by hand. **Any change to this ramp is re-validated with that script, never judged by eye.**
 
 ## Typography
 
-**Inter**, served from Google Fonts with its `opsz` axis (14–32) and `font-optical-sizing: auto`, so large text tightens its own fit instead of being hand-corrected. System UI faces are the fallback stack. One family carries everything; there is no display pairing. Fixed px steps, never fluid — this is viewed at a consistent desk.
+**Archivo** is the lettering: a grotesque with the upright, slightly condensed character of technical-drawing annotation, which keeps dense labels legible without shouting. **Archivo Narrow** carries column heads and channel labels, where horizontal room runs out first and a condensed label buys a wider data column. Both from Google Fonts; the variable axis runs 400–600 and nothing is set above 600, so hierarchy comes from size, colour and position rather than weight.
 
-Its variable axis runs **400–700 only**, and the interface deliberately uses just three stops: **400** for body and data, **500** for every control label, **600** for headings, table labels, and figures. Nothing is set above 600. Hierarchy therefore comes from **size, colour, and spacing** — not from weight. A bold button is not more important than a heading, and the old build's habit of shouting every label in 650–800 flattened the page into one loud plane.
+**Roboto Mono carries every figure in a column.** That is not a technical costume. The product's one hard requirement is that a column of numbers can be compared digit by digit, and a monospaced face guarantees the columns register whatever the stack resolves to.
 
-Inter is wider and larger on the body than the face it replaced, so every tracking step sits a notch looser than the one it inherited: headings take -0.012em to -0.025em, and 11.5px table labels take *positive* tracking (0.012em) to stay open at that size.
+The large readouts are the deliberate exception: they are set in Archivo with `tabular-nums`, because a monospaced comma takes a full cell and `1,202` at 26px reads as `1 , 202`. Those five figures are different measures read side by side, not a column compared digit by digit, so they need tabular figures — which Archivo has — not a fixed advance width.
 
-- **Brand:** 18px / 600 / -0.018em (16px on mobile).
-- **Page title:** 22px / 600 / -0.021em (19px on mobile).
-- **Sheet title:** 15px / 600 / -0.012em. Sentence case.
-- **Navigation:** 13.5px / 500 / -0.006em; the active route steps to 600.
-- **Control labels (buttons, filters, fields):** 13px / 500.
-- **Body and table cells:** 14px / 400 / 1.5 / -0.006em. Compact data cells run 12.5–13px.
-- **Table heading:** 11.5px / 600 / +0.012em, sentence case. Never all-caps, never widely tracked.
-- **Chip:** 12px / 550.
-- **Metadata:** 11.5px / 400, in `meta`. 11px is the hard floor for any text in the product.
-- **Figure:** 26–32px / 600 / -0.025em, tabular.
+- **Brand:** 16px / 600 / -0.015em.
+- **Page title:** 19px / 600 / -0.018em.
+- **Sheet title:** 14px / 600 / -0.01em. Sentence case.
+- **Navigation and control labels:** 13px / 500.
+- **Body and table cells:** 13.5px body, 13px cells / 400.
+- **Column head:** Archivo Narrow 12px / 600 / +0.01em, sentence case. Never all-caps.
+- **Readout label:** Archivo Narrow 12px / 600.
+- **Readout figure:** 26px / 600 / -0.025em, tabular.
+- **Metadata:** 11.5px / 400 in `meta`. 10.5px is the floor, and only on an axis tick.
 
 ## Layout
 
-The app bar is full-bleed white, sticky, with a `canvas-edge` bottom rule and sheet elevation. It is a three-track grid whose outer tracks are equal, so the workspace switcher sits on the bar's true centre line however wide the brand runs; the brand holds the left track and the right one is deliberately empty ballast. Below 900px the two stack, both centred. Below it the frame centers at max 1560px with a 20px desktop gutter (14px mobile).
+The app bar is full-bleed white, sticky, with a `canvas-edge` rule and **no shadow** — a masthead ruled off the board. It is a three-track grid whose outer tracks are equal, so the workspace switcher sits on the bar's true centre line however wide the brand runs. The frame centres at max 1680px with a 20px desktop gutter (14px mobile).
 
-Inside a workspace, sections are sheets separated by 24px. The Influencer area adds a sub-navigation rail on the canvas — text labels over a `canvas-edge` rule — above its sheets.
+Inside a workspace, sections are separated by 20px. A sheet is padded 16px. A sheet whose content reaches its own edge is flush: `overflow: hidden`, no padding, a header strip with a hairline under it, and the content in its own `overflow-x: auto` container.
 
-A sheet is padded 24px. A sheet whose content reaches its own edge (a table, a media feed) is flush: `overflow: hidden`, no padding, an optional 16px/20px header strip with a hairline under it, and the content in its own `overflow-x: auto` container.
-
-On mobile the app bar stacks brand over navigation, both nav rails scroll horizontally without a visible scrollbar, filters stack, and tables keep horizontal scroll. Content is never silently dropped to make a layout fit.
+On mobile the app bar stacks brand over navigation, the readout strip folds to two columns then one, filters stack, and tables keep horizontal scroll. Content is never silently dropped to make a layout fit.
 
 ## Components
 
 ### Navigation
 
-The three workspaces are not three links to three pages; they are three states of one workspace, and only one can be on at a time. The top-level switcher is therefore a **segmented capsule** parked on the app bar's centre: a `surface-sunken` track with a `rule-panel` hairline at `pill` radius, holding one raised white segment at sheet elevation for the active route, its label in `ink` at 600 with a 5px `accent-strong` dot that grows in beside it. Segments are 32px tall, `aria-current="page"` and `aria-selected`, and focus takes the standard 2px accent outline. It replaced an underlined text rail, which read as navigation away rather than as a switch between states.
-
-The **workspace sub-rail** (Influencer's own views) keeps the underlined form: text labels with a 2px `accent-strong` underline, focus reusing that underline. Two capsules stacked would read as one control nested inside another; the rail stays visibly subordinate.
+The workspaces are a **channel selector**: one instrument, several channels, one live at a time. A ruled frame with hairline dividers holds the segments; the selected one is filled with the pen and carries white type. The **workspace sub-rail** (Influencer's own views) stays subordinate and keeps a quiet 2px pen underline — two framed controls stacked would read as one nested inside another.
 
 ### Sheets
 
-`card` / `tp-sheet` is the reading surface: white, 16px radius, 1px `rule-panel` edge, sheet elevation. `tp-sheet-flush` clips its content to that radius. `tp-inset` is the only nested container: `surface-sunken`, 12px radius, 1px `rule`.
+`card` / `tp-sheet` is the reading surface: white, 4px radius, 1px `rule-panel` edge, flat elevation. `tp-sheet-flush` clips its content to that radius. `tp-inset` is the only nested container: `surface-sunken`, 3px radius, 1px `rule`.
+
+### The readout strip
+
+`tp-readout-strip` is the signature component and the one that replaced the KPI card grid. The headline measures are **one continuous instrument divided by hairlines**, not several cards: cards would put four borders and four shadows between numbers that exist to be compared, and a shared baseline with a single rule between cells is what lets the eye run across the row.
+
+Each cell carries a label in Archivo Narrow, a figure in ink, and a delta. Where a cell maps to a chart series, that series colour rides on a 14×2px rule beside the label — the pen stroke that identifies the channel — so the figure itself can stay in ink. Both workspaces use it, so one measure reads the same way everywhere.
 
 ### Tables
 
-Collapsed borders. The head is `surface-sunken`, 11.5px/700 in `muted`, sentence case, with a hairline under it. Cells are 12px/16px with a hairline above each row except the first; rows hover to `surface-hover`. Numeric columns are right-aligned and tabular. A sortable header shows its arrow permanently, tinted accent when it is the active sort. A filterable column carries a funnel button beside its label that opens a checkbox menu; when a filter is narrowing the data the button holds an accent field so the state is visible without opening it, and the sheet header reports what is shown and what is hidden.
+Collapsed borders. The head is `surface-sunken`, Archivo Narrow 12px/600 in `muted`, sentence case, with a hairline under it. Cells are 9px/12px at 13px; rows hover to `surface-hover`. Numeric columns are right-aligned and set in Roboto Mono. A sortable header carries a drawn two-chevron SVG — both chevrons always present so the column's width never changes when the sort moves to it, the active direction in the pen. Unicode arrows are not used: they inherit whatever the font happens to have and sit off the baseline.
 
 ### Buttons and fields
 
-Primary: accent field, near-black `on-accent` label (white would be 2.25:1), 7px radius, 40px tall, sheet elevation, rising 1px on hover to `accent-strong`. Secondary: `tp-btn-quiet` — white, `rule-strong` edge, 32px. Fields and filter triggers are white with a `rule-strong` edge, 7px radius, 40px tall; focus moves the edge to accent and adds a 3px `accent-soft` ring. Every control in the app shares this one radius and height vocabulary.
+Primary: pen fill, white label, 3px radius, 34px tall, flat elevation, darkening to `pen-deep` on hover. **It does not lift** — paper on a board does not rise. Secondary: `tp-btn-quiet` — white, `rule-strong` edge. Fields and filter triggers are white with a `rule-strong` edge, 3px radius, 34px tall; focus moves the edge to the pen and adds a 3px `pen-wash` ring.
 
 ### Chips
 
-`tp-chip` is the single classification form: 24px tall, 5px radius, 12px/650, a hairline edge and a soft field. Variants are `positive`, `danger`, `warning`, `info`, `accent`, and a neutral default. An interactive chip is a `button` and gains elevation on hover. Status, tier, and custom tags all use it — there is no second badge shape.
+`tp-chip` is the single classification form: 24px tall, 2px radius, 12px/500, a hairline edge and a soft field. Variants are `positive`, `danger`, `warning`, `info`, `accent`, and a neutral default. Status, tier and platform tags all use it — there is no second badge shape, and a platform name takes the neutral chip rather than borrowing a semantic colour.
 
-### Overlays
+**Deal status is a derived ladder, not a free-text field.** `Not Started` → `In Progress` → `Nth Content Aired` → `All Content Aired` → `All Done`, computed from the reported videos and the payment progress every time it renders. The aired rungs warm from yellow through orange to violet as a deal approaches its agreed count (`tp-chip-aired-1` … `-5`, then `tp-chip-aired-all`), so progress is readable down a column without stopping to read each label. Every rung keeps dark text on a pale field, so the hue carries position and never contrast.
 
-Menus and popovers: white, 12px radius, `rule-panel` edge, overlay elevation. Dialogs: 16px radius, dialog elevation. Sidebars are full-height, square, with a left `rule-panel` edge and dialog elevation. Overlays are portaled so no `overflow` ancestor can clip them.
-
-### Screenshot dock
-
-Every image in a discussion thread is also indexed in a dock that floats over the bottom-right corner of the message feed, a hair above the composer. It exists so nobody scrolls back through a long thread hunting for a screenshot someone posted earlier.
-
-It floats rather than sitting in the feed's flow. In the flow it landed directly under the last message, so on a short thread it stranded a band of empty feed between itself and the composer and read as though it belonged to neither. Anchored to the feed's bottom edge it holds one constant distance from the box you are typing in.
-
-Closed it is a 34px capsule — a count and the three most recent thumbs, shingled — covering one corner of one bubble and nothing else. Clicking opens it into a panel carrying the full 38px track. The capsule is one tab stop; opening moves focus into the track, where Left/Right walk the thumbs and Enter opens the lightbox (which then takes Left/Right for the rest of the set), and Escape closes the panel and returns focus to the capsule. The feed keeps its scroll everywhere the dock is not: only the chip itself takes pointer events.
-
-The same images surface in the proposal table's Audience insight column, alongside screenshots uploaded there directly. The two sources read as one set but stay distinguishable: a discussion-sourced tile carries an accent edge and a small message badge, and has no delete control, because the thread owns it. Uploaded tiles keep theirs.
-
-### Message feed and attachment albums
-
-The feed is a `surface-sunken` channel so bubbles read as raised. A bubble is `fit-content` with a max of `min(84%, 380px)`; a bubble carrying media locks to `min(84%, 320px)` so image-heavy and text-only messages share the same left and right edge.
-
-Attachments render as a uniform album, never at natural size. One image keeps its own proportion clamped to 0.8–1.78 so neither a tall screenshot nor a panorama distorts the feed. Two, three, or four-plus images use square tiles in a 2, 3, or 2×2 grid with a 3px gutter and `object-fit: cover`; beyond four, the fourth tile carries a `+N` overlay. The lightbox always walks the complete set with arrow keys and on-screen controls, so nothing folded behind `+N` becomes unreachable.
+There is no tag creation, renaming or deletion, and that is the point: when status was stored text, two values — `All done` with a lower-case d, and `Canceled` — sat on real rows where no picker could reach them, so no amount of UI could remove them.
 
 ### Charts
 
-**One plot, one y-axis — always.** Two measures of different scale never share a plot on two scales: where the count axis is pinned against the dollar axis is arbitrary, so every crossing the eye reads as correlation is an artefact of that choice. The affiliate views take the two ways out of it. The daily trend re-bases every measure onto a single index axis where 100 is that measure's own average day, smoothed over 7 days because the underlying counts are small enough that integer jitter otherwise swamps the signal; the tooltip carries the actual figures so re-basing hides nothing. The top-affiliates view splits into **small multiples** — one horizontal-bar panel per measure, all sharing one row order — so each measure gets the axis it deserves and the reader compares across a row.
+**One plot, one y-axis — always.** The daily trend is a **strip chart**: one ECharts instance holding one grid per measure, stacked, all sharing a single date axis, with a linked `axisPointer` so one cursor reads every channel at the hovered day. Each channel keeps its own y-scale and its own pen, and its name sits beside its own trace rather than in a shared legend, which would imply the bands share a scale.
 
-Marks are thin and the chrome recedes: bars cap at 13px with a 4px rounded data-end and a square baseline, lines are 2px and unsmoothed (smoothing invents readings between two days that were never measured), markers are 8px with a 2px surface ring, and gridlines are solid `rule` hairlines — never dashed, which reads as a threshold. A legend is always present for two or more series and never for one, where the panel title already names the measure. Values and labels wear text tokens; the coloured mark beside them carries identity.
+That replaced a single plot carrying all five measures on two y-scales, counts left and dollars right. Where those two scales are pinned against each other is arbitrary, so every crossing the eye read as a relationship was an artefact of that choice. Giving each measure its own band keeps all five visible and all five comparable along time — the comparison that actually exists — and costs only vertical room.
+
+The top-affiliates view takes the same escape by splitting into **small multiples**: one horizontal-bar panel per measure, all sharing one row order.
+
+Marks are thin and the chrome recedes: lines are 2px, markers are 8px with a 2px surface ring, and gridlines are solid `grid-minor` hairlines — never dashed, which reads as a threshold. A plot sits in `tp-plot`: a white surface with its own edge, carrying its gridlines from the chart itself.
+
+Lines are drawn **smoothed**, at `smooth: 0.35` with `smoothMonotone: 'x'`. The monotone constraint is what makes this safe: the curve can never overshoot a measured value, so it cannot invent a peak or a dip between two readings, and every tooltip still reports the exact figure for the day under the cursor. Area fills are a vertical wash of the series colour, 22% at the top to 1% at the baseline.
+
+Channel names are annotated above each band at its left edge, on the same vertical as the readout-strip label for the same measure — the two must agree, or the reader crosses the plot looking for a name that is on the wrong side. Values and labels wear text tokens; the coloured mark beside them carries identity.
+
+**A duration is not a category.** Merchant payout counts are months subscribed, so they are drawn as a retention curve — of the merchants that paid at all, how many were still paying in month two, month three, and so on — not as slices of a parts-of-whole bar. The bars only descend, the gap between two bars is that month's churn, and the final bar is the cohort still running. Splitting it into "1 / 2–3 / >3" asked the reader to compare three groups that are not alternatives: everyone in the last group also lived through the first two.
+
+**Progress fills are gradients along their own axis**, darker at the origin and lighter at the head, which reads as travel rather than as a block. Colour carries state: `tp-fill-running` (pen) while a thing is in flight, `tp-fill-done` (positive) the moment it completes. A finished bar that stays blue makes the reader check the number to find out.
 
 ### Empty, loading, and error states
 
-Empty: `tp-empty` — a centered title in `ink` and a body under 34ch in `muted` that says what to do next, not "nothing here". Loading in place of content is `tp-skeleton` shimmer shaped like the content, not a spinner. Errors are a sheet with a danger dot and danger text naming the problem.
+Empty: `tp-empty` — a centred title in `ink` and a body under 34ch in `muted` that says what to do next. Loading in place of content is `tp-skeleton` shimmer shaped like the content. Errors are a sheet with a danger dot and danger text naming the problem.
 
 ## Motion and accessibility
 
-The shared transition is 180ms `cubic-bezier(0.16, 1, 0.3, 1)` — 120ms for row hover — across color, background, border, shadow, opacity, and transform. Page and workspace entry rises 5px while fading in. Nothing else animates.
+The shared transition is 140ms `cubic-bezier(0.2, 0, 0, 1)` — 90ms for row hover — across colour, background, border, shadow and opacity. Workspace entry rises 3px while fading in. Nothing else animates, and nothing translates on hover.
 
-Focus is a 2px accent outline at 2px offset; app and workspace navigation use their underline instead. Body and placeholder text hold at least 4.5:1. `prefers-reduced-motion: reduce` collapses every transition and animation to 1ms and freezes the skeleton shimmer.
+Focus is a 2px pen outline at 2px offset; the workspace sub-rail uses its underline instead. Body and placeholder text hold at least 4.5:1. `prefers-reduced-motion: reduce` collapses every transition and animation to 1ms and freezes the skeleton shimmer.
 
 ## Do and Don't
 
 ### Do
 
-- Put every readable thing on a sheet.
+- Keep the field flat and let the containers carry the structure.
+- Spend space from the 4 / 8 / 16 / 32 ladder and nothing else.
 - Group with proximity and hairlines before adding another container.
-- Keep one radius, height, and chip vocabulary across all four workspaces.
-- Right-align and tabularize every figure.
-- Preserve the meaning of status and data colors.
-- Clamp long free text and keep the full value reachable.
+- Keep one radius, height and chip vocabulary across both workspaces.
+- Right-align every figure and set column figures in the mono.
+- Validate any chart-colour change with the palette validator at `--pairs all`.
+- Preserve the meaning of status and data colours.
 
 ### Don't
 
-- Do not render text on the canvas, and do not nest a sheet inside a sheet.
-- Do not put white text on the accent, do not use the accent as a text colour, and do not draw a hairline or a chart line in it. Those are `on-accent`, `accent-ink` and `accent-strong` respectively.
-- Do not use a shadow without both an offset and a soft blur, and do not add a third depth step.
-- Do not use `faint` for text, or gray for secondary text on a colored surface.
-- Do not use gradients, gradient text, blur as decoration, a colored `border-left` over 1px, or an eyebrow above a heading.
-- Do not introduce a new hue for a category; hash into the existing chip variants.
-- Do not let an attachment render at its natural size inside a bubble.
-- Do not set any text above weight 600, and do not set a control label above 500.
-- Do not use tiny all-caps labels with wide tracking; sentence case at 11.5px/600 is the label voice.
-- Do not put two y-scales on one plot, smooth a line over real measurements, or draw a dashed gridline.
-- Do not add or re-colour a chart series without running the palette validator; "these look different enough" is how slot three stayed broken.
-- Do not change feature behavior, data flow, business logic, or data-backed status semantics in the course of UI work.
+- Do not put data, a table, or a paragraph directly on the field — those belong in a container. A section heading, its meta line, and a single text control may sit on it.
+- Do not reintroduce a page-wide texture, lattice or pattern behind the containers.
+- Do not nest a sheet inside a sheet. The readout strip and `tp-plot` already carry their own edge; wrapping either in a `card` is the bordered-box-in-a-bordered-box the thesis refuses.
+- Do not tint a figure with its series colour; the mark beside it carries identity.
+- Do not reuse a semantic colour for a category, or introduce a new hue for one.
+- Do not lift a control on hover, add a third depth step, or use a shadow without both an offset and a blur.
+- Do not use `faint` for text, or grey for secondary text on a coloured surface.
+- Do not use gradients, gradient text, blur as decoration, a coloured `border-left` over 1px, or an eyebrow above a heading.
+- Do not set any text above weight 600, or a control label above 500.
+- Do not use unicode glyphs as icons; icons are drawn SVG at one stroke weight.
+- Do not put two y-scales on one plot, or draw a dashed gridline. Smoothing is allowed only as monotone smoothing, which cannot overshoot a measured value; free smoothing that invents peaks is not.
+- Do not render a duration as a parts-of-whole category split.
+- Do not round a corner past the scale; 4px is the largest radius in the product.
+- Do not change feature behavior, data flow, or business logic in the course of UI work.

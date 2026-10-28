@@ -171,6 +171,9 @@ export interface VideoPerformanceData extends Video {
   endViews: number;
   viewGrowth: number;
   growthPercentage: number;
+  /** The same growth measured over the period immediately before this one,
+   *  so a figure can be read as speeding up or slowing down. */
+  prevViewGrowth?: number;
 }
 
 export interface TrendlineData {
@@ -179,14 +182,28 @@ export interface TrendlineData {
   points: { date: string; views: number }[];
 }
 
+// --- Affiliate report ------------------------------------------------------
 
-// --- KPI Types ---
-export interface KpiTarget {
-  id?: string; // from database
-  kpi_name: string;
-  year: number;
-  q1_target: number;
-  q2_target: number;
-  q3_target: number;
-  q4_target: number;
+export interface MerchantOverview {
+  totalReferredMerchants: number;
+  totalPayingMerchants: number;
+  avgLifetime: number;
+  totalReferredMerchantsPrev: number;
+  totalPayingMerchantsPrev: number;
+  /** One entry per paying merchant: how many monthly payouts it has made,
+   *  which is how many months it has stayed subscribed. Kept raw rather than
+   *  pre-bucketed so retention can be read as a curve instead of as three
+   *  slices that hide where merchants actually drop off. */
+  payoutCounts: number[];
+  payoutCountsPrev: number[];
+}
+
+/** Everything the affiliate workspace renders for one period, from either backend. */
+export interface AffiliateReport {
+  summary: SummaryData;
+  daily: DailyData[];
+  affiliates: TopAffiliateData[];
+  merchants: MerchantOverview;
+  /** Which backend answered — 'store' is the aggregated SQL path. */
+  source: 'store' | 'api';
 }

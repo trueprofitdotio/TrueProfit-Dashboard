@@ -35,23 +35,77 @@ interface CollaborationRow {
     videosList?: VideoRecord[];
 }
 
-export const SYSTEM_DEFAULT_PROGRESS_TAGS = [
-    'Not Started',
-    'In Progress',
-    'All Done'
-];
+/* ---------------------------------------------------------------------------
+   Deal status is DERIVED, never typed.
 
-const DEFAULT_PROGRESS_TAGS = SYSTEM_DEFAULT_PROGRESS_TAGS;
+   It used to be a free-text field with a tag picker on top of it, and the
+   result was two tags nobody could delete — "All done" with a lower-case d
+   sitting on 19 deals alongside the real "All Done", and a "Canceled" that
+   the picker could not reach. Those were not a UI bug: they were rows of
+   data, so every attempt to remove the tag left the value behind.
 
-// Custom user-created tags hash into this ring. Each entry is a chip variant
-// from the shared vocabulary, so a custom tag can never invent a new colour.
-const COLOR_PALETTES = [
-    'tp-chip-positive',
-    'tp-chip-danger',
-    'tp-chip-warning',
-    'tp-chip-info',
-    'tp-chip-accent'
-];
+   Now the status is a pure function of the two things the team actually
+   updates — how many videos have been reported, and how much of the package
+   has been paid — so there is no stored string to drift. A legacy value in
+   `progress_status` is simply ignored on read.
+
+   The ladder, lowest to highest:
+     Not Started         nothing reported, nothing paid
+     In Progress         money has moved, no video is out yet
+     Nth Content Aired   N videos reported, still short of the agreed count
+     All Content Aired   every agreed video is out, payment still open
+     All Done            every agreed video is out and the package is paid
+--------------------------------------------------------------------------- */
+
+/** The columns this table can be ordered by. */
+type SortField = 'start_month' | 'kol_name' | 'progress_status' | 'total_package' | 'payment_percent';
+
+const STATUS_NOT_STARTED = 'Not Started';
+const STATUS_IN_PROGRESS = 'In Progress';
+export const STATUS_ALL_AIRED = 'All Content Aired';
+export const STATUS_ALL_DONE = 'All Done';
+
+/* English ordinals, correct past ten. A hand-written list of ten was the
+   first version, and it quietly broke on the deal that agreed 24 videos:
+   the 16th rung fell off the end of the list, so that row derived a status
+   the filter did not know about and vanished whenever the filter was on. */
+const ordinal = (n: number) => {
+    const rem100 = n % 100;
+    if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+    return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+};
+export const airedLabel = (n: number) => `${ordinal(n)} Content Aired`;
+
+export const deriveProgressStatus = (opts: {
+    airedCount: number;
+    agreedCount: number;
+    spent: number;
+    packageTotal: number;
+}): string => {
+    const target = Math.max(opts.agreedCount || 0, 1);
+    const fullyPaid = opts.packageTotal > 0 && opts.spent >= opts.packageTotal;
+
+    if (opts.airedCount >= target) return fullyPaid ? STATUS_ALL_DONE : STATUS_ALL_AIRED;
+    if (opts.airedCount > 0) return airedLabel(opts.airedCount);
+    if (opts.spent > 0) return STATUS_IN_PROGRESS;
+    return STATUS_NOT_STARTED;
+};
+
+/** Every status that can exist given the largest package in the table. */
+export const statusLadder = (maxAgreed: number): string[] => {
+    // Every rung the data can actually produce, so no derived status can be
+    // missing from the filter and take its rows out of the table with it.
+    const rungs = Math.max(maxAgreed - 1, 0);
+    return [
+        STATUS_NOT_STARTED,
+        STATUS_IN_PROGRESS,
+        ...Array.from({ length: rungs }, (_, i) => airedLabel(i + 1)),
+        STATUS_ALL_AIRED,
+        STATUS_ALL_DONE,
+    ];
+};
+
+export const SYSTEM_DEFAULT_PROGRESS_TAGS = [STATUS_NOT_STARTED, STATUS_IN_PROGRESS, STATUS_ALL_DONE];
 
 const calcPopoverPosition = (
     anchorRect?: DOMRect | null,
@@ -93,23 +147,21 @@ const calcPopoverPosition = (
 
 const getProgressTagStyle = (status?: string | null) => {
     if (!status) return '';
-    const s = status.trim().toLowerCase();
-    if (s === 'all done') return 'tp-chip-positive';
-    if (s === 'in progress') return 'tp-chip-info';
-    if (s === 'not started') return '';
-    if (s === 'pending/canceled' || s === 'canceled' || s === 'cancelled') return 'tp-chip-danger';
-    if (s.includes('1st payment') || s.includes('2nd payment')) return 'tp-chip-warning';
-    if (s.includes('awaiting content') || s.includes('third content')) return 'tp-chip-accent';
-    if (s.includes('awaiting payment')) return 'tp-chip-info';
-    
-    // Hash fallback for custom unique tags
-    let hash = 0;
-    for (let i = 0; i < status.length; i++) {
-        hash = status.charCodeAt(i) + ((hash << 5) - hash);
+    const t = status.trim();
+    if (t === STATUS_ALL_DONE) return 'tp-chip-positive';
+    if (t === STATUS_ALL_AIRED) return 'tp-chip-aired-all';
+    if (t === STATUS_IN_PROGRESS) return 'tp-chip-info';
+    if (t === STATUS_NOT_STARTED) return '';
+    // The aired rungs warm from yellow through orange to violet as the deal
+    // approaches its agreed count, so progress is readable down the column
+    // without stopping to read each label.
+    const n = parseInt(t, 10);
+    if (Number.isFinite(n) && n > 0 && t.includes('Content Aired')) {
+        return `tp-chip-aired-${Math.min(n, 5)}`;
     }
-    const paletteIdx = Math.abs(hash) % COLOR_PALETTES.length;
-    return COLOR_PALETTES[paletteIdx];
+    return '';
 };
+
 
 const formatCurrencyUSD = (val?: string | number | null): string => {
     if (val === undefined || val === null || val === '') return '$0';
@@ -145,12 +197,12 @@ const PROGRESS_TONE: Record<ProgressState, { fill: string; text: string }> = {
     // `faint` would be the natural tint for a dormant row, but it is a 2.5:1
     // divider colour and never legal for text; `meta` is the recessive step
     // that still reads.
-    none:    { fill: '',                             text: 'text-[var(--tp-meta)]' },
-    partial: { fill: 'bg-[var(--tp-info)]',          text: 'text-[var(--tp-info)]' },
-    // `accent-strong`, not `accent`: the brand mint reads at 2.25:1 on white,
-    // under the 3:1 a filled bar owes its surface. This is the same mint, one
-    // step down, and it is the documented progress-fill token.
-    done:    { fill: 'bg-[var(--tp-accent-strong)]', text: 'text-[var(--tp-accent-ink)]' },
+    none:    { fill: '',                 text: 'text-[var(--tp-meta)]' },
+    // Blue while it is still running, green the moment it is complete. The
+    // state is legible from the colour alone, so the reader does not have to
+    // go and check the percentage to find out whether this one is finished.
+    partial: { fill: 'tp-fill-running',  text: 'text-[var(--tp-pen)]' },
+    done:    { fill: 'tp-fill-done',     text: 'text-[var(--tp-positive)]' },
 };
 
 const ProgressMeter: React.FC<{
@@ -165,7 +217,7 @@ const ProgressMeter: React.FC<{
         <div
             onClick={onClick}
             title={title}
-            className="cursor-pointer rounded-lg border border-transparent p-1.5 transition-colors hover:border-[var(--tp-rule)] hover:bg-[var(--tp-surface-hover)]/80"
+            className="cursor-pointer rounded-[4px] border border-transparent p-1.5 transition-colors hover:border-[var(--tp-rule)] hover:bg-[var(--tp-surface-hover)]/80"
         >
             {/* The figure never wraps: it is shrink-0 and the amount beside it
                 takes min-w-0 + truncate, so a long budget ellipsizes on its own
@@ -195,6 +247,12 @@ const ProgressMeter: React.FC<{
     );
 };
 
+const formatCompactNumber = (n: number): string => {
+    if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
+    if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+    return `${n}`;
+};
+
 // Date Formatter: YYYY-MM-DD or text -> MMM DD, YYYY
 const formatDateDisplay = (dateStr?: string | null): string => {
     if (!dateStr) return 'Select Date';
@@ -212,7 +270,7 @@ const renderPlatformIcon = (url: string) => {
     const u = (url || '').toLowerCase();
     if (u.includes('youtube.com') || u.includes('youtu.be')) {
         return (
-            <svg className="w-3.5 h-3.5 text-[var(--tp-danger)] shrink-0 fill-red-500" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 shrink-0 text-[var(--tp-faint)] fill-current" viewBox="0 0 24 24">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
             </svg>
         );
@@ -380,7 +438,7 @@ const MiniCalendarPicker: React.FC<MiniCalendarPickerProps> = ({ initialDate, on
                             key={day}
                             type="button"
                             onClick={() => handleDateClick(day)}
-                            className={`py-1 text-xs rounded-lg transition-all font-medium ${
+                            className={`py-1 text-xs rounded-[4px] transition-all font-medium ${
                                 selected
                                     ? 'bg-[var(--accent-color)] text-[var(--tp-on-accent)] font-semibold'
                                     : today
@@ -464,31 +522,24 @@ const InfluencerProgress: React.FC = () => {
     const [editingAgreementIdx, setEditingAgreementIdx] = useState<number | null>(null);
     const [editingAgreementVal, setEditingAgreementVal] = useState('');
 
-    // Filter & Search states - default to system-defined tags
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedStatuses, setSelectedStatuses] = useState<string[]>(() => [
-        'Not Started',
-        'In Progress',
-        'All Done'
-    ]);
+    /* Empty means every status, and that is the right default now that the
+       ladder has more rungs than the old three. Defaulting to a subset meant
+       a deal silently left the table the moment someone reported its first
+       video — the row had not gone anywhere, but the filter no longer
+       matched its new status, which is the opposite of what reporting a
+       video should do. */
+    const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
     const [showStatusFilterPopover, setShowStatusFilterPopover] = useState(false);
-    const [sortField, setSortField] = useState<'start_month' | 'kol_name' | 'progress_status' | 'total_package' | 'payment_percent'>('start_month');
+    const [sortField, setSortField] = useState<SortField>('start_month');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-    // All available tags across system defaults, user created tags, and active rows
+    // The ladder is the whole vocabulary. Nothing is collected from stored
+    // values, so a legacy string can never reappear as a filter option.
     const allAvailableTags = useMemo(() => {
-        const set = new Set<string>();
-        SYSTEM_DEFAULT_PROGRESS_TAGS.forEach(t => set.add(t));
-        tagOptions.forEach(t => {
-            if (t && t.trim()) set.add(t.trim());
-        });
-        collaborations.forEach(c => {
-            if (c.progress_status && c.progress_status.trim()) {
-                set.add(c.progress_status.trim());
-            }
-        });
-        return Array.from(set);
-    }, [tagOptions, collaborations]);
+        const maxAgreed = collaborations.reduce((m, c) => Math.max(m, c.content_count || 1), 1);
+        return statusLadder(maxAgreed);
+    }, [collaborations]);
 
     // Delete deal confirmation modal state
     const [deleteConfirmCollab, setDeleteConfirmCollab] = useState<CollaborationRow | null>(null);
@@ -599,22 +650,16 @@ const InfluencerProgress: React.FC = () => {
                     return timeB - timeA;
                 });
 
-                // Auto-sync status based on tracked state if not custom override
-                let effectiveProgressStatus = row.progress_status || 'Not Started';
-                if (!row.is_custom_status) {
-                    const hasVideos = dealVideos.length > 0;
-                    const countAgreed = row.content_count || 1;
-                    const pkgNum = parsePackageNumber(row.total_package);
-                    const isFullyPaid = (row.actual_spent || 0) >= pkgNum && pkgNum > 0;
-
-                    if (hasVideos && dealVideos.length >= countAgreed && isFullyPaid) {
-                        effectiveProgressStatus = 'All Done';
-                    } else if (hasVideos || (row.actual_spent || 0) > 0) {
-                        effectiveProgressStatus = 'In Progress';
-                    } else {
-                        effectiveProgressStatus = 'Not Started';
-                    }
-                }
+                // Derived every time, from the two fields the team maintains.
+                // `row.progress_status` and `row.is_custom_status` are no
+                // longer consulted: that is what let two undeletable tags
+                // survive in the data.
+                const effectiveProgressStatus = deriveProgressStatus({
+                    airedCount: dealVideos.length,
+                    agreedCount: row.content_count || 1,
+                    spent: row.actual_spent || 0,
+                    packageTotal: parsePackageNumber(row.total_package),
+                });
 
                 // Payment Status percentage auto calculation
                 const pkgNum = parsePackageNumber(row.total_package);
@@ -1053,8 +1098,14 @@ const InfluencerProgress: React.FC = () => {
         }
     };
 
-    // Sort Handler
-    const handleSort = (field: keyof CollaborationRow | 'kol_name' | 'payment_percent') => {
+    /* Sort handler.
+
+       The parameter used to be `keyof CollaborationRow | 'kol_name' |
+       'payment_percent'`, which is wider than the five fields the table can
+       actually sort by — so it did not type-check against `sortField`, and
+       nothing stopped a caller passing a column that has no sort. Naming the
+       sortable set once, as `SortField`, closes both. */
+    const handleSort = (field: SortField) => {
         if (sortField === field) {
             setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
         } else {
@@ -1118,20 +1169,26 @@ const InfluencerProgress: React.FC = () => {
                         />
                     </div>
 
-                    {/* Multi-Select Status Filter Button & Dropdown */}
+                    {/* Status filter.
+
+                        It used to be a Filter icon beside the words "Default
+                        Statuses" and a checklist of plain text. Two things were
+                        wrong with that: the trigger never showed WHICH statuses
+                        were on, so "Default Statuses" was a label you had to
+                        open the menu to decode, and the list rendered each
+                        status as grey text when the table renders it as a
+                        coloured chip, so the two did not look like the same
+                        thing.
+
+                        Now the trigger carries the chips themselves and the
+                        menu shows each status exactly as the table draws it,
+                        with the number of deals currently in it. */}
                     {(() => {
                         const allActiveStatuses = allAvailableTags;
-                        const isAllOrNone = selectedStatuses.length === 0 || selectedStatuses.length === allActiveStatuses.length;
-                        const isDefaultSystem = selectedStatuses.length === SYSTEM_DEFAULT_PROGRESS_TAGS.length && 
-                            SYSTEM_DEFAULT_PROGRESS_TAGS.every(t => selectedStatuses.includes(t));
-
-                        const statusBtnLabel = isDefaultSystem
-                            ? 'Default Statuses'
-                            : isAllOrNone 
-                            ? 'All statuses' 
-                            : selectedStatuses.length === 1 
-                            ? `Status: ${selectedStatuses[0]}` 
-                            : `Status (${selectedStatuses.length} selected)`;
+                        const countFor = (t: string) =>
+                            collaborations.filter(c => (c.progress_status || '') === t).length;
+                        const isAll = selectedStatuses.length === 0 || selectedStatuses.length === allActiveStatuses.length;
+                        const shown = selectedStatuses.slice(0, 2);
 
                         return (
                             <div className="relative" ref={statusFilterRef}>
@@ -1141,69 +1198,79 @@ const InfluencerProgress: React.FC = () => {
                                     aria-expanded={showStatusFilterPopover}
                                     className="tp-filter-trigger flex items-center gap-2 text-[13px]"
                                 >
-                                    <Filter className="h-3.5 w-3.5 shrink-0 text-[var(--tp-faint)]" />
-                                    <span>{statusBtnLabel}</span>
+                                    <span className="text-[var(--tp-muted)]">Status</span>
+                                    {isAll ? (
+                                        <span className="font-medium text-[var(--tp-ink)]">All</span>
+                                    ) : (
+                                        <span className="flex items-center gap-1">
+                                            {shown.map(t => (
+                                                <span key={t} className={`tp-chip ${getProgressTagStyle(t)} !h-[20px] !text-[11px]`}>
+                                                    {t}
+                                                </span>
+                                            ))}
+                                            {selectedStatuses.length > shown.length && (
+                                                <span className="tp-num text-[11.5px] text-[var(--tp-muted)]">
+                                                    +{selectedStatuses.length - shown.length}
+                                                </span>
+                                            )}
+                                        </span>
+                                    )}
                                     <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-[var(--tp-faint)] transition-transform ${showStatusFilterPopover ? 'rotate-90' : ''}`} />
                                 </button>
 
                                 {showStatusFilterPopover && (
-                                    <div className="tp-filter-menu absolute left-0 top-full z-50 mt-1.5 w-64 space-y-2 p-2">
-                                        <div className="flex items-center justify-between gap-2 border-b border-[var(--tp-rule)] px-1 pb-2 text-[11px] font-semibold text-[var(--tp-muted)]">
-                                            <span>Filter by status</span>
-                                            <div className="flex items-center gap-1.5">
-                                                <button 
+                                    <div className="tp-filter-menu absolute left-0 top-full z-50 mt-1 w-[280px] p-2">
+                                        <div className="flex items-center justify-between gap-2 px-1 pb-2">
+                                            <span className="text-[11px] font-semibold text-[var(--tp-muted)]">Show deals in</span>
+                                            <div className="flex items-center gap-2">
+                                                <button
                                                     type="button"
-                                                    onClick={() => setSelectedStatuses([...SYSTEM_DEFAULT_PROGRESS_TAGS])} 
-                                                    className="text-[11px] font-semibold text-[var(--tp-muted)] hover:text-[var(--tp-ink)] hover:underline"
-                                                    title="Filter system defaults: Not Started, In Progress, All Done"
+                                                    onClick={() => setSelectedStatuses([...allActiveStatuses])}
+                                                    className="text-[11px] font-medium text-[var(--tp-pen)] hover:underline"
                                                 >
-                                                    Defaults
+                                                    Select all
                                                 </button>
-                                                <span className="text-[var(--tp-faint)]" aria-hidden="true">|</span>
-                                                <button 
+                                                <button
                                                     type="button"
-                                                    onClick={() => setSelectedStatuses([...allActiveStatuses])} 
-                                                    className="text-[11px] font-semibold text-[var(--tp-accent-ink)] hover:underline"
+                                                    onClick={() => setSelectedStatuses([])}
+                                                    className="text-[11px] font-medium text-[var(--tp-muted)] hover:underline"
                                                 >
-                                                    All
-                                                </button>
-                                                <span className="text-[var(--tp-faint)]" aria-hidden="true">|</span>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setSelectedStatuses([])} 
-                                                    className="text-[11px] font-semibold text-[var(--tp-muted)] hover:underline"
-                                                >
-                                                    Reset
+                                                    Clear
                                                 </button>
                                             </div>
                                         </div>
-                                        <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+
+                                        <div className="max-h-64 space-y-0.5 overflow-y-auto border-t border-[var(--tp-rule)] pt-2">
                                             {allActiveStatuses.map(t => {
-                                                const isSystem = SYSTEM_DEFAULT_PROGRESS_TAGS.includes(t);
+                                                const on = selectedStatuses.includes(t);
+                                                const n = countFor(t);
                                                 return (
-                                                    <label key={t} className="flex cursor-pointer items-center justify-between rounded-[6px] p-1.5 text-[13px] font-medium text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-hover)]">
-                                                        <div className="flex items-center gap-2">
-                                                            <input 
+                                                    <label
+                                                        key={t}
+                                                        className={`flex cursor-pointer items-center justify-between gap-2 rounded-[3px] px-1.5 py-1 transition-colors ${on ? 'bg-[var(--tp-pen-wash)]' : 'hover:bg-[var(--tp-surface-hover)]'}`}
+                                                    >
+                                                        <span className="flex min-w-0 items-center gap-2">
+                                                            <input
                                                                 type="checkbox"
-                                                                checked={selectedStatuses.includes(t)}
-                                                                onChange={() => {
-                                                                    if (selectedStatuses.includes(t)) {
-                                                                        setSelectedStatuses(selectedStatuses.filter(s => s !== t));
-                                                                    } else {
-                                                                        setSelectedStatuses([...selectedStatuses, t]);
-                                                                    }
-                                                                }}
-                                                                className="h-3.5 w-3.5 shrink-0 accent-[var(--tp-accent)]"
+                                                                checked={on}
+                                                                onChange={() => setSelectedStatuses(
+                                                                    on ? selectedStatuses.filter(x => x !== t) : [...selectedStatuses, t]
+                                                                )}
+                                                                className="h-3.5 w-3.5 shrink-0 accent-[var(--tp-pen)]"
                                                             />
-                                                            <span>{t}</span>
-                                                        </div>
-                                                        {isSystem && (
-                                                            <span className="text-[11px] font-medium text-[var(--tp-meta)]">System</span>
-                                                        )}
+                                                            <span className={`tp-chip ${getProgressTagStyle(t)} !h-[20px] !text-[11px]`}>{t}</span>
+                                                        </span>
+                                                        <span className={`tp-num shrink-0 text-[11.5px] ${n > 0 ? 'text-[var(--tp-muted)]' : 'text-[var(--tp-faint)]'}`}>
+                                                            {n}
+                                                        </span>
                                                     </label>
                                                 );
                                             })}
                                         </div>
+
+                                        <p className="mt-2 border-t border-[var(--tp-rule)] px-1 pt-2 text-[11px] leading-snug text-[var(--tp-meta)]">
+                                            Status is set automatically from the reported videos and the payment progress.
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -1216,7 +1283,7 @@ const InfluencerProgress: React.FC = () => {
                         setShowAddModal(true);
                         setNewStartMonth(formatDateDisplay(new Date().toISOString()));
                     }}
-                    className="primary-btn flex h-10 w-fit shrink-0 items-center justify-center gap-1.5 rounded-[7px] bg-[var(--accent-color)] px-5 text-[13px] font-semibold text-[var(--tp-on-accent)]"
+                    className="primary-btn flex h-10 w-fit shrink-0 items-center justify-center gap-1.5 rounded-[3px] bg-[var(--accent-color)] px-5 text-[13px] font-semibold text-[var(--tp-on-accent)]"
                 >
                     <Plus className="w-4 h-4" />
                     <span>Add new deal</span>
@@ -1261,6 +1328,7 @@ const InfluencerProgress: React.FC = () => {
                             <th className="min-w-[150px]">Content progress</th>
                             <th className="min-w-[240px]">Reported videos</th>
                             <th className="min-w-[120px]">Released date</th>
+                            <th className="min-w-[110px] text-right">Latest views</th>
                             <th className="min-w-[140px]">Contract</th>
                             <th className="min-w-[80px] text-center">Action</th>
                         </tr>
@@ -1300,13 +1368,12 @@ const InfluencerProgress: React.FC = () => {
 
                                         {/* 3. Progress Status Column */}
                                         <td className="px-4 py-3 whitespace-nowrap">
-                                            <button
-                                                onClick={e => openPopover(e, c, 'progress')}
+                                            <span
                                                 className={`tp-chip ${getProgressTagStyle(c.progress_status)}`}
-                                                title="Click to change status tag"
+                                                title="Set automatically from the reported videos and the payment progress"
                                             >
-                                                <span>{c.progress_status || 'Select Status'}</span>
-                                            </button>
+                                                {c.progress_status}
+                                            </span>
                                         </td>
 
                                         {/* 4. Package Column (Moved to LEFT of Payment Progress) */}
@@ -1360,7 +1427,7 @@ const InfluencerProgress: React.FC = () => {
                                         <td className="tp-cell-rows px-4 py-3 max-w-[260px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'videos')}
-                                                className="cursor-pointer hover:bg-[var(--tp-surface-hover)]/80 p-2 rounded-xl border border-transparent hover:border-[var(--tp-rule)] transition-all min-h-[42px]"
+                                                className="cursor-pointer hover:bg-[var(--tp-surface-hover)]/80 p-2 rounded-[4px] border border-transparent hover:border-[var(--tp-rule)] transition-all min-h-[42px]"
                                                 title="Click to manage videos & links"
                                             >
                                                 {allVids.length > 0 ? (
@@ -1431,11 +1498,38 @@ const InfluencerProgress: React.FC = () => {
                                             </div>
                                         </td>
 
-                                        {/* 9. Agreement / Contract Documents Column */}
+                                        {/* 9. Latest views — one figure per reported video, on the
+                                            same row metrics as the two columns before it so a video,
+                                            its release date and its view count sit on one line. The
+                                            number is whatever the view-count worker last recorded;
+                                            no new storage was needed for it. */}
+                                        <td className="tp-cell-rows px-4 py-3 whitespace-nowrap text-right">
+                                            <div className="p-2 border border-transparent min-h-[42px]">
+                                                {allVids.length > 0 ? (
+                                                    <div className="space-y-1.5">
+                                                        {displayedVids.map((vid, idx) => (
+                                                            <div
+                                                                key={vid.id || idx}
+                                                                className="h-6 flex items-center justify-end text-xs"
+                                                                title={vid.title || vid.video_url}
+                                                            >
+                                                                {typeof vid.current_views === 'number'
+                                                                    ? <span className="tp-num font-medium text-[var(--tp-ink)]">{formatCompactNumber(vid.current_views)}</span>
+                                                                    : <span className="text-[var(--tp-meta)]">—</span>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="h-6 flex items-center justify-end text-xs text-[var(--tp-meta)]">—</span>
+                                                )}
+                                            </div>
+                                        </td>
+
+                                        {/* 10. Agreement / Contract Documents Column */}
                                         <td className="px-4 py-3 max-w-[180px]">
                                             <div 
                                                 onClick={e => openPopover(e, c, 'agreement')}
-                                                className="cursor-pointer hover:bg-[var(--tp-surface-hover)]/80 p-2 rounded-xl border border-transparent hover:border-[var(--tp-rule)] transition-all min-h-[42px]"
+                                                className="cursor-pointer hover:bg-[var(--tp-surface-hover)]/80 p-2 rounded-[4px] border border-transparent hover:border-[var(--tp-rule)] transition-all min-h-[42px]"
                                                 title="Click to manage agreement documents"
                                             >
                                                 {(() => {
@@ -1479,7 +1573,7 @@ const InfluencerProgress: React.FC = () => {
                                         <td className="px-4 py-3 text-center whitespace-nowrap">
                                             <button 
                                                 onClick={() => setDeleteConfirmCollab(c)}
-                                                className="p-1.5 text-[var(--tp-meta)] hover:text-[var(--tp-danger)] hover:bg-[var(--tp-danger-soft)] rounded-[5px] transition-colors"
+                                                className="p-1.5 text-[var(--tp-meta)] hover:text-[var(--tp-danger)] hover:bg-[var(--tp-danger-soft)] rounded-[3px] transition-colors"
                                                 title="Delete Deal"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -1499,7 +1593,7 @@ const InfluencerProgress: React.FC = () => {
                     ref={popoverRef}
                     onClick={e => e.stopPropagation()}
                     style={calcPopoverPosition(activePopover.anchorRect, 320, 360)}
-                    className="bg-white rounded-2xl border border-[#e1e7e5]/80 shadow-lg p-4 w-80 font-sans"
+                    className="bg-white rounded-[4px] border border-[var(--tp-rule-panel)]/80 shadow-lg p-4 w-80 font-sans"
                 >
                     {/* 1. Date Single Mini Calendar Popover */}
                     {activePopover.type === 'date' && (
@@ -1524,7 +1618,7 @@ const InfluencerProgress: React.FC = () => {
                                     const isSystem = SYSTEM_DEFAULT_PROGRESS_TAGS.includes(t);
                                     if (editingTagIdx === idx) {
                                         return (
-                                            <div key={idx} className="flex items-center gap-1.5 p-1 bg-[var(--tp-surface-sunken)] rounded-xl border border-[var(--tp-rule-strong)]">
+                                            <div key={idx} className="flex items-center gap-1.5 p-1 bg-[var(--tp-surface-sunken)] rounded-[4px] border border-[var(--tp-rule-strong)]">
                                                 <input 
                                                     type="text" 
                                                     autoFocus 
@@ -1533,11 +1627,11 @@ const InfluencerProgress: React.FC = () => {
                                                     onKeyDown={e => {
                                                         if (e.key === 'Enter') handleSaveEditTag(idx);
                                                     }}
-                                                    className="w-full text-xs p-1 border border-[var(--tp-rule)] rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-medium"
+                                                    className="w-full text-xs p-1 border border-[var(--tp-rule)] rounded-[4px] outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-medium"
                                                 />
                                                 <button 
                                                     onClick={() => handleSaveEditTag(idx)} 
-                                                    className="p-1 text-[var(--tp-accent-ink)] hover:bg-[var(--tp-accent-soft)] rounded-lg shrink-0"
+                                                    className="p-1 text-[var(--tp-accent-ink)] hover:bg-[var(--tp-accent-soft)] rounded-[4px] shrink-0"
                                                     title="Save name"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
@@ -1547,7 +1641,7 @@ const InfluencerProgress: React.FC = () => {
                                     }
 
                                     return (
-                                        <div key={t} className="group/tag flex items-center justify-between p-1 rounded-xl hover:bg-[var(--tp-surface-sunken)] transition-colors">
+                                        <div key={t} className="group/tag flex items-center justify-between p-1 rounded-[4px] hover:bg-[var(--tp-surface-sunken)] transition-colors">
                                             <button
                                                 onClick={() => updateCollaborationField(activePopover.rowId, 'progress_status', t)}
                                                 className={`tp-chip flex-1 justify-start ${getProgressTagStyle(t)}`}
@@ -1558,14 +1652,14 @@ const InfluencerProgress: React.FC = () => {
                                                 <div className="opacity-0 group-hover/tag:opacity-100 flex items-center gap-0.5 ml-1 transition-opacity">
                                                     <button 
                                                         onClick={e => { e.stopPropagation(); setEditingTagIdx(idx); setEditingTagVal(t); }} 
-                                                        className="p-1 text-[var(--tp-meta)] hover:text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-active)]/80 rounded-md"
+                                                        className="p-1 text-[var(--tp-meta)] hover:text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-active)]/80 rounded-[3px]"
                                                         title="Rename tag"
                                                     >
                                                         <Edit2 className="w-3.5 h-3.5" />
                                                     </button>
                                                     <button 
                                                         onClick={e => { e.stopPropagation(); handleDeleteTag(idx); }} 
-                                                        className="p-1 text-[var(--tp-meta)] hover:text-[var(--tp-danger)] hover:bg-[var(--tp-danger-soft)] rounded-[5px]"
+                                                        className="p-1 text-[var(--tp-meta)] hover:text-[var(--tp-danger)] hover:bg-[var(--tp-danger-soft)] rounded-[3px]"
                                                         title="Delete tag option"
                                                     >
                                                         <Trash2 className="w-3.5 h-3.5" />
@@ -1584,12 +1678,12 @@ const InfluencerProgress: React.FC = () => {
                                     value={newCustomTagInput} 
                                     onChange={e => setNewCustomTagInput(e.target.value)} 
                                     placeholder="Add custom status tag..." 
-                                    className="w-full p-1.5 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-1 focus:ring-[var(--accent-color)] font-normal"
+                                    className="w-full p-1.5 border border-[var(--tp-rule-strong)] rounded-[4px] text-xs outline-none focus:ring-1 focus:ring-[var(--accent-color)] font-normal"
                                     onKeyDown={e => { if (e.key === 'Enter') handleAddCustomTag(); }}
                                 />
                                 <button 
                                     onClick={handleAddCustomTag}
-                                    className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--tp-ink)] hover:bg-[var(--tp-ink-2)] rounded-xl shrink-0"
+                                    className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--tp-ink)] hover:bg-[var(--tp-ink-2)] rounded-[4px] shrink-0"
                                 >
                                     Add
                                 </button>
@@ -1621,7 +1715,7 @@ const InfluencerProgress: React.FC = () => {
                                     type="number" 
                                     value={spentInputVal} 
                                     onChange={e => setSpentInputVal(e.target.value)}
-                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
+                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-[4px] text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
                                     placeholder="0"
                                     autoFocus
                                     onKeyDown={e => {
@@ -1632,10 +1726,10 @@ const InfluencerProgress: React.FC = () => {
                                 />
                             </div>
                             <div className="flex justify-end gap-2 pt-1">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px]">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'actual_spent', parseFloat(spentInputVal) || 0)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-[4px]"
                                 >
                                     Save
                                 </button>
@@ -1656,7 +1750,7 @@ const InfluencerProgress: React.FC = () => {
                                     type="text" 
                                     value={pkgInputVal} 
                                     onChange={e => setPkgInputVal(e.target.value)}
-                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
+                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-[4px] text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
                                     placeholder="$5,000"
                                     autoFocus
                                     onKeyDown={e => {
@@ -1667,10 +1761,10 @@ const InfluencerProgress: React.FC = () => {
                                 />
                             </div>
                             <div className="flex justify-end gap-2 pt-1">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px]">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'total_package', pkgInputVal)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-[4px]"
                                 >
                                     Save
                                 </button>
@@ -1692,7 +1786,7 @@ const InfluencerProgress: React.FC = () => {
                                     min="1"
                                     value={countInputVal} 
                                     onChange={e => setCountInputVal(parseInt(e.target.value) || 1)}
-                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
+                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-[4px] text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-medium"
                                     autoFocus
                                     onKeyDown={e => {
                                         if (e.key === 'Enter') {
@@ -1702,10 +1796,10 @@ const InfluencerProgress: React.FC = () => {
                                 />
                             </div>
                             <div className="flex justify-end gap-2 pt-1">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px]">Cancel</button>
                                 <button 
                                     onClick={() => updateCollaborationField(activePopover.rowId, 'content_count', countInputVal)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-[4px]"
                                 >
                                     Save
                                 </button>
@@ -1726,13 +1820,13 @@ const InfluencerProgress: React.FC = () => {
                                 {videoUrlsList.map((url, idx) => {
                                     if (editingUrlIdx === idx) {
                                         return (
-                                            <div key={idx} className="flex items-center gap-1 p-1 bg-[var(--tp-surface-sunken)] rounded-xl border border-[var(--tp-rule)]">
+                                            <div key={idx} className="flex items-center gap-1 p-1 bg-[var(--tp-surface-sunken)] rounded-[4px] border border-[var(--tp-rule)]">
                                                 <input 
                                                     type="text" 
                                                     autoFocus
                                                     value={editingUrlVal} 
                                                     onChange={e => setEditingUrlVal(e.target.value)}
-                                                    className="w-full text-xs p-1 border border-[var(--tp-rule)] rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
+                                                    className="w-full text-xs p-1 border border-[var(--tp-rule)] rounded-[4px] outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
                                                 />
                                                 <button 
                                                     onClick={() => {
@@ -1741,7 +1835,7 @@ const InfluencerProgress: React.FC = () => {
                                                         setVideoUrlsList(copy);
                                                         setEditingUrlIdx(null);
                                                     }} 
-                                                    className="p-1 text-[var(--tp-accent-ink)] hover:bg-[var(--tp-accent-soft)] rounded-lg shrink-0"
+                                                    className="p-1 text-[var(--tp-accent-ink)] hover:bg-[var(--tp-accent-soft)] rounded-[4px] shrink-0"
                                                     title="Save URL"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
@@ -1751,7 +1845,7 @@ const InfluencerProgress: React.FC = () => {
                                     }
 
                                     return (
-                                        <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-[var(--tp-surface-sunken)] rounded-xl border border-[var(--tp-rule)] group/vlink">
+                                        <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-[var(--tp-surface-sunken)] rounded-[4px] border border-[var(--tp-rule)] group/vlink">
                                             <div className="flex items-center gap-1.5 truncate max-w-[190px]">
                                                 {renderPlatformIcon(url)}
                                                 <span className="text-[11px] font-normal text-[var(--tp-ink-2)] truncate">{url}</span>
@@ -1759,14 +1853,14 @@ const InfluencerProgress: React.FC = () => {
                                             <div className="flex items-center gap-0.5">
                                                 <button 
                                                     onClick={() => { setEditingUrlIdx(idx); setEditingUrlVal(url); }} 
-                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-ink-2)] p-1 rounded-md"
+                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-ink-2)] p-1 rounded-[3px]"
                                                     title="Edit video URL"
                                                 >
                                                     <Edit2 className="w-3.5 h-3.5" />
                                                 </button>
                                                 <button 
                                                     onClick={() => setVideoUrlsList(prev => prev.filter((_, i) => i !== idx))} 
-                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-danger)] p-1 rounded-md"
+                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-danger)] p-1 rounded-[3px]"
                                                     title="Delete video"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1785,16 +1879,16 @@ const InfluencerProgress: React.FC = () => {
                                     value={newVideoUrlInput} 
                                     onChange={e => setNewVideoUrlInput(e.target.value)} 
                                     placeholder="https://www.youtube.com/watch?v=..."
-                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-normal"
+                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-[4px] text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-normal"
                                     onKeyDown={e => { if (e.key === 'Enter') handleSaveVideosPopover(activePopover.rowId); }}
                                 />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px]">Cancel</button>
                                 <button 
                                     onClick={() => handleSaveVideosPopover(activePopover.rowId)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-[4px]"
                                 >
                                     Save Videos
                                 </button>
@@ -1815,13 +1909,13 @@ const InfluencerProgress: React.FC = () => {
                                 {agreementUrlsList.map((url, idx) => {
                                     if (editingAgreementIdx === idx) {
                                         return (
-                                            <div key={idx} className="flex items-center gap-1 p-1 bg-[var(--tp-surface-sunken)] rounded-xl border border-[var(--tp-rule)]">
+                                            <div key={idx} className="flex items-center gap-1 p-1 bg-[var(--tp-surface-sunken)] rounded-[4px] border border-[var(--tp-rule)]">
                                                 <input 
                                                     type="text" 
                                                     autoFocus
                                                     value={editingAgreementVal} 
                                                     onChange={e => setEditingAgreementVal(e.target.value)}
-                                                    className="w-full text-xs p-1 border border-[var(--tp-rule)] rounded-lg outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
+                                                    className="w-full text-xs p-1 border border-[var(--tp-rule)] rounded-[4px] outline-none focus:ring-1 focus:ring-[var(--accent-color)] bg-white font-normal"
                                                 />
                                                 <button 
                                                     onClick={() => {
@@ -1830,7 +1924,7 @@ const InfluencerProgress: React.FC = () => {
                                                         setAgreementUrlsList(copy);
                                                         setEditingAgreementIdx(null);
                                                     }} 
-                                                    className="p-1 text-[var(--tp-accent-ink)] hover:bg-[var(--tp-accent-soft)] rounded-lg shrink-0"
+                                                    className="p-1 text-[var(--tp-accent-ink)] hover:bg-[var(--tp-accent-soft)] rounded-[4px] shrink-0"
                                                     title="Save URL link"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
@@ -1840,7 +1934,7 @@ const InfluencerProgress: React.FC = () => {
                                     }
 
                                     return (
-                                        <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-[var(--tp-surface-sunken)] rounded-xl border border-[var(--tp-rule)] group/alink">
+                                        <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-[var(--tp-surface-sunken)] rounded-[4px] border border-[var(--tp-rule)] group/alink">
                                             <div className="flex items-center gap-1.5 truncate max-w-[190px]">
                                                 <FileText className="w-3.5 h-3.5 text-[var(--tp-muted)] shrink-0" />
                                                 <span className="text-[11px] font-normal text-[var(--tp-ink-2)] truncate">{url}</span>
@@ -1848,14 +1942,14 @@ const InfluencerProgress: React.FC = () => {
                                             <div className="flex items-center gap-0.5">
                                                 <button 
                                                     onClick={() => { setEditingAgreementIdx(idx); setEditingAgreementVal(url); }}
-                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-ink-2)] p-1 rounded-md"
+                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-ink-2)] p-1 rounded-[3px]"
                                                     title="Edit document URL"
                                                 >
                                                     <Edit2 className="w-3.5 h-3.5" />
                                                 </button>
                                                 <button 
                                                     onClick={() => setAgreementUrlsList(prev => prev.filter((_, i) => i !== idx))} 
-                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-danger)] p-1 rounded-md"
+                                                    className="text-[var(--tp-meta)] hover:text-[var(--tp-danger)] p-1 rounded-[3px]"
                                                     title="Delete document link"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1874,16 +1968,16 @@ const InfluencerProgress: React.FC = () => {
                                     value={newAgreementUrlInput} 
                                     onChange={e => setNewAgreementUrlInput(e.target.value)} 
                                     placeholder="https://..."
-                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-normal"
+                                    className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-[4px] text-xs outline-none focus:ring-2 focus:ring-[var(--accent-color)] font-normal"
                                     onKeyDown={e => { if (e.key === 'Enter') handleSaveAgreementPopover(activePopover.rowId); }}
                                 />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
-                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
+                                <button onClick={() => setActivePopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px]">Cancel</button>
                                 <button 
                                     onClick={() => handleSaveAgreementPopover(activePopover.rowId)} 
-                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-[4px]"
                                 >
                                     Save Documents
                                 </button>
@@ -1897,7 +1991,7 @@ const InfluencerProgress: React.FC = () => {
             {/* ENHANCED ADD NEW DEAL MODAL — Rendered via Portal to escape parent container scroll */}
             {showAddModal && createPortal(
                 <div className="fixed inset-0 bg-[rgba(15,21,36,0.5)] backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-visible animate-in fade-in zoom-in-95 duration-200 my-auto border border-[var(--tp-rule)]">
+                    <div className="bg-white rounded-[4px] shadow-xl w-full max-w-lg overflow-visible animate-in fade-in zoom-in-95 duration-200 my-auto border border-[var(--tp-rule)]">
                         <div className="p-5 border-b border-[var(--tp-rule)] flex justify-between items-center bg-[var(--tp-surface-sunken)]/80 rounded-t-2xl">
                             <h3 className="text-base font-semibold text-[var(--tp-ink)] flex items-center gap-2">
                                 <span>Add New Influencer Deal</span>
@@ -1908,11 +2002,11 @@ const InfluencerProgress: React.FC = () => {
                         <form onSubmit={handleCreateCollaboration} className="p-6 space-y-5">
                             
                             {/* Mode Tabs: Select Existing vs Add New YouTube Channel */}
-                            <div className="flex rounded-xl bg-[var(--tp-surface-hover)] p-1">
+                            <div className="flex rounded-[4px] bg-[var(--tp-surface-hover)] p-1">
                                 <button
                                     type="button"
                                     onClick={() => setKolSourceMode('existing')}
-                                    className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                                    className={`flex-1 py-1.5 text-xs font-medium rounded-[4px] transition-all ${
                                         kolSourceMode === 'existing'
                                             ? 'bg-white text-[var(--tp-ink)]'
                                             : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
@@ -1923,13 +2017,13 @@ const InfluencerProgress: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setKolSourceMode('new_yt')}
-                                    className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                    className={`flex-1 py-1.5 text-xs font-medium rounded-[4px] transition-all flex items-center justify-center gap-1.5 ${
                                         kolSourceMode === 'new_yt'
                                             ? 'bg-white text-[var(--tp-ink)]'
                                             : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
                                     }`}
                                 >
-                                    <Youtube className="w-3.5 h-3.5 text-[var(--tp-danger)] fill-red-500" />
+                                    <Youtube className="w-3.5 h-3.5 text-[var(--tp-faint)]" />
                                     <span>New YouTube Channel</span>
                                 </button>
                             </div>
@@ -1944,7 +2038,7 @@ const InfluencerProgress: React.FC = () => {
                                         <select 
                                             value={newKolId}
                                             onChange={e => setNewKolId(e.target.value)}
-                                            className="w-full p-2.5 pr-8 border border-[var(--tp-rule-strong)] rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs font-medium text-[var(--tp-ink)] appearance-none cursor-pointer"
+                                            className="w-full p-2.5 pr-8 border border-[var(--tp-rule-strong)] rounded-[4px] focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs font-medium text-[var(--tp-ink)] appearance-none cursor-pointer"
                                         >
                                             <option value="">Choose creator from existing KOLs...</option>
                                             {allKols.map(k => (
@@ -1972,7 +2066,7 @@ const InfluencerProgress: React.FC = () => {
                                                 value={ytChannelUrlInput}
                                                 onChange={e => setYtChannelUrlInput(e.target.value)}
                                                 placeholder="https://www.youtube.com/@Taysthetic"
-                                                className="w-full pl-9 pr-3 py-2 border border-[var(--tp-rule-strong)] rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal"
+                                                className="w-full pl-9 pr-3 py-2 border border-[var(--tp-rule-strong)] rounded-[4px] focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal"
                                                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleFetchYtChannel(); } }}
                                             />
                                         </div>
@@ -1980,7 +2074,7 @@ const InfluencerProgress: React.FC = () => {
                                             type="button"
                                             onClick={handleFetchYtChannel}
                                             disabled={fetchingYt || !ytChannelUrlInput.trim()}
-                                            className="px-4 py-2 bg-[var(--tp-ink)] hover:bg-[var(--tp-ink-2)] text-white rounded-xl text-xs font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+                                            className="px-4 py-2 bg-[var(--tp-ink)] hover:bg-[var(--tp-ink-2)] text-white rounded-[4px] text-xs font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0"
                                         >
                                             {fetchingYt ? (
                                                 <>
@@ -1997,7 +2091,7 @@ const InfluencerProgress: React.FC = () => {
 
                             {/* LIVE KOL PREVIEW CARD */}
                             {((kolSourceMode === 'existing' && selectedExistingKol) || (kolSourceMode === 'new_yt' && fetchedKolData)) && (
-                                <div className="p-3 bg-[var(--tp-surface-sunken)] rounded-2xl border border-[var(--tp-rule)]">
+                                <div className="p-3 bg-[var(--tp-surface-sunken)] rounded-[4px] border border-[var(--tp-rule)]">
                                     <div className="text-[11px] font-semibold text-[var(--tp-meta)] mb-1.5">
                                         Creator Live Preview
                                     </div>
@@ -2016,7 +2110,7 @@ const InfluencerProgress: React.FC = () => {
                                     <button 
                                         type="button"
                                         onClick={() => setShowModalCalendar(!showModalCalendar)}
-                                        className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs text-left font-medium flex items-center justify-between"
+                                        className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-[4px] focus:ring-2 focus:ring-[var(--accent-color)] outline-none bg-white text-xs text-left font-medium flex items-center justify-between"
                                     >
                                         <div className="flex items-center gap-1.5 text-[var(--tp-ink)]">
                                             <Calendar className="w-4 h-4 text-[var(--tp-meta)]" />
@@ -2026,7 +2120,7 @@ const InfluencerProgress: React.FC = () => {
 
                                     {/* Modal Single Calendar Picker Popover */}
                                     {showModalCalendar && (
-                                        <div className="absolute top-full left-0 mt-1 bg-white rounded-2xl border border-[var(--tp-rule)] shadow-xl p-3 w-72 z-50">
+                                        <div className="absolute top-full left-0 mt-1 bg-white rounded-[4px] border border-[var(--tp-rule)] shadow-xl p-3 w-72 z-50">
                                             <MiniCalendarPicker 
                                                 initialDate={newStartMonth}
                                                 onSelectDate={(dt) => {
@@ -2056,7 +2150,7 @@ const InfluencerProgress: React.FC = () => {
                                             }
                                         }}
                                         placeholder="$5,000"
-                                        className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-medium"
+                                        className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-[4px] focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-medium"
                                     />
                                 </div>
                             </div>
@@ -2066,13 +2160,13 @@ const InfluencerProgress: React.FC = () => {
                                 <button 
                                     type="button" 
                                     onClick={() => setShowAddModal(false)} 
-                                    className="px-5 py-2.5 rounded-full font-medium text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] transition-colors text-sm"
+                                    className="px-5 py-2.5 rounded-[3px] font-medium text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] transition-colors text-sm"
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     type="submit" 
-                                    className="px-6 py-2.5 rounded-full font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] transition-colors text-sm"
+                                    className="px-6 py-2.5 rounded-[3px] font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] transition-colors text-sm"
                                 >
                                     Create Deal
                                 </button>
@@ -2087,7 +2181,7 @@ const InfluencerProgress: React.FC = () => {
                 <div className="fixed inset-0 bg-[rgba(15,21,36,0.4)] backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-[var(--tp-rule)] space-y-4">
                         <div className="flex items-center gap-3 text-[var(--tp-warning)]">
-                            <div className="p-3 bg-[var(--tp-warning-soft)] rounded-2xl">
+                            <div className="p-3 bg-[var(--tp-warning-soft)] rounded-[4px]">
                                 <Trash2 className="w-6 h-6" />
                             </div>
                             <h3 className="text-lg font-semibold text-[var(--tp-ink)]">Remove Deal Record</h3>
@@ -2098,13 +2192,13 @@ const InfluencerProgress: React.FC = () => {
                         <div className="flex justify-end gap-3 pt-2">
                             <button
                                 onClick={() => setDeleteConfirmCollab(null)}
-                                className="px-5 py-2.5 text-xs font-semibold text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-xl transition-colors"
+                                className="px-5 py-2.5 text-xs font-semibold text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px] transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={() => handleDeleteCollaboration(deleteConfirmCollab.id)}
-                                className="px-5 py-2.5 text-xs font-semibold text-white bg-[var(--tp-danger)] hover:brightness-90 rounded-xl transition-colors"
+                                className="px-5 py-2.5 text-xs font-semibold text-white bg-[var(--tp-danger)] hover:brightness-90 rounded-[4px] transition-colors"
                             >
                                 Yes, Remove Deal
                             </button>

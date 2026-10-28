@@ -805,7 +805,7 @@ const InfluencerProposal: React.FC = () => {
                                             aria-expanded={statusFilterOpen}
                                             aria-label={`Filter by status — showing ${statusFilterLabel}`}
                                             title={`Showing ${statusFilterLabel}`}
-                                            className={`flex h-6 w-6 items-center justify-center rounded-[5px] border transition-colors ${
+                                            className={`flex h-6 w-6 items-center justify-center rounded-[3px] border transition-colors ${
                                                 isDefaultFilter && !statusFilterOpen
                                                     ? 'border-transparent text-[var(--tp-faint)] hover:border-[var(--tp-rule-strong)] hover:bg-[var(--tp-surface)] hover:text-[var(--tp-ink)]'
                                                     : 'border-[var(--tp-accent-rule)] bg-[var(--tp-accent-soft)] text-[var(--tp-accent-ink)]'
@@ -959,7 +959,7 @@ const InfluencerProposal: React.FC = () => {
                                                                         src={tile.url}
                                                                         alt={tile.name}
                                                                         onClick={() => setLightbox({ items: insightTiles.map(t => ({ url: t.url, name: t.name })), index: i })}
-                                                                        className={`h-8 w-8 cursor-zoom-in rounded-[5px] border object-cover transition-opacity hover:opacity-85 ${
+                                                                        className={`h-8 w-8 cursor-zoom-in rounded-[3px] border object-cover transition-opacity hover:opacity-85 ${
                                                                             tile.source === 'discussion'
                                                                                 ? 'border-[var(--tp-accent-rule)]'
                                                                                 : 'border-[var(--tp-rule-panel)]'
@@ -988,7 +988,7 @@ const InfluencerProposal: React.FC = () => {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setLightbox({ items: insightTiles.map(t => ({ url: t.url, name: t.name })), index: 3 })}
-                                                                    className="flex h-8 shrink-0 items-center rounded-[5px] border border-[var(--tp-rule-panel)] bg-[var(--tp-surface-sunken)] px-2 text-[11.5px] font-semibold tabular-nums text-[var(--tp-muted)] transition-colors hover:border-[var(--tp-accent-rule)] hover:bg-[var(--tp-accent-soft)] hover:text-[var(--tp-accent-ink)]"
+                                                                    className="flex h-8 shrink-0 items-center rounded-[3px] border border-[var(--tp-rule-panel)] bg-[var(--tp-surface-sunken)] px-2 text-[11.5px] font-semibold tabular-nums text-[var(--tp-muted)] transition-colors hover:border-[var(--tp-accent-rule)] hover:bg-[var(--tp-accent-soft)] hover:text-[var(--tp-accent-ink)]"
                                                                     title={`${insightTiles.length - 3} more screenshot${insightTiles.length - 3 === 1 ? '' : 's'}`}
                                                                 >
                                                                     +{insightTiles.length - 3}
@@ -1004,7 +1004,7 @@ const InfluencerProposal: React.FC = () => {
                                                                 kolId: deal.kol_id,
                                                                 kolName: kol?.name || 'Creator'
                                                             })}
-                                                            className="flex h-8 shrink-0 items-center gap-1 rounded-[5px] border border-[var(--tp-accent-rule)] bg-[var(--tp-accent-soft)] px-2 text-[12px] font-medium tabular-nums text-[var(--tp-accent-ink)] transition-colors hover:border-[var(--tp-accent)]"
+                                                            className="flex h-8 shrink-0 items-center gap-1 rounded-[3px] border border-[var(--tp-accent-rule)] bg-[var(--tp-accent-soft)] px-2 text-[12px] font-medium tabular-nums text-[var(--tp-accent-ink)] transition-colors hover:border-[var(--tp-accent)]"
                                                             title={`${lockedImageCount} screenshot${lockedImageCount === 1 ? '' : 's'} shared in the discussion — sign in there to view`}
                                                         >
                                                             <MessageCircle className="h-3.5 w-3.5 shrink-0" />
@@ -1012,7 +1012,7 @@ const InfluencerProposal: React.FC = () => {
                                                         </button>
                                                     )}
 
-                                                    <label className="flex h-8 cursor-pointer items-center gap-1 rounded-[5px] border border-[var(--tp-rule-strong)] border-dashed px-2.5 text-[12px] font-medium text-[var(--tp-muted)] transition-colors hover:border-[var(--tp-accent)] hover:bg-[var(--tp-accent-soft)] hover:text-[var(--tp-accent-ink)]">
+                                                    <label className="flex h-8 cursor-pointer items-center gap-1 rounded-[3px] border border-[var(--tp-rule-strong)] border-dashed px-2.5 text-[12px] font-medium text-[var(--tp-muted)] transition-colors hover:border-[var(--tp-accent)] hover:bg-[var(--tp-accent-soft)] hover:text-[var(--tp-accent-ink)]">
                                                         <Upload className="h-3.5 w-3.5" />
                                                         <span>Add</span>
                                                         <input
@@ -1032,7 +1032,7 @@ const InfluencerProposal: React.FC = () => {
                                             <td className="text-right">
                                                 <button
                                                     onClick={e => openCellPopover(e, deal.kol_id, 'rate', deal)}
-                                                    className="inline-flex items-center rounded-[5px] border border-transparent px-2 py-1 text-[13px] font-semibold tabular-nums text-[var(--tp-ink)] transition-colors hover:border-[var(--tp-rule-strong)] hover:bg-[var(--tp-surface-hover)]"
+                                                    className="inline-flex items-center rounded-[3px] border border-transparent px-2 py-1 text-[13px] font-semibold tabular-nums text-[var(--tp-ink)] transition-colors hover:border-[var(--tp-rule-strong)] hover:bg-[var(--tp-surface-hover)]"
                                                     title="Click to edit estimated rate"
                                                 >
                                                     {deal.est_rate !== undefined && deal.est_rate !== null && deal.est_rate !== 0
@@ -1045,7 +1045,7 @@ const InfluencerProposal: React.FC = () => {
                                             <td>
                                                 <div
                                                     onClick={e => openCellPopover(e, deal.kol_id, 'deliverables', deal)}
-                                                    className="flex cursor-pointer items-center rounded-[6px] border border-transparent p-1.5 transition-colors hover:border-[var(--tp-rule-strong)] hover:bg-[var(--tp-surface-hover)]"
+                                                    className="flex cursor-pointer items-center rounded-[3px] border border-transparent p-1.5 transition-colors hover:border-[var(--tp-rule-strong)] hover:bg-[var(--tp-surface-hover)]"
                                                     title={deal.deliverables || 'Click to edit deliverables'}
                                                 >
                                                     {deal.deliverables && deal.deliverables.trim() ? (
@@ -1065,7 +1065,7 @@ const InfluencerProposal: React.FC = () => {
                                             <td>
                                                 <div
                                                     onClick={e => openCellPopover(e, deal.kol_id, 'terms', deal)}
-                                                    className="flex cursor-pointer items-center rounded-[6px] border border-transparent p-1.5 transition-colors hover:border-[var(--tp-rule-strong)] hover:bg-[var(--tp-surface-hover)]"
+                                                    className="flex cursor-pointer items-center rounded-[3px] border border-transparent p-1.5 transition-colors hover:border-[var(--tp-rule-strong)] hover:bg-[var(--tp-surface-hover)]"
                                                     title={deal.terms || 'Click to edit terms'}
                                                 >
                                                     {deal.terms && deal.terms.trim() ? (
@@ -1083,7 +1083,7 @@ const InfluencerProposal: React.FC = () => {
                                             <td>
                                                 <div
                                                     onClick={e => openCellPopover(e, deal.kol_id, 'contract', deal)}
-                                                    className="flex cursor-pointer items-center rounded-[6px] border border-transparent p-1.5 transition-colors hover:border-[var(--tp-rule-strong)] hover:bg-[var(--tp-surface-hover)]"
+                                                    className="flex cursor-pointer items-center rounded-[3px] border border-transparent p-1.5 transition-colors hover:border-[var(--tp-rule-strong)] hover:bg-[var(--tp-surface-hover)]"
                                                     title="Click to manage draft contract link"
                                                 >
                                                     {deal.contract_link && deal.contract_link.trim() ? (
@@ -1153,7 +1153,7 @@ const InfluencerProposal: React.FC = () => {
                                                         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                                         setActiveActionMenu({ kolId: deal.kol_id, anchorRect: rect });
                                                     }}
-                                                    className={`rounded-[5px] p-1.5 transition-colors ${activeActionMenu?.kolId === deal.kol_id ? 'bg-[var(--tp-surface-active)] text-[var(--tp-ink)]' : 'text-[var(--tp-faint)] hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink)]'}`}
+                                                    className={`rounded-[3px] p-1.5 transition-colors ${activeActionMenu?.kolId === deal.kol_id ? 'bg-[var(--tp-surface-active)] text-[var(--tp-ink)]' : 'text-[var(--tp-faint)] hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink)]'}`}
                                                     title="More actions"
                                                     aria-label="More actions"
                                                 >
@@ -1173,7 +1173,7 @@ const InfluencerProposal: React.FC = () => {
                 <div className="flex justify-center">
                     <button
                         onClick={() => setShowAddCreatorModal(true)}
-                        className="primary-btn inline-flex items-center gap-2 rounded-[7px] bg-[var(--accent-color)] px-5 py-2.5 text-[13px] font-semibold text-[var(--tp-on-accent)]"
+                        className="primary-btn inline-flex items-center gap-2 rounded-[3px] bg-[var(--accent-color)] px-5 py-2.5 text-[13px] font-semibold text-[var(--tp-on-accent)]"
                     >
                         <Plus className="h-4 w-4" />
                         <span>Add creator via YouTube URL</span>
@@ -1206,7 +1206,7 @@ const InfluencerProposal: React.FC = () => {
                     ) : statusOptions.map(option => (
                         <label
                             key={option.status}
-                            className="flex cursor-pointer items-center gap-2.5 rounded-[6px] px-2 py-1.5 hover:bg-[var(--tp-surface-hover)]"
+                            className="flex cursor-pointer items-center gap-2.5 rounded-[3px] px-2 py-1.5 hover:bg-[var(--tp-surface-hover)]"
                         >
                             <input
                                 type="checkbox"
@@ -1238,7 +1238,7 @@ const InfluencerProposal: React.FC = () => {
                     ref={cellPopoverRef}
                     onClick={e => e.stopPropagation()}
                     style={calcPopoverPosition(activeCellPopover.anchorRect, 320, 360)}
-                    className="app-popover bg-white rounded-2xl border border-[#e1e7e5]/80 shadow-lg p-4 w-80 font-sans"
+                    className="app-popover bg-white rounded-[4px] border border-[var(--tp-rule-panel)]/80 shadow-lg p-4 w-80 font-sans"
                 >
                     {/* 1. Rate Popover */}
                     {activeCellPopover.type === 'rate' && (
@@ -1257,7 +1257,7 @@ const InfluencerProposal: React.FC = () => {
                                     value={cellRateVal}
                                     onChange={e => setCellRateVal(e.target.value)}
                                     placeholder="5000"
-                                    className="w-full pl-7 pr-3 py-2 border border-[var(--tp-rule-strong)] rounded-xl text-sm font-semibold text-[var(--tp-ink)] outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                                    className="w-full pl-7 pr-3 py-2 border border-[var(--tp-rule-strong)] rounded-[4px] text-sm font-semibold text-[var(--tp-ink)] outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
                                     onKeyDown={e => {
                                         if (e.key === 'Enter') {
                                             updateCreatorDealField(activeCellPopover.kolId, 'est_rate', parseFloat(cellRateVal) || 0);
@@ -1266,10 +1266,10 @@ const InfluencerProposal: React.FC = () => {
                                 />
                             </div>
                             <div className="flex justify-end gap-2 pt-2 border-t border-[var(--tp-rule)]">
-                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
+                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px]">Cancel</button>
                                 <button
                                     onClick={() => updateCreatorDealField(activeCellPopover.kolId, 'est_rate', parseFloat(cellRateVal) || 0)}
-                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-[4px]"
                                 >
                                     Save Rate
                                 </button>
@@ -1286,59 +1286,59 @@ const InfluencerProposal: React.FC = () => {
                             </div>
 
                             {/* Preset Options with Quantity Selectors */}
-                            <div className="space-y-2 bg-[var(--tp-surface-sunken)] p-2.5 rounded-xl border border-[var(--tp-rule)]">
+                            <div className="space-y-2 bg-[var(--tp-surface-sunken)] p-2.5 rounded-[4px] border border-[var(--tp-rule)]">
                                 <span className="text-[11px] font-semibold text-[var(--tp-muted)] block mb-1">Set Option Quantities:</span>
 
                                 {/* Option 1: 90s integration */}
-                                <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-[var(--tp-rule)] text-xs">
+                                <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-[4px] border border-[var(--tp-rule)] text-xs">
                                     <span className="font-medium text-[var(--tp-ink)]">90s integration</span>
                                     <div className="flex items-center gap-2">
                                         <button
                                             type="button"
                                             onClick={() => updatePresetQuantity('90s', -1)}
-                                            className="w-6 h-6 rounded-md bg-[var(--tp-surface-hover)] hover:bg-[var(--tp-surface-active)] text-[var(--tp-ink-2)] font-semibold flex items-center justify-center text-sm transition-colors"
+                                            className="w-6 h-6 rounded-[3px] bg-[var(--tp-surface-hover)] hover:bg-[var(--tp-surface-active)] text-[var(--tp-ink-2)] font-semibold flex items-center justify-center text-sm transition-colors"
                                         >-</button>
                                         <span className="w-5 text-center font-semibold text-[var(--tp-ink)]">{qty90s}</span>
                                         <button
                                             type="button"
                                             onClick={() => updatePresetQuantity('90s', 1)}
-                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--tp-accent-ink)] font-semibold flex items-center justify-center text-sm transition-colors"
+                                            className="w-6 h-6 rounded-[3px] bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--tp-accent-ink)] font-semibold flex items-center justify-center text-sm transition-colors"
                                         >+</button>
                                     </div>
                                 </div>
 
                                 {/* Option 2: TikTok video */}
-                                <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-[var(--tp-rule)] text-xs">
+                                <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-[4px] border border-[var(--tp-rule)] text-xs">
                                     <span className="font-medium text-[var(--tp-ink)]">TikTok video</span>
                                     <div className="flex items-center gap-2">
                                         <button
                                             type="button"
                                             onClick={() => updatePresetQuantity('tiktok', -1)}
-                                            className="w-6 h-6 rounded-md bg-[var(--tp-surface-hover)] hover:bg-[var(--tp-surface-active)] text-[var(--tp-ink-2)] font-semibold flex items-center justify-center text-sm transition-colors"
+                                            className="w-6 h-6 rounded-[3px] bg-[var(--tp-surface-hover)] hover:bg-[var(--tp-surface-active)] text-[var(--tp-ink-2)] font-semibold flex items-center justify-center text-sm transition-colors"
                                         >-</button>
                                         <span className="w-5 text-center font-semibold text-[var(--tp-ink)]">{qtyTiktok}</span>
                                         <button
                                             type="button"
                                             onClick={() => updatePresetQuantity('tiktok', 1)}
-                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--tp-accent-ink)] font-semibold flex items-center justify-center text-sm transition-colors"
+                                            className="w-6 h-6 rounded-[3px] bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--tp-accent-ink)] font-semibold flex items-center justify-center text-sm transition-colors"
                                         >+</button>
                                     </div>
                                 </div>
 
                                 {/* Option 3: Post on X */}
-                                <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-[var(--tp-rule)] text-xs">
+                                <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-[4px] border border-[var(--tp-rule)] text-xs">
                                     <span className="font-medium text-[var(--tp-ink)]">Post on X</span>
                                     <div className="flex items-center gap-2">
                                         <button
                                             type="button"
                                             onClick={() => updatePresetQuantity('postX', -1)}
-                                            className="w-6 h-6 rounded-md bg-[var(--tp-surface-hover)] hover:bg-[var(--tp-surface-active)] text-[var(--tp-ink-2)] font-semibold flex items-center justify-center text-sm transition-colors"
+                                            className="w-6 h-6 rounded-[3px] bg-[var(--tp-surface-hover)] hover:bg-[var(--tp-surface-active)] text-[var(--tp-ink-2)] font-semibold flex items-center justify-center text-sm transition-colors"
                                         >-</button>
                                         <span className="w-5 text-center font-semibold text-[var(--tp-ink)]">{qtyPostX}</span>
                                         <button
                                             type="button"
                                             onClick={() => updatePresetQuantity('postX', 1)}
-                                            className="w-6 h-6 rounded-md bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--tp-accent-ink)] font-semibold flex items-center justify-center text-sm transition-colors"
+                                            className="w-6 h-6 rounded-[3px] bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--tp-accent-ink)] font-semibold flex items-center justify-center text-sm transition-colors"
                                         >+</button>
                                     </div>
                                 </div>
@@ -1352,15 +1352,15 @@ const InfluencerProposal: React.FC = () => {
                                     value={cellDeliverablesVal}
                                     onChange={e => setCellDeliverablesVal(e.target.value)}
                                     placeholder="• 1x 90s integration&#10;• 2x TikTok video..."
-                                    className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-xl text-xs font-normal text-[var(--tp-ink)] outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none"
+                                    className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-[4px] text-xs font-normal text-[var(--tp-ink)] outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none"
                                 />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2 border-t border-[var(--tp-rule)]">
-                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
+                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px]">Cancel</button>
                                 <button
                                     onClick={() => updateCreatorDealField(activeCellPopover.kolId, 'deliverables', cellDeliverablesVal)}
-                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-[4px]"
                                 >
                                     Save Deliverables
                                 </button>
@@ -1377,11 +1377,11 @@ const InfluencerProposal: React.FC = () => {
                             </div>
 
                             {/* Formatting Options Bar */}
-                            <div className="flex items-center gap-1 bg-[var(--tp-surface-sunken)] p-1 rounded-xl border border-[var(--tp-rule)] text-xs font-semibold text-[var(--tp-muted)] select-none">
-                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' **bold**')} className="px-2 py-1 hover:bg-white rounded-lg transition-colors font-semibold" title="Bold">B</button>
-                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' *italic*')} className="px-2 py-1 hover:bg-white rounded-lg transition-colors italic" title="Italic">I</button>
-                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' <u>underline</u>')} className="px-2 py-1 hover:bg-white rounded-lg transition-colors underline" title="Underline">U</button>
-                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' [link label](https://)')} className="px-2 py-1 hover:bg-white rounded-lg transition-colors text-[var(--tp-info)]" title="Hyperlink">🔗 Link</button>
+                            <div className="flex items-center gap-1 bg-[var(--tp-surface-sunken)] p-1 rounded-[4px] border border-[var(--tp-rule)] text-xs font-semibold text-[var(--tp-muted)] select-none">
+                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' **bold**')} className="px-2 py-1 hover:bg-white rounded-[4px] transition-colors font-semibold" title="Bold">B</button>
+                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' *italic*')} className="px-2 py-1 hover:bg-white rounded-[4px] transition-colors italic" title="Italic">I</button>
+                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' <u>underline</u>')} className="px-2 py-1 hover:bg-white rounded-[4px] transition-colors underline" title="Underline">U</button>
+                                <button type="button" onClick={() => setCellTermsVal(prev => prev + ' [link label](https://)')} className="px-2 py-1 hover:bg-white rounded-[4px] transition-colors text-[var(--tp-info)]" title="Hyperlink">🔗 Link</button>
                             </div>
 
                             <textarea
@@ -1390,13 +1390,13 @@ const InfluencerProposal: React.FC = () => {
                                 value={cellTermsVal}
                                 onChange={e => setCellTermsVal(e.target.value)}
                                 placeholder="30-day usage rights, 60-day exclusivity, payment on pub date..."
-                                className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-xl text-xs font-normal text-[var(--tp-ink)] outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none whitespace-pre-line"
+                                className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-[4px] text-xs font-normal text-[var(--tp-ink)] outline-none focus:ring-2 focus:ring-[var(--accent-color)] leading-relaxed resize-none whitespace-pre-line"
                             />
                             <div className="flex justify-end gap-2 pt-2 border-t border-[var(--tp-rule)]">
-                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
+                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px]">Cancel</button>
                                 <button
                                     onClick={() => updateCreatorDealField(activeCellPopover.kolId, 'terms', cellTermsVal)}
-                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-[4px]"
                                 >
                                     Save Terms
                                 </button>
@@ -1417,7 +1417,7 @@ const InfluencerProposal: React.FC = () => {
                                 value={cellContractVal}
                                 onChange={e => setCellContractVal(e.target.value)}
                                 placeholder="https://docs.google.com/..."
-                                className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-xl text-xs font-normal text-[var(--tp-ink)] outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
+                                className="w-full p-2 border border-[var(--tp-rule-strong)] rounded-[4px] text-xs font-normal text-[var(--tp-ink)] outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
                                 onKeyDown={e => {
                                     if (e.key === 'Enter') {
                                         updateCreatorDealField(activeCellPopover.kolId, 'contract_link', cellContractVal.trim());
@@ -1425,10 +1425,10 @@ const InfluencerProposal: React.FC = () => {
                                 }}
                             />
                             <div className="flex justify-end gap-2 pt-2 border-t border-[var(--tp-rule)]">
-                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-lg">Cancel</button>
+                                <button onClick={() => setActiveCellPopover(null)} className="px-3 py-1.5 text-xs text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px]">Cancel</button>
                                 <button
                                     onClick={() => updateCreatorDealField(activeCellPopover.kolId, 'contract_link', cellContractVal.trim())}
-                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl"
+                                    className="px-4 py-1.5 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-[4px]"
                                 >
                                     Save Link
                                 </button>
@@ -1488,10 +1488,10 @@ const InfluencerProposal: React.FC = () => {
             {/* PORTAL MODAL: ADD CREATOR VIA YOUTUBE URL MODAL */}
             {showAddCreatorModal && createPortal(
                 <div className="fixed inset-0 bg-[rgba(15,21,36,0.5)] backdrop-blur-xs z-[99999] flex items-center justify-center p-4 overflow-y-auto font-sans">
-                    <div className="app-dialog bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
+                    <div className="app-dialog bg-white rounded-[4px] shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
                         <div className="p-5 border-b border-[var(--tp-rule)] flex justify-between items-center bg-[var(--tp-surface-sunken)]/80">
                             <h3 className="text-base font-semibold text-[var(--tp-ink)] flex items-center gap-2">
-                                <Youtube className="w-5 h-5 text-[var(--tp-danger)] fill-red-500" />
+                                <Youtube className="w-5 h-5 text-[var(--tp-danger)] fill-current" />
                                 <span>Add Creator via YouTube URL</span>
                             </h3>
                             <button onClick={() => setShowAddCreatorModal(false)} className="text-[var(--tp-meta)] hover:text-[var(--tp-muted)]"><X className="w-5 h-5" /></button>
@@ -1508,7 +1508,7 @@ const InfluencerProposal: React.FC = () => {
                                     value={ytChannelInput}
                                     onChange={e => setYtChannelInput(e.target.value)}
                                     placeholder="https://www.youtube.com/@taysthetic"
-                                    className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal"
+                                    className="w-full p-2.5 border border-[var(--tp-rule-strong)] rounded-[4px] focus:ring-2 focus:ring-[var(--accent-color)] outline-none text-xs font-normal"
                                     onKeyDown={e => { if (e.key === 'Enter') handleAddCreatorByYouTube(); }}
                                 />
                                 <p className="text-[11px] text-[var(--tp-meta)] mt-1">
@@ -1519,14 +1519,14 @@ const InfluencerProposal: React.FC = () => {
                             <div className="flex justify-end gap-2 pt-3 border-t border-[var(--tp-rule)]">
                                 <button
                                     onClick={() => setShowAddCreatorModal(false)}
-                                    className="px-4 py-2 text-xs font-medium text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-xl"
+                                    className="px-4 py-2 text-xs font-medium text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] rounded-[4px]"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleAddCreatorByYouTube}
                                     disabled={fetchingYt || !ytChannelInput.trim()}
-                                    className="px-5 py-2 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-xl disabled:opacity-50 flex items-center gap-1.5"
+                                    className="px-5 py-2 text-xs font-medium text-[var(--tp-on-accent)] bg-[var(--accent-color)] hover:bg-[var(--tp-accent-strong)] rounded-[4px] disabled:opacity-50 flex items-center gap-1.5"
                                 >
                                     {fetchingYt ? (
                                         <>

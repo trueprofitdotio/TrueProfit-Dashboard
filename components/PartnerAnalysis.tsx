@@ -69,7 +69,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
         <div className="relative" ref={dropdownRef}>
             <button
                 type="button"
-                className="w-full bg-white text-left p-2.5 border border-[#e1e7e5]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"
+                className="w-full bg-white text-left p-2.5 border border-[var(--tp-rule-panel)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] flex justify-between items-center h-[42px] rounded-full px-5"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span className={selectedOption ? 'text-[var(--tp-ink)]' : 'text-[var(--tp-meta)]'}>
@@ -79,12 +79,12 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({ options, value, onC
             </button>
 
             {isOpen && (
-                <div className="absolute z-10 mt-1 w-full bg-white max-h-60 overflow-hidden rounded-2xl border border-[#e1e7e5]/50">
-                    <div className="p-2 border-b border-[#e1e7e5]/30">
+                <div className="absolute z-10 mt-1 w-full bg-white max-h-60 overflow-hidden rounded-[4px] border border-[var(--tp-rule-panel)]/50">
+                    <div className="p-2 border-b border-[var(--tp-rule-panel)]/30">
                         <input
                             type="text"
                             placeholder="Search affiliates..."
-                            className="w-full px-4 py-2 border border-[#e1e7e5]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] rounded-full"
+                            className="w-full px-4 py-2 border border-[var(--tp-rule-panel)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)] rounded-full"
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
@@ -220,7 +220,7 @@ const PartnerAnalysis: React.FC = () => {
                         id="month"
                         value={month}
                         onChange={e => setMonth(e.target.value)}
-                        className="p-2.5 border border-[#e1e7e5]/50 focus:ring-1 focus:ring-[var(--accent-color)] focus:outline-none h-[42px] rounded-full px-5 w-full md:w-auto bg-white text-[var(--tp-ink)] text-sm"
+                        className="p-2.5 border border-[var(--tp-rule-panel)]/50 focus:ring-1 focus:ring-[var(--accent-color)] focus:outline-none h-[42px] rounded-full px-5 w-full md:w-auto bg-white text-[var(--tp-ink)] text-sm"
                     />
                 </div>
                 <div className="w-full md:w-1/3">
@@ -263,7 +263,7 @@ const PartnerAnalysis: React.FC = () => {
                                 </thead>
                                 <tbody>
                                     {data.daily.map(row => (
-                                        <tr key={row.date} className="bg-white border-b border-[#e1e7e5]/30 hover:bg-[var(--tp-surface-sunken)]/50">
+                                        <tr key={row.date} className="bg-white border-b border-[var(--tp-rule-panel)]/30 hover:bg-[var(--tp-surface-sunken)]/50">
                                             <td className="px-6 py-4 font-medium text-[var(--tp-ink)]">{row.date}</td>
                                             <td className="px-6 py-4 text-right text-[var(--tp-muted)]">{formatNumber(row.clicks)}</td>
                                             <td className="px-6 py-4 text-right text-[var(--tp-muted)]">{formatNumber(row.installs)}</td>

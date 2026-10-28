@@ -109,13 +109,13 @@ const YouTubeCardPreview: React.FC<{ url: string; isUser: boolean }> = ({ url, i
                 target="_blank" 
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                className={`mt-2.5 flex flex-col sm:flex-row gap-2.5 p-2 rounded-xl border transition-all hover:scale-[1.01] block overflow-hidden ${
+                className={`mt-2.5 flex flex-col sm:flex-row gap-2.5 p-2 rounded-[4px] border transition-all hover:scale-[1.01] block overflow-hidden ${
                     isUser 
                         ? 'bg-[rgba(15,22,19,0.08)] border-[rgba(15,22,19,0.16)] text-[var(--tp-on-accent)] hover:bg-[rgba(15,22,19,0.14)]' 
                         : 'bg-white border-[var(--tp-rule-panel)] text-[var(--tp-ink)] hover:bg-[var(--tp-surface-sunken)]'
                 }`}
             >
-                <div className="relative w-full sm:w-28 h-20 bg-[var(--tp-ink)] rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
+                <div className="relative w-full sm:w-28 h-20 bg-[var(--tp-ink)] rounded-[4px] overflow-hidden shrink-0 flex items-center justify-center">
                     <img src={thumbUrl} alt="Video thumbnail" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                         <div className="w-6 h-6 rounded-full bg-red-600/90 text-white flex items-center justify-center">
@@ -148,7 +148,7 @@ const YouTubeCardPreview: React.FC<{ url: string; isUser: boolean }> = ({ url, i
                 target="_blank" 
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                className={`mt-2.5 flex items-center gap-3 p-2.5 rounded-xl border transition-all hover:scale-[1.01] block ${
+                className={`mt-2.5 flex items-center gap-3 p-2.5 rounded-[4px] border transition-all hover:scale-[1.01] block ${
                     isUser 
                         ? 'bg-[rgba(15,22,19,0.08)] border-[rgba(15,22,19,0.16)] text-[var(--tp-on-accent)] hover:bg-[rgba(15,22,19,0.14)]' 
                         : 'bg-white border-[var(--tp-rule-panel)] text-[var(--tp-ink)] hover:bg-[var(--tp-surface-sunken)]'
@@ -808,7 +808,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                 onDrop={handleDrop}
             >
             {isDraggingFile && user && (
-                <div className="pointer-events-none absolute inset-3 z-50 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--accent-color)] bg-[#f3f4fe] text-[var(--tp-accent-ink)]">
+                <div className="pointer-events-none absolute inset-3 z-50 flex flex-col items-center justify-center gap-2 rounded-[4px] border-2 border-dashed border-[var(--accent-color)] bg-[#f3f4fe] text-[var(--tp-accent-ink)]">
                     <ImagePlus className="h-7 w-7 stroke-[1.5]" />
                     <p className="text-xs font-semibold">Drop to attach</p>
                     <p className="text-[11px] text-[var(--tp-accent-ink)]">PNG, JPEG, GIF, WebP or PDF — up to 10 MB</p>
@@ -827,7 +827,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     {user && (
                         <button
                             onClick={handleSignOut}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tp-meta)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink-2)]"
+                            className="flex h-8 w-8 items-center justify-center rounded-[4px] text-[var(--tp-meta)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink-2)]"
                             title={`Logged in as ${user.email}. Click to Sign Out`}
                         >
                             <LogOut className="h-4 w-4" />
@@ -835,7 +835,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     )}
                     <button 
                         onClick={onClose}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tp-meta)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink-2)]"
+                        className="flex h-8 w-8 items-center justify-center rounded-[4px] text-[var(--tp-meta)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink-2)]"
                         aria-label="Close discussion"
                     >
                         <X className="h-4 w-4" />
@@ -856,7 +856,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                         </p>
                     </div>
                     {authError && (
-                        <div className="flex max-w-[320px] items-start gap-2 rounded-xl border border-[var(--tp-danger-rule)] bg-[var(--tp-danger-soft)] p-3 text-left text-xs font-medium text-[var(--tp-danger)]">
+                        <div className="flex max-w-[320px] items-start gap-2 rounded-[4px] border border-[var(--tp-danger-rule)] bg-[var(--tp-danger-soft)] p-3 text-left text-xs font-medium text-[var(--tp-danger)]">
                             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--tp-danger)]" />
                             <span>{authError}</span>
                         </div>
@@ -864,7 +864,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                     <div className="w-full max-w-[320px] space-y-2">
                         <button
                             onClick={handleGoogleLogin}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--tp-ink)] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
+                            className="flex w-full items-center justify-center gap-2 rounded-[4px] bg-[var(--tp-ink)] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24">
                                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -877,7 +877,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                         {isDevEnvironment && (
                             <button
                                 onClick={handleDevLogin}
-                                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--tp-rule)] bg-white py-2 text-xs font-semibold text-[var(--tp-ink-2)] transition-colors hover:bg-[var(--tp-surface-sunken)]"
+                                className="flex w-full items-center justify-center gap-1.5 rounded-[4px] border border-[var(--tp-rule)] bg-white py-2 text-xs font-semibold text-[var(--tp-ink-2)] transition-colors hover:bg-[var(--tp-surface-sunken)]"
                             >
                                 <span>Dev test sign-in (Quan Tran Hoang)</span>
                             </button>
@@ -1052,7 +1052,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
                         />
 
                         {attachmentError && (
-                            <div className="mb-2 flex items-start gap-1.5 rounded-lg border border-[var(--tp-warning-rule)] bg-[var(--tp-warning-soft)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--tp-warning)]">
+                            <div className="mb-2 flex items-start gap-1.5 rounded-[4px] border border-[var(--tp-warning-rule)] bg-[var(--tp-warning-soft)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--tp-warning)]">
                                 <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-[var(--tp-warning)]" />
                                 <span className="flex-1">{attachmentError}</span>
                                 <button
@@ -1077,7 +1077,7 @@ const DiscussionSidebar: React.FC<DiscussionSidebarProps> = ({
 
                         <Suspense
                             fallback={
-                                <div className="flex h-[76px] items-center justify-center rounded-2xl border border-[var(--tp-rule)] bg-white">
+                                <div className="flex h-[76px] items-center justify-center rounded-[4px] border border-[var(--tp-rule)] bg-white">
                                     <Loader2 className="h-4 w-4 animate-spin text-[var(--tp-meta)]" />
                                 </div>
                             }

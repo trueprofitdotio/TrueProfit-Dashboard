@@ -3,23 +3,43 @@ import React from 'react';
 export const API_KEY = '2RG6k3b7b96qXzeSty7SbEkQKMgASchi';
 export const API_BASE_URL = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://trueprofit.trackdesk.com';
 
-/* The data ramp. Five hues spread across the wheel so no two series read as
-   the same measure at a glance, and each one sits within a few points of the
-   others in lightness so none of them shouts. Mirrors --tp-series-* in
-   index.css; ECharts takes literals, so the two are kept in step by hand.
+/* The data ramp. Five hues validated with the data-viz palette validator at
+   --pairs all, because the daily trace puts all five on one plot and the
+   top-affiliate view splits them into small multiples — both arrangements
+   make every pair adjacent to every other. Worst pair is ΔE 10.3 under
+   deuteranopia and 18.9 under normal vision, clearing the 8 target and the
+   15 floor. Mirrors --tp-series-* in index.css; ECharts takes literals, so
+   the two are kept in step by hand.
 
-   Clicks was violet #7C3AED, which measured 3.5 ΔE from the signups blue
-   under deuteranopia and 14.7 under normal vision — two of the five series
-   were effectively the same colour. The steel blue below clears both floors
-   (16.0 normal, 8.3 worst CVD pair) while staying the quietest hue on the
-   plot, which is right: clicks is the bulk volume, not the outcome. */
+   Revenue is drawn with the brand pen: it is the measure the whole product
+   exists to move, and the ink that marks the live route is the right one to
+   draw it with. Clicks takes the cyan — present, but the quietest hue on
+   the plot, which suits bulk volume rather than an outcome.
+
+   Any change here is re-validated with that script, never judged by eye. */
 export const PALETTE = {
-  signups: '#1D6FD8',   // blue
-  clicks: '#58A3D0',    // steel blue — the recessive bulk measure
-  installs: '#D91A43',  // rose
-  revenue: '#12A877',   // mint — money in, and the brand's own measure
-  payouts: '#D97706',   // amber — money out
-  action: '#23C48C',
+  signups: '#35802B',   // green
+  clicks: '#0E9AC2',    // cyan — the recessive bulk measure
+  installs: '#DE4A6B',  // rose
+  revenue: '#4954BC',   // indigo — money in, drawn with the brand pen
+  payouts: '#DFA022',   // amber — money out
+  action: '#4954BC',
+};
+
+/* Chart chrome. The plot sits on the board's own lattice, so its gridlines
+   are the ruled paper rather than a second set of lines drawn over it. */
+export const CHART_FONT = {
+  ui: 'Archivo, system-ui, sans-serif',
+  narrow: 'Archivo Narrow, Archivo, system-ui, sans-serif',
+  mono: 'Roboto Mono, ui-monospace, monospace',
+};
+
+export const CHART_INK = {
+  grid: '#E6E9F4',
+  axis: '#C2C8DC',
+  label: '#6E7488',
+  text: '#2B2F3D',
+  surface: '#FFFFFF',
 };
 
 export const ArrowUpIcon: React.FC<{ className?: string }> = ({ className }) => (

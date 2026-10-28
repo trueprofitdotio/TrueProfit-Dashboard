@@ -5,143 +5,176 @@
    of resetting to the system stack. Kept in step with --tp-font by hand;
    @theme takes a literal, not a var(). */
 @theme {
-  --font-sans: "Inter", "Inter var", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-sans: "Archivo", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
 /* ==========================================================================
-   TrueProfit Operations Workspace — "Layered Operating Sheet"
-   Work happens on white sheets that sit on a bright porcelain canvas. The
-   canvas is never a reading surface; every piece of text lives on a raised
-   sheet. The brand mint is the signal, and because it is too bright to carry
-   white text it is always a fill with a near-black label.
+   TrueProfit Operations Workspace — "Chart Recorder"
+
+   The application is a strip-chart recorder's paper. The ground is ruled
+   engineering graph paper, and it is a working lattice rather than a
+   texture: it shows through wherever something is MEASURED — behind a plot,
+   in the gutter between sheets — and is masked by opaque paper wherever
+   something is READ. Over it, one indigo pen draws the traces, marks the
+   current route, and fills the primary action; every other colour is owned
+   by data or by state.
+
+   Corners are 4px, rules are hairlines, elevation is almost nothing. The
+   previous build floated 16px-rounded white cards on a mint-tinted canvas,
+   which read as a generic analytics product and spent its contrast on
+   container chrome instead of on figures.
    ========================================================================== */
 
 :root {
-  /* --- Canvas and surfaces -------------------------------------------- */
-  --tp-canvas: #f4f7f6;          /* the page ground; never carries text */
-  --tp-canvas-edge: #e6ebe9;     /* seam between canvas and a sheet edge */
-  --tp-surface: #ffffff;         /* the reading sheet */
-  --tp-surface-sunken: #f7faf9;  /* table heads, nested quiet blocks */
-  --tp-surface-hover: #f2f7f5;   /* row and control hover */
-  --tp-surface-active: #e8f6f0;
+  /* --- The ground ------------------------------------------------------
+     One flat field, deliberately a step deeper than the sheets so a white
+     container reads as lifted off it without needing a shadow to say so.
+     The ruled lattice that used to live here was removed: it textured the
+     whole page to make one point about plots, and it fought the containers
+     for the eye. Separation is now carried by the containers themselves. */
+  --tp-paper: #eef0f6;           /* the page ground; never carries text */
+  --tp-canvas: var(--tp-paper);  /* retained name: the ground */
+  --tp-canvas-edge: #dde0ea;     /* seam where a full-bleed element meets it */
 
-  /* --- Rules ----------------------------------------------------------- */
-  --tp-rule: #ecf0ee;            /* hairline inside a sheet */
-  --tp-rule-panel: #e1e7e5;      /* a sheet's own edge */
-  --tp-rule-strong: #c9d2ce;     /* control edges: inputs, filter triggers */
-  --tp-rule-stronger: #b0bcb7;
+  /* --- Paper (reading surfaces) ---------------------------------------- */
+  --tp-surface: #ffffff;         /* an opaque sheet; masks the lattice */
+  --tp-surface-sunken: #f4f6fc;  /* table heads, recessed groups */
+  --tp-surface-hover: #f1f3fc;   /* row and control hover */
+  --tp-surface-active: #e6e9f9;
 
-  /* --- Ink ladder (all ratios measured against #ffffff) ---------------- */
-  --tp-ink: #0f1613;             /* 18.4:1 — headings, key figures */
-  --tp-ink-2: #262e2b;           /* 13.9:1 — body, table cells */
-  --tp-muted: #5a635f;           /*  6.2:1 — secondary labels */
-  --tp-meta: #6a736f;            /*  4.9:1 — metadata, placeholders */
-  --tp-faint: #9ba5a1;           /*  2.5:1 — dividers, icon strokes only */
+  /* Chart gridlines — the only place a ruled line is still drawn. */
+  --tp-grid-minor: #e6e9f4;
+  --tp-grid-major: #d7dcee;
 
-  /* --- Accent: three steps, and each has one job ----------------------
-     The brand green is bright enough that white text on it reads at 2.25:1,
-     so it is a FILL, never a text colour and never a hairline indicator:
-       accent        large filled shapes — buttons, bubbles, badges. Its
-                     label is --tp-on-accent (8.2:1), never white.
-       accent-strong hover fill, and every thin graphic that must survive on
-                     white: the active tab underline, progress fills, focus
-                     borders, the mint chart series (3.05:1).
-       accent-ink    accent-coloured TEXT and icons on a light surface, plus
-                     focus outlines (5.2:1).
-     Reaching for the wrong step is how this palette breaks. */
-  --accent-color: #23c48c;
-  --tp-accent: #23c48c;          /*  the brand, as a fill */
-  --tp-accent-strong: #12a877;   /*  3.05:1 — hover fill, thin indicators */
-  --tp-accent-ink: #0b7c57;      /*  5.2:1 — accent text and icons */
-  --tp-on-accent: #0f1613;       /*  8.2:1 on the accent fill */
-  --tp-accent-soft: #e6f9f1;     /*  the accent as a field */
-  --tp-accent-field: #daf7eb;    /*  the same field, one step in */
-  --tp-accent-rule: #a7e3cb;
+  /* --- Rules: three weights, each with one job ------------------------- */
+  --tp-rule: #eaecf4;            /* hairline inside a sheet */
+  --tp-rule-panel: #dde1ee;      /* a sheet's own edge */
+  --tp-rule-strong: #c2c8dc;     /* control edges: inputs, filter triggers */
+  --tp-rule-stronger: #a8b0c9;
 
-  /* --- Semantic --------------------------------------------------------
-     Green is the brand here, so positive deliberately reuses the accent's
-     ink rather than introducing a second, near-identical green. The two
-     never collide because they never take the same form: a primary action
-     is a bright accent FILL with a dark label; positive state is deep green
-     TEXT on a pale field. */
-  --tp-positive: #0b7c57;
-  --tp-positive-soft: #e6f9f1;
-  --tp-positive-rule: #a7e3cb;
-  --tp-warning: #b45309;
-  --tp-warning-soft: #fff6e5;
-  --tp-warning-rule: #fbe0ae;
-  --tp-danger: #d91a43;
-  --tp-danger-soft: #fff3f5;
-  --tp-danger-rule: #f8c8d3;
-  --tp-info: #1a65c8;
-  --tp-info-soft: #edf4fd;
-  --tp-info-rule: #c3daf7;
+  /* --- Ink ladder (ratios measured against #ffffff) -------------------- */
+  --tp-ink: #15171f;             /* 17.6:1 — headings and key figures */
+  --tp-ink-2: #2b2f3d;           /* 12.6:1 — body and table cells */
+  --tp-muted: #585e72;           /*  6.3:1 — secondary labels */
+  --tp-meta: #6e7488;            /*  4.9:1 — metadata and placeholders */
+  --tp-faint: #a4a9bc;           /*  2.5:1 — dividers and icon strokes ONLY */
 
-  /* Legacy alias kept so existing markup resolves to the new ink. */
-  --header-blue: #0f1613;
+  /* --- The pen ---------------------------------------------------------
+     #4954BC reads 6.4:1 on white, and white reads 6.4:1 on it. Unlike the
+     mint it replaced, it is therefore legal in BOTH directions: it can fill
+     a button and carry white type, and it can be the text colour itself.
+     That is why this world needs one accent step where the last needed
+     three, and why the pen can draw a 2px trace without a darker stand-in. */
+  --accent-color: #4954bc;
+  --tp-pen: #4954bc;             /* the ink: traces, fills, active route */
+  --tp-pen-deep: #38429a;        /* pressed and hover, and ink on a wash */
+  --tp-pen-wash: #eff0fb;        /* the pen as a field */
+  --tp-pen-field: #e2e5f7;       /* one step in: a selected row or date */
+  --tp-pen-rule: #c5caea;        /* the edge of a pen-coloured field */
+  --tp-on-pen: #ffffff;          /* 6.4:1 on the pen */
 
-  /* --- Data series: charts draw from this ramp, never from stray hexes --
-     Five hues spread across the wheel, each clearing 3:1 on white so a line
-     or a bar stays visible. Mirrors PALETTE in constants.tsx. */
-  --tp-series-1: #12a877;        /* mint   — the brand measure */
-  --tp-series-2: #1d6fd8;        /* blue */
-  --tp-series-3: #58a3d0;        /* steel  — the recessive bulk measure */
-  --tp-series-4: #d97706;        /* amber */
-  --tp-series-5: #d91a43;        /* rose */
-  --tp-series-6: #0891b2;        /* cyan */
+  /* Retained names so existing markup keeps resolving. */
+  --tp-accent: var(--tp-pen);
+  --tp-accent-strong: var(--tp-pen-deep);
+  --tp-accent-ink: var(--tp-pen);
+  --tp-on-accent: var(--tp-on-pen);
+  --tp-accent-soft: var(--tp-pen-wash);
+  --tp-accent-field: var(--tp-pen-field);
+  --tp-accent-rule: var(--tp-pen-rule);
+  --header-blue: var(--tp-ink);
 
-  /* --- Radius ---------------------------------------------------------- */
-  --tp-r-xs: 5px;
-  --tp-r-sm: 7px;
-  --tp-r-md: 9px;
-  --tp-r-lg: 12px;
-  --tp-r-xl: 16px;
+  /* --- Semantic state --------------------------------------------------
+     These steps are deliberately NOT series colours. A status never appears
+     as a mark on a plot, and it never travels on colour alone: a delta
+     carries its arrow, a chip carries its dot and its word. */
+  --tp-positive: #0f7a52;
+  --tp-positive-bright: #19a86d;   /* the lit end of a completed fill */
+  --tp-positive-soft: #e8f6f0;
+  --tp-positive-rule: #a9dcc6;
+  --tp-warning: #b4530a;
+  --tp-warning-soft: #fdf3e7;
+  --tp-warning-rule: #f3d2a8;
+  --tp-danger: #c0203c;
+  --tp-danger-soft: #fdf1f3;
+  --tp-danger-rule: #f2c2cc;
+  --tp-info: var(--tp-pen);
+  --tp-info-soft: var(--tp-pen-wash);
+  --tp-info-rule: var(--tp-pen-rule);
+
+  /* --- Data ramp -------------------------------------------------------
+     Validated with the data-viz palette validator at --pairs all, because
+     the daily trace puts all five on one plot and the top-affiliate view
+     splits them into small multiples; both make every pair adjacent.
+     Worst pair ΔE 10.3 (deutan), 18.9 under normal vision — above the 8
+     target and the 15 floor. Changing any step means re-running that
+     script, not judging it by eye. Mirrors PALETTE in constants.tsx. */
+  --tp-series-1: #35802b;        /* green  — signups */
+  --tp-series-2: #0e9ac2;        /* cyan   — clicks, the recessive bulk */
+  --tp-series-3: #de4a6b;        /* rose   — installs */
+  --tp-series-4: #4954bc;        /* indigo — revenue, drawn with the pen */
+  --tp-series-5: #dfa022;        /* amber  — payouts */
+  --tp-series-6: #7a5bbf;        /* violet — spare slot */
+
+  /* --- Radius: paper is cut, not moulded ------------------------------- */
+  --tp-r-xs: 2px;
+  --tp-r-sm: 3px;
+  --tp-r-md: 4px;
+  --tp-r-lg: 4px;
+  --tp-r-xl: 5px;
   --tp-r-pill: 999px;
-  /* Retained names from the previous scale. */
   --tp-radius-control: var(--tp-r-sm);
   --tp-radius-popup: var(--tp-r-md);
 
-  /* --- Elevation: every shadow carries an offset and a soft blur -------
-     Tinted with the ink's own cast so a raised sheet sits on the canvas
-     instead of being smudged with neutral grey. */
-  --tp-elev-1:
-    0 1px 1px rgba(15, 22, 19, 0.035),
-    0 2px 6px -1px rgba(15, 22, 19, 0.055);
-  --tp-elev-2:
-    0 1px 2px rgba(15, 22, 19, 0.05),
-    0 6px 16px -4px rgba(15, 22, 19, 0.1);
-  --tp-elev-3:
-    0 2px 4px -1px rgba(15, 22, 19, 0.06),
-    0 18px 40px -10px rgba(15, 22, 19, 0.16);
-  --tp-elev-4:
-    0 4px 8px -2px rgba(15, 22, 19, 0.08),
-    0 32px 64px -16px rgba(15, 22, 19, 0.22);
+  /* --- Elevation -------------------------------------------------------
+     Paper on a board barely lifts. Depth here is carried by the opaque
+     sheet masking the lattice, not by shadow; the shadows below exist only
+     so an overlay reads as interrupting. Each keeps an offset and a blur. */
+  --tp-elev-1: 0 1px 2px rgba(21, 23, 31, 0.04), 0 1px 1px rgba(21, 23, 31, 0.03);
+  --tp-elev-2: 0 1px 2px rgba(21, 23, 31, 0.05), 0 2px 6px -2px rgba(21, 23, 31, 0.07);
+  --tp-elev-3: 0 2px 4px -1px rgba(21, 23, 31, 0.07), 0 14px 32px -10px rgba(21, 23, 31, 0.16);
+  --tp-elev-4: 0 4px 8px -2px rgba(21, 23, 31, 0.09), 0 28px 56px -16px rgba(21, 23, 31, 0.22);
 
-  /* --- Space: 4-unit base --------------------------------------------- */
-  --tp-s1: 4px;
-  --tp-s2: 8px;
-  --tp-s3: 12px;
-  --tp-s4: 16px;
-  --tp-s5: 20px;
-  --tp-s6: 24px;
-  --tp-s8: 32px;
-  --tp-s10: 40px;
-  --tp-s12: 48px;
-  --tp-s16: 64px;
+  /* --- Space -----------------------------------------------------------
+     Four steps and nothing between them: 4 for what is touching, 8 for what
+     belongs together, 16 for what is merely near, 32 for what is separate.
+     The older names stay as aliases onto the nearest step, so markup that
+     still asks for 12 or 20 cannot reintroduce a fifth value. */
+  --tp-space-1: 4px;
+  --tp-space-2: 8px;
+  --tp-space-3: 16px;
+  --tp-space-4: 32px;
 
-  /* --- Motion ---------------------------------------------------------- */
-  --tp-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --tp-dur: 180ms;
-  --tp-dur-fast: 120ms;
+  --tp-s1: var(--tp-space-1);    /* 4 */
+  --tp-s2: var(--tp-space-2);    /* 8 */
+  --tp-s3: var(--tp-space-2);    /* was 12 */
+  --tp-s4: var(--tp-space-3);    /* 16 */
+  --tp-s5: var(--tp-space-3);    /* was 20 */
+  --tp-s6: var(--tp-space-3);    /* was 24 */
+  --tp-s8: var(--tp-space-4);    /* 32 */
+  --tp-s10: var(--tp-space-4);   /* was 40 */
+  --tp-s12: var(--tp-space-4);   /* was 48 */
+  --tp-s16: 64px;                /* page foot only */
+
+  /* --- Motion ----------------------------------------------------------
+     A pen either is on the paper or it is not. Transitions are short and
+     flat; nothing eases in over a third of a second. */
+  --tp-ease: cubic-bezier(0.2, 0, 0, 1);
+  --tp-dur: 140ms;
+  --tp-dur-fast: 90ms;
 
   /* --- Type ------------------------------------------------------------
-     Inter, served with its optical-size axis so large text tightens on its
-     own. Hierarchy is built from size, colour and spacing rather than from
-     heavy weights: nothing goes above 600 except a figure, controls sit at
-     500. Inter is wider and larger on the body than the face it replaced,
-     so every tracking step below is a notch looser than before. */
-  --tp-font: "Inter", "Inter var", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
-  --tp-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+     Archivo is the lettering: a grotesque with the upright, slightly
+     condensed character of technical drawing annotation, which keeps dense
+     labels legible without shouting. Archivo Narrow carries column heads,
+     where horizontal room is scarcest.
+
+     Every FIGURE is Roboto Mono. That is not a technical costume: this
+     product's one hard requirement is that a column of numbers can be
+     compared digit by digit, and a monospaced face guarantees the columns
+     register whatever the font stack resolves to. */
+  --tp-font: "Archivo", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --tp-font-narrow: "Archivo Narrow", "Archivo", system-ui, sans-serif;
+  --tp-font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --tp-w-regular: 400;
   --tp-w-medium: 500;   /* every control label */
   --tp-w-strong: 600;   /* headings, table labels, key data */
@@ -153,29 +186,26 @@
 
 html {
   min-width: 320px;
-  background: var(--tp-canvas);
+  background: var(--tp-paper);
   -webkit-text-size-adjust: 100%;
 }
 
 body {
   min-width: 320px;
   margin: 0;
-  background: var(--tp-canvas);
+  background-color: var(--tp-paper);
   color: var(--tp-ink-2);
   font-family: var(--tp-font);
-  /* Inter ships an optical-size axis: let large text tighten on its own
-     rather than hand-tracking every heading. */
-  font-optical-sizing: auto;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: var(--tp-w-regular);
   line-height: 1.5;
-  letter-spacing: -0.006em;
+  letter-spacing: -0.004em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Controls speak at medium. The old build shouted every label in bold, which
-   flattened hierarchy — a button is not more important than a heading. */
+/* Controls speak at medium. Hierarchy comes from size, colour and position;
+   nothing in the interface is set above 600. */
 main button,
 .app-dialog button,
 .app-popover button,
@@ -183,8 +213,7 @@ main button,
 .discussion-sidebar button,
 .trendline-sidebar button { font-weight: var(--tp-w-medium); }
 
-/* The few controls that stay a step up, restated past the rule above. */
-main button.tp-chip, .tp-filter-menu button.tp-chip { font-weight: 550; }
+main button.tp-chip, .tp-filter-menu button.tp-chip { font-weight: var(--tp-w-medium); }
 main button.workspace-tab { font-weight: var(--tp-w-medium); }
 main button.workspace-tab.is-active { font-weight: var(--tp-w-strong); }
 
@@ -196,18 +225,31 @@ button, a, input, select, textarea, label, summary {
     background-color var(--tp-dur) var(--tp-ease),
     border-color var(--tp-dur) var(--tp-ease),
     box-shadow var(--tp-dur) var(--tp-ease),
-    opacity var(--tp-dur) var(--tp-ease),
-    transform var(--tp-dur) var(--tp-ease);
+    opacity var(--tp-dur) var(--tp-ease);
 }
 
 :focus-visible {
-  outline: 2px solid var(--tp-accent-ink);
+  outline: 2px solid var(--tp-pen);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
-/* Figures line up in columns. */
-table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
+/* --- Figures -----------------------------------------------------------
+   Every number in the product is monospaced and tabular, so a column reads
+   as a column. `.tp-num` is the explicit handle; the selectors beside it
+   catch the figures already marked up as right-aligned cells. */
+.tp-num,
+main table td[class*="text-right"],
+main table th[class*="text-right"],
+main table td.tp-figure,
+.tp-figure {
+  font-family: var(--tp-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.02em;
+}
+
+table { font-variant-numeric: tabular-nums; }
 
 /* ==========================================================================
    App shell and top bar
@@ -218,256 +260,318 @@ table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
   flex-direction: column;
   min-height: 100vh;
   overflow-x: clip;
-  background: var(--tp-canvas);
 }
 
+/* The bar is a masthead ruled off the board, not a floating panel: opaque
+   paper, one hairline under it, no shadow. Depth in this world comes from
+   paper covering the lattice. */
 .app-bar {
   position: sticky;
   top: 0;
   z-index: 60;
   border-bottom: 1px solid var(--tp-canvas-edge);
   background: var(--tp-surface);
-  box-shadow: var(--tp-elev-1);
 }
 
-/* Three tracks, and the outer two are equal, so the middle one parks the
-   route switcher on the bar's true centre no matter how wide the brand runs.
-   A flex row with space-between would centre it only by coincidence. */
 .app-bar-inner {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--tp-s6);
-  width: min(100% - 40px, 1560px);
+  width: min(100% - 40px, 1680px);
   margin: 0 auto;
-  padding: var(--tp-s3) 0;
+  padding: 10px 0;
 }
 
 /* The right-hand track is empty on purpose: it balances the brand so the
-   switcher sits on the centre line rather than being pushed off it. */
+   switcher sits on the bar's centre line rather than being pushed off it. */
 .app-bar-trailing { min-width: 0; }
 
 .app-brand { display: flex; align-items: baseline; gap: var(--tp-s2); min-width: 0; }
 .app-brand h1 {
   margin: 0;
   color: var(--tp-ink);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: var(--tp-w-strong);
-  letter-spacing: -0.018em;
+  letter-spacing: -0.015em;
   line-height: 1.1;
   white-space: nowrap;
 }
 .app-brand p {
   margin: 0;
   color: var(--tp-meta);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: var(--tp-w-regular);
   white-space: nowrap;
 }
-.app-brand-sep { color: var(--tp-faint); font-size: 13px; }
+.app-brand-sep { color: var(--tp-faint); font-size: 12.5px; }
 
-/* --- Primary navigation: a segmented capsule on the bar's centre -------
-   The three workspaces are not three links to three pages; they are three
-   states of one workspace, and only one can be on at a time. An underlined
-   text rail says "links". A track holding one raised white sheet says
-   "switch", which is what this control actually does. The track is sunken so
-   the selected segment reads as lifted out of it, matching the canvas-to-
-   sheet ladder the rest of the product is built on. */
+/* --- Primary navigation: a channel selector ----------------------------
+   One instrument, several channels, one live at a time. The selected
+   segment is filled with the pen and carries white type — which this ink
+   can do at 6.4:1, and the mint it replaced could not. A ruled frame with
+   hairline dividers reads as one control rather than three buttons. */
 .app-navigation-list {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   max-width: 100%;
-  padding: 3px;
-  border: 1px solid var(--tp-rule-panel);
-  border-radius: var(--tp-r-pill);
-  background: var(--tp-surface-sunken);
+  border: 1px solid var(--tp-rule-strong);
+  border-radius: var(--tp-r-sm);
+  background: var(--tp-surface);
+  overflow: hidden;
 }
 
 .app-navigation-item {
   display: inline-flex;
   align-items: center;
-  height: 32px;
+  height: 30px;
   padding: 0 var(--tp-s4);
-  border-radius: var(--tp-r-pill);
+  border-right: 1px solid var(--tp-rule-strong);
   color: var(--tp-muted);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: var(--tp-w-medium);
   line-height: 1;
-  letter-spacing: -0.006em;
+  letter-spacing: -0.004em;
   white-space: nowrap;
 }
 
-/* The mint dot grows out of nothing rather than fading in place, so the
-   switch reads as the selection travelling to this segment. */
-.app-navigation-item::before {
-  width: 0;
-  height: 5px;
-  border-radius: var(--tp-r-pill);
-  background: var(--tp-accent-strong);
-  content: "";
-  opacity: 0;
-  transition:
-    width var(--tp-dur) var(--tp-ease),
-    margin-right var(--tp-dur) var(--tp-ease),
-    opacity var(--tp-dur) var(--tp-ease);
-}
-
-.app-navigation-item:hover { color: var(--tp-ink); }
+.app-navigation-item:last-child { border-right: 0; }
+.app-navigation-item:hover:not(.is-active) { background: var(--tp-surface-hover); color: var(--tp-ink); }
 
 .app-navigation-item.is-active {
-  background: var(--tp-surface);
-  box-shadow: var(--tp-elev-1);
-  color: var(--tp-ink);
+  background: var(--tp-pen);
+  color: var(--tp-on-pen);
   font-weight: var(--tp-w-strong);
 }
 
-.app-navigation-item.is-active::before {
-  width: 5px;
-  margin-right: 7px;
-  opacity: 1;
-}
+.app-navigation-item:focus-visible { outline: 2px solid var(--tp-pen); outline-offset: -2px; }
 
-.app-navigation-item:focus-visible {
-  outline: 2px solid var(--tp-accent-ink);
-  outline-offset: 2px;
-}
-
-/* --- Workspace sub-navigation: still a quiet underlined rail -----------
-   The sub-rail stays underlined on purpose. Two capsules stacked would read
-   as one control nested in another; the rail is clearly subordinate. */
+/* --- Workspace sub-navigation: a pen underline ------------------------
+   Subordinate to the channel selector above it, so it keeps the quieter
+   underlined form rather than a second framed control. */
 .workspace-tabs {
   display: flex;
   align-items: center;
-  gap: var(--tp-s6);
-  width: fit-content;
-  max-width: 100%;
+  gap: var(--tp-s5);
+  border-bottom: 1px solid var(--tp-canvas-edge);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.workspace-tabs::-webkit-scrollbar { display: none; }
 
 .workspace-tab {
   position: relative;
-  padding: 0 2px 13px;
+  padding: 0 0 10px;
+  border: 0;
+  background: none;
   color: var(--tp-muted);
-  font-size: 13.5px;
-  font-weight: var(--tp-w-medium);
-  line-height: 1.2;
-  letter-spacing: -0.006em;
+  font-size: 13px;
+  letter-spacing: -0.004em;
   white-space: nowrap;
+  cursor: pointer;
 }
-
 .workspace-tab:hover { color: var(--tp-ink); }
 
 .workspace-tab::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: transparent;
   content: "";
-  transform: scaleX(0.35);
-  transform-origin: center;
+  position: absolute;
+  inset: auto 0 -1px;
+  height: 2px;
+  background: transparent;
+  transform: scaleX(0);
   transition: transform var(--tp-dur) var(--tp-ease), background-color var(--tp-dur) var(--tp-ease);
 }
-
 .workspace-tab.is-active { color: var(--tp-ink); }
-.workspace-tab.is-active::after { background: var(--tp-accent-strong); transform: scaleX(1); }
+.workspace-tab.is-active::after { background: var(--tp-pen); transform: scaleX(1); }
 .workspace-tab:focus-visible { outline: 0; }
-.workspace-tab:focus-visible::after { background: var(--tp-accent-strong); transform: scaleX(1); }
+.workspace-tab:focus-visible::after { background: var(--tp-pen); transform: scaleX(1); }
 
 /* ==========================================================================
-   Frame and workspace rhythm
+   Frame
    ========================================================================== */
 
 .app-frame {
-  width: min(100% - 40px, 1560px);
+  width: min(100% - 40px, 1680px);
   margin: 0 auto;
-  padding: var(--tp-s8) 0 var(--tp-s16);
+  padding: var(--tp-s6) 0 var(--tp-s16);
 }
 
-.workspace-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--tp-s6);
-  animation: workspace-enter var(--tp-dur) var(--tp-ease) both;
-}
+.workspace-page { display: flex; flex-direction: column; gap: var(--tp-space-3); }
 
 .workspace-context { display: flex; align-items: center; min-height: 20px; }
-.workspace-crumbs { display: flex; align-items: center; gap: var(--tp-s2); color: var(--tp-muted); font-size: 13px; font-weight: 500; }
-.workspace-root-link:hover, .workspace-current-link:hover { color: var(--tp-accent-ink); }
+.workspace-crumbs { display: flex; align-items: center; gap: var(--tp-s2); color: var(--tp-muted); font-size: 12.5px; font-weight: 500; }
+.workspace-root-link:hover, .workspace-current-link:hover { color: var(--tp-pen); }
 .workspace-current-link.is-current, .workspace-current-title { color: var(--tp-ink); font-weight: var(--tp-w-strong); }
 .workspace-current-title { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-slash { color: var(--tp-faint); }
 
-/* Sub-navigation sits on the canvas as a quiet rail above the sheets. */
-.workspace-tabs {
-  gap: var(--tp-s6);
-  margin: 0 0 var(--tp-s1);
-  border-bottom: 1px solid var(--tp-canvas-edge);
-  width: 100%;
-}
-.workspace-tabs .workspace-tab { padding-bottom: 11px; }
+.workspace-tabs .workspace-tab { padding-bottom: 10px; }
 
-.workspace-view { display: flex; flex-direction: column; gap: var(--tp-s6); animation: workspace-enter var(--tp-dur) var(--tp-ease) both; }
+.workspace-view { display: flex; flex-direction: column; gap: var(--tp-space-3); animation: workspace-enter var(--tp-dur) var(--tp-ease) both; }
 
 .workspace-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--tp-s6); }
 
 .workspace-heading h2, .workspace-page > h2 {
   margin: 0;
   color: var(--tp-ink) !important;
-  font-size: 22px !important;
+  font-size: 19px !important;
   font-weight: var(--tp-w-strong) !important;
-  letter-spacing: -0.021em;
+  letter-spacing: -0.018em;
   line-height: 1.2;
 }
 
 /* ==========================================================================
-   Sheets — the white reading surface this app is built on
+   Sheets — opaque paper laid on the ruled board
    ========================================================================== */
 
 .card,
-.tp-sheet,
-.kpi-gauge {
+.tp-sheet {
   position: relative;
   border: 1px solid var(--tp-rule-panel);
-  border-radius: var(--tp-r-xl);
+  border-radius: var(--tp-r-md);
   background: var(--tp-surface);
   box-shadow: var(--tp-elev-1);
 }
 
+/* --- Progress fills ---------------------------------------------------
+   A bar is a quantity, so it takes a gradient along its own axis: darker at
+   the origin, lighter at the head, which reads as travel rather than as a
+   flat block. Colour carries the state and nothing else does: blue while a
+   thing is still running, green once it is finished. A finished bar that
+   stays blue makes the reader check the number to find out. */
+.tp-fill-running {
+  background-image: linear-gradient(90deg, var(--tp-pen-deep), var(--tp-pen));
+}
+.tp-fill-done {
+  background-image: linear-gradient(90deg, var(--tp-positive), var(--tp-positive-bright));
+}
+
+/* A section heading sits above its own container rather than inside it, so
+   the container stays a clean block of content and the eye can count the
+   sections down the page. */
+.tp-section { display: flex; flex-direction: column; gap: var(--tp-space-2); }
+.tp-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--tp-space-3); }
+.tp-section-head h3 { margin: 0; color: var(--tp-ink); font-size: 14px; font-weight: var(--tp-w-strong); letter-spacing: -0.01em; }
+.tp-section-head-meta { color: var(--tp-meta); font-size: 11.5px; }
+
 /* A sheet whose content reaches its own edge: tables, feeds, media. */
 .tp-sheet-flush { overflow: hidden; padding: 0; }
 
-/* The header strip of a flush sheet. */
+/* The header strip of a flush sheet — a ruled channel label. */
 .tp-sheet-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--tp-s4);
-  padding: var(--tp-s4) var(--tp-s5);
+  padding: 11px var(--tp-s4);
   border-bottom: 1px solid var(--tp-rule);
 }
 .tp-sheet-head h2, .tp-sheet-head h3 {
   margin: 0;
   color: var(--tp-ink);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: var(--tp-w-strong);
-  letter-spacing: -0.012em;
+  letter-spacing: -0.01em;
 }
-.tp-sheet-head-meta { color: var(--tp-meta); font-size: 12px; font-weight: var(--tp-w-regular); }
+.tp-sheet-head-meta { color: var(--tp-meta); font-size: 11.5px; font-weight: var(--tp-w-regular); }
 
-/* Section titles inside a sheet. */
 .card h3, .tp-sheet h3 {
   color: var(--tp-ink) !important;
   font-weight: var(--tp-w-strong) !important;
-  letter-spacing: -0.012em;
+  letter-spacing: -0.01em;
 }
 
 /* A quiet recessed block for a nested group. Never a second full sheet. */
 .tp-inset {
   border: 1px solid var(--tp-rule);
-  border-radius: var(--tp-r-lg);
+  border-radius: var(--tp-r-sm);
   background: var(--tp-surface-sunken);
+}
+
+/* --- The readout strip -------------------------------------------------
+   The five headline measures are one continuous instrument, divided by
+   hairlines — not five rounded cards in a grid. Cards would put four
+   borders and four shadows between numbers that exist to be compared;
+   a shared baseline and a single rule between them is what lets the eye
+   run across the row. */
+.tp-readout-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  border: 1px solid var(--tp-rule-panel);
+  border-radius: var(--tp-r-md);
+  background: var(--tp-surface);
+  box-shadow: var(--tp-elev-1);
+  overflow: hidden;
+}
+
+.tp-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 13px var(--tp-s4) 14px;
+  border-right: 1px solid var(--tp-rule);
+}
+.tp-readout:last-child { border-right: 0; }
+
+.tp-readout-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--tp-muted);
+  font-family: var(--tp-font-narrow);
+  font-size: 12px;
+  font-weight: var(--tp-w-strong);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* The measure's series colour rides on a 2px rule beside its name — the
+   pen stroke that identifies the channel. Text never wears the colour. */
+.tp-readout-key {
+  width: 14px;
+  height: 2px;
+  flex: none;
+  border-radius: var(--tp-r-pill);
+  background: var(--tp-faint);
+}
+
+.tp-readout-value {
+  color: var(--tp-ink);
+  font-size: 26px;
+  font-weight: var(--tp-w-strong);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.tp-readout-foot { display: flex; align-items: baseline; gap: 6px; min-height: 17px; }
+
+@media (max-width: 1180px) {
+  .tp-readout-strip { grid-auto-flow: row; grid-template-columns: repeat(2, 1fr); }
+  .tp-readout:nth-child(2n) { border-right: 0; }
+  .tp-readout { border-bottom: 1px solid var(--tp-rule); }
+}
+@media (max-width: 560px) {
+  .tp-readout-strip { grid-template-columns: 1fr; }
+  .tp-readout { border-right: 0; }
+}
+
+/* --- Plot frame --------------------------------------------------------
+   The one place the board's lattice is deliberately left visible: a plot
+   is the thing being measured, so it sits on the ruled ground rather than
+   on blank paper. */
+/* The plot is its own white surface. It used to be transparent so a ruled
+   page could show through it; with that page gone, transparent read as a
+   hole in the layout. Its gridlines come from the chart itself. */
+.tp-plot {
+  border: 1px solid var(--tp-rule-panel);
+  border-radius: var(--tp-r-md);
+  background: var(--tp-surface);
+  box-shadow: var(--tp-elev-1);
+  padding: var(--tp-space-2) var(--tp-space-2) var(--tp-space-1);
 }
 
 /* ==========================================================================
@@ -478,26 +582,28 @@ table, .tp-num, [class*="text-right"] { font-variant-numeric: tabular-nums; }
 
 main table { width: 100%; border-collapse: collapse; }
 
+/* Column heads take the narrow face: this is where horizontal room runs
+   out first, and a condensed label buys a wider data column. */
 main table thead th {
   position: relative;
-  padding: 11px var(--tp-s4) 10px;
-  border-bottom: 1px solid var(--tp-rule);
+  padding: 8px var(--tp-space-3);
+  border-bottom: 1px solid var(--tp-rule-panel);
   background: var(--tp-surface-sunken);
   color: var(--tp-muted) !important;
-  font-size: 11.5px !important;
+  font-family: var(--tp-font-narrow);
+  font-size: 12px !important;
   font-weight: var(--tp-w-strong) !important;
-  letter-spacing: 0.012em;
+  letter-spacing: 0.01em;
   text-transform: none !important;
   white-space: nowrap;
   vertical-align: middle;
 }
 
-main table thead th:first-child { border-top-left-radius: 0; }
-
 main table tbody td {
-  padding: var(--tp-s3) var(--tp-s4);
+  padding: 8px var(--tp-space-3);
   border-top: 1px solid var(--tp-rule);
   color: var(--tp-ink-2);
+  font-size: 13px;
   vertical-align: middle;
 }
 
@@ -507,17 +613,23 @@ main table tbody td {
 main table tbody td.tp-cell-rows { vertical-align: top; }
 
 main table tbody tr:first-child td { border-top: 0; }
+
+/* The lattice is 5 minor cells to a major one; the rows take the same count.
+   Every fifth row carries the panel-weight rule instead of the hairline, so a
+   long table has somewhere for the eye to land when it tracks one row across
+   a wide set of columns. */
+main table tbody tr:nth-child(5n + 1) > td { border-top-color: var(--tp-rule-panel); }
 main table tbody tr { transition: background-color var(--tp-dur-fast) var(--tp-ease); }
 main table tbody tr:hover > td { background: var(--tp-surface-hover); }
 
 /* A table nested inside an expanded row is a detail list, not a second table. */
 main table table thead th {
-  padding: var(--tp-s2) var(--tp-s3);
-  border-bottom: 1px solid var(--tp-accent-rule);
+  padding: 6px var(--tp-s2);
+  border-bottom: 1px solid var(--tp-pen-rule);
   background: transparent;
   font-size: 11px !important;
 }
-main table table tbody td { padding: var(--tp-s2) var(--tp-s3); border-top: 1px solid var(--tp-rule); }
+main table table tbody td { padding: 6px var(--tp-s2); border-top: 1px solid var(--tp-rule); }
 main table table tbody tr:hover > td { background: transparent; }
 
 /* ==========================================================================
@@ -591,15 +703,14 @@ main button[class*="bg-slate-800"]:hover:not(:disabled),
 main button[class*="bg-[var(--tp-ink)]"]:hover:not(:disabled),
 .app-dialog button[class*="bg-[var(--accent-color)]"]:hover:not(:disabled),
 .app-popover button[class*="bg-[var(--accent-color)]"]:hover:not(:disabled) {
-  background: var(--tp-accent-strong) !important;
-  box-shadow: var(--tp-elev-2) !important;
-  transform: translateY(-1px);
+  background: var(--tp-pen-deep) !important;
+  box-shadow: var(--tp-elev-1) !important;
 }
 
 main button:disabled, .app-dialog button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
 
 /* --- Filter row: a working strip on its own sheet --------------------- */
-.affiliate-filters, .influencer-filters { --tp-filter-h: 40px; }
+.affiliate-filters, .influencer-filters { --tp-filter-h: 34px; }
 
 main .affiliate-filters .relative > button.filter-control[aria-expanded],
 main .influencer-filters .relative > button.filter-control[aria-expanded],
@@ -698,6 +809,18 @@ main .influencer-filters .filter-menu input { border-radius: var(--tp-r-xs) !imp
 .tp-chip-warning { border-color: var(--tp-warning-rule); background: var(--tp-warning-soft); color: var(--tp-warning); }
 .tp-chip-info { border-color: var(--tp-info-rule); background: var(--tp-info-soft); color: var(--tp-info); }
 .tp-chip-accent { border-color: var(--tp-accent-rule); background: var(--tp-accent-soft); color: var(--tp-accent-ink); }
+
+/* --- The aired ladder --------------------------------------------------
+   One rung per video delivered, warming from yellow through orange to
+   violet as a deal approaches its agreed count, so a column of them reads
+   as progress at a glance. Every step keeps dark text on a pale field, so
+   the hue carries the position and the contrast never depends on it. */
+.tp-chip-aired-1   { border-color: #f3dc9b; background: #fff7e0; color: #8a5a00; }
+.tp-chip-aired-2   { border-color: #f7cba5; background: #fff0e4; color: #9c4708; }
+.tp-chip-aired-3   { border-color: #f6c5ba; background: #ffeeeb; color: #a93624; }
+.tp-chip-aired-4   { border-color: #f2c0d6; background: #fdedf4; color: #9c2a64; }
+.tp-chip-aired-5   { border-color: #d8c6f3; background: #f3edfd; color: #6a3da2; }
+.tp-chip-aired-all { border-color: #cab4f0; background: #ece3fc; color: #582d9e; }
 button.tp-chip { cursor: pointer; }
 button.tp-chip:hover { box-shadow: var(--tp-elev-1); }
 
@@ -727,7 +850,7 @@ button.tp-chip:hover { box-shadow: var(--tp-elev-1); }
   padding: var(--tp-s16) var(--tp-s6);
   text-align: center;
 }
-.tp-empty-title { color: var(--tp-ink); font-size: 15px; font-weight: var(--tp-w-strong); letter-spacing: -0.012em; }
+.tp-empty-title { color: var(--tp-ink); font-size: 14px; font-weight: var(--tp-w-strong); letter-spacing: -0.01em; }
 .tp-empty-body { max-width: 34ch; color: var(--tp-muted); font-size: 13px; line-height: 1.55; }
 
 .tp-skeleton {
@@ -881,10 +1004,9 @@ body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
   cursor: pointer;
 }
 .tp-shotdock-trigger:hover {
-  border-color: var(--tp-accent-rule);
-  color: var(--tp-accent-ink);
-  transform: translateY(-1px);
-  box-shadow: var(--tp-elev-3), 0 0 0 4px var(--tp-accent-soft);
+  border-color: var(--tp-pen-rule);
+  color: var(--tp-pen);
+  box-shadow: var(--tp-elev-3), 0 0 0 3px var(--tp-pen-wash);
 }
 .tp-shotdock-trigger:active { transform: translateY(0); }
 
@@ -916,7 +1038,7 @@ body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
 }
 
 @keyframes tp-shotdock-in {
-  from { opacity: 0; transform: translateY(5px); }
+  from { opacity: 0; transform: translateY(3px); }
   to   { opacity: 1; transform: none; }
 }
 
@@ -1050,18 +1172,17 @@ body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
    Page-level adjustments
    ========================================================================== */
 
-.influencer-performance, .influencer-progress, .influencer-proposal, .kpi-runrate {
+.influencer-performance, .influencer-progress, .influencer-proposal {
   display: flex;
   flex-direction: column;
   gap: var(--tp-s6);
 }
 
-.kpi-gauge { min-width: 0; }
 
 .tab-content-active { animation: workspace-enter var(--tp-dur) var(--tp-ease) both; }
 
 @keyframes workspace-enter {
-  from { opacity: 0; transform: translateY(5px); }
+  from { opacity: 0; transform: translateY(3px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -1086,7 +1207,7 @@ body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
 }
 
 @media (max-width: 700px) {
-  .app-bar-inner, .app-frame { width: min(100% - 28px, 1560px); }
+  .app-bar-inner, .app-frame { width: min(100% - 28px, 1680px); }
   .app-frame { padding: var(--tp-s6) 0 var(--tp-s12); }
   .app-brand h1 { font-size: 16px; }
   .app-brand-sep, .app-brand p { display: none; }
@@ -1094,7 +1215,7 @@ body > div[class*="fixed"] > [class*="bg-white"][class*="rounded"] {
   .workspace-tabs::-webkit-scrollbar { display: none; }
   .workspace-heading { align-items: flex-start; flex-direction: column; gap: var(--tp-s4); }
   .workspace-page > h2, .workspace-heading h2 { font-size: 19px !important; }
-  .card, .tp-sheet, .kpi-gauge { border-radius: var(--tp-r-lg); }
+  .card, .tp-sheet { border-radius: var(--tp-r-sm); }
   main table tbody td { padding: var(--tp-s3) var(--tp-s3); }
   main table thead th { padding: 10px var(--tp-s3); }
   .discussion-bubble { max-width: 88%; }

@@ -192,7 +192,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
     return (
         <>
             {mentionQuery !== null && filteredMembers.length > 0 && (
-                <div className="absolute bottom-full left-5 right-5 mb-2 z-50 overflow-hidden rounded-2xl border border-[var(--tp-rule)] bg-white shadow-xl animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute bottom-full left-5 right-5 mb-2 z-50 overflow-hidden rounded-[4px] border border-[var(--tp-rule)] bg-white shadow-xl animate-in fade-in zoom-in-95 duration-150">
                     <div className="flex items-center gap-1 border-b border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] px-3 py-2 text-[11px] font-semibold text-[var(--tp-muted)]">
                         <AtSign className="h-3 w-3 text-[var(--tp-accent-ink)]" />
                         <span>Mention Team Member</span>
@@ -204,7 +204,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                                 type="button"
                                 onClick={() => insertMention(member)}
                                 onMouseEnter={() => setMentionIndex(idx)}
-                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors ${
+                                className={`flex w-full items-center justify-between rounded-[4px] px-3 py-2 text-left text-xs transition-colors ${
                                     mentionIndex === idx
                                         ? 'bg-[var(--tp-accent-soft)] font-semibold text-[var(--tp-accent-ink)]'
                                         : 'text-[var(--tp-ink-2)] hover:bg-[var(--tp-surface-sunken)]'
@@ -219,7 +219,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                                         <span className="block truncate text-[11px] text-[var(--tp-meta)]">{member.email}</span>
                                     </span>
                                 </span>
-                                <span className="rounded-md bg-[var(--tp-accent-soft)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--tp-accent-ink)]">
+                                <span className="rounded-[3px] bg-[var(--tp-accent-soft)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--tp-accent-ink)]">
                                     @{member.name.split(' ')[0]}
                                 </span>
                             </button>
@@ -237,7 +237,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                         title={label}
                         aria-label={label}
                         aria-pressed={active}
-                        className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
+                        className={`flex h-7 w-7 items-center justify-center rounded-[4px] transition-colors ${
                             active
                                 ? 'bg-[var(--tp-accent-field)] text-[var(--tp-accent-ink)]'
                                 : 'text-[var(--tp-muted)] hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink)]'
@@ -254,7 +254,7 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
                     onClick={onAttachClick}
                     title="Attach a screenshot or file"
                     aria-label="Attach a screenshot or file"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--tp-muted)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink)]"
+                    className="flex h-7 w-7 items-center justify-center rounded-[4px] text-[var(--tp-muted)] transition-colors hover:bg-[var(--tp-surface-hover)] hover:text-[var(--tp-ink)]"
                 >
                     <Paperclip className="h-3.5 w-3.5" />
                 </button>
@@ -265,13 +265,13 @@ const DiscussionComposer = forwardRef<DiscussionComposerHandle, Props>(({
             </div>
 
             <div className="flex items-end gap-2">
-                <div className="discussion-editor-shell max-h-[180px] min-h-[44px] w-full overflow-y-auto rounded-2xl border border-[var(--tp-rule)] bg-white px-4 py-2.5 text-xs transition-colors focus-within:border-[var(--accent-color)]">
+                <div className="discussion-editor-shell max-h-[180px] min-h-[44px] w-full overflow-y-auto rounded-[4px] border border-[var(--tp-rule)] bg-white px-4 py-2.5 text-xs transition-colors focus-within:border-[var(--accent-color)]">
                     <EditorContent editor={editor} />
                 </div>
                 <button
                     onClick={onSend}
                     disabled={!canSend}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-color)] text-[var(--tp-on-accent)] transition-all hover:bg-[var(--tp-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[4px] bg-[var(--accent-color)] text-[var(--tp-on-accent)] transition-all hover:bg-[var(--tp-accent-strong)] disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Send message"
                     title="Send message (Enter)"
                 >
