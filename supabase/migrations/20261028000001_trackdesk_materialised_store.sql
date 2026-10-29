@@ -274,14 +274,16 @@ begin
 
   merch as (
     select pc.k,
-           count(*) filter (where paying.ok)                             as paying,
-           count(*) filter (where paying.ok and pc.payout_count = 1)     as payout_one,
-           count(*) filter (where paying.ok and pc.payout_count between 2 and 3) as payout_le_three,
-           count(*) filter (where paying.ok and pc.payout_count > 3)     as payout_gt_three,
+           count(*) filter (where paying.ok)                                         as paying,
            count(*) filter (where coalesce(pc.install_in_period, false) or paying.ok) as referred,
            coalesce(avg(round(extract(epoch from (pc.latest_payout_at - pc.installed_at)) / 86400))
              filter (where paying.ok and pc.installed_at is not null
-                       and pc.latest_payout_at >= pc.installed_at), 0)   as avg_lifetime
+                       and pc.latest_payout_at >= pc.installed_at), 0)                as avg_lifetime,
+           -- The raw tenure of every paying merchant, not three pre-made
+           -- buckets. A payout count is a number of months subscribed, so the
+           -- dashboard reads it as a retention curve; bucketing it here would
+           -- throw away exactly the shape that curve is made of.
+           coalesce(array_agg(pc.payout_count) filter (where paying.ok), '{}')        as payout_counts
     from per_cust pc
     join periods p on p.k = pc.k
     cross join lateral (select pc.latest_payout_at is not null and pc.latest_payout_at >= p.f as ok) paying
@@ -355,17 +357,13 @@ begin
       where clicks >= 1 or installs >= 1 or revenue > 0
     ),
     'merchants', jsonb_build_object(
-      'totalReferredMerchants',     coalesce((select referred        from merch where k = 'cur'), 0),
-      'totalPayingMerchants',       coalesce((select paying          from merch where k = 'cur'), 0),
-      'payoutOneCount',             coalesce((select payout_one      from merch where k = 'cur'), 0),
-      'payoutLeThreeCount',         coalesce((select payout_le_three from merch where k = 'cur'), 0),
-      'payoutGtThreeCount',         coalesce((select payout_gt_three from merch where k = 'cur'), 0),
-      'avgLifetime',                coalesce((select avg_lifetime    from merch where k = 'cur'), 0),
-      'totalReferredMerchantsPrev', coalesce((select referred        from merch where k = 'prev'), 0),
-      'totalPayingMerchantsPrev',   coalesce((select paying          from merch where k = 'prev'), 0),
-      'payoutOneCountPrev',         coalesce((select payout_one      from merch where k = 'prev'), 0),
-      'payoutLeThreeCountPrev',     coalesce((select payout_le_three from merch where k = 'prev'), 0),
-      'payoutGtThreeCountPrev',     coalesce((select payout_gt_three from merch where k = 'prev'), 0)
+      'totalReferredMerchants',     coalesce((select referred     from merch where k = 'cur'), 0),
+      'totalPayingMerchants',       coalesce((select paying       from merch where k = 'cur'), 0),
+      'avgLifetime',                coalesce((select avg_lifetime from merch where k = 'cur'), 0),
+      'totalReferredMerchantsPrev', coalesce((select referred     from merch where k = 'prev'), 0),
+      'totalPayingMerchantsPrev',   coalesce((select paying       from merch where k = 'prev'), 0),
+      'payoutCounts',     to_jsonb(coalesce((select payout_counts from merch where k = 'cur'),  '{}'::bigint[])),
+      'payoutCountsPrev', to_jsonb(coalesce((select payout_counts from merch where k = 'prev'), '{}'::bigint[]))
     )
   ) into v_result;
 

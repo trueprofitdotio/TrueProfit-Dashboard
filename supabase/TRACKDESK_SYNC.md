@@ -39,26 +39,38 @@ faster when step 3 finishes.
 
 ## Rollout
 
-**1. Apply the migration**
+**1. Apply the migration — DONE (2026-10-29)**
+
+The tables, indexes, RLS policies, helpers and both RPCs are live. RLS is on
+with a SELECT-only policy for `anon`/`authenticated`, so the dashboard can read
+and only the service role can write. To recreate elsewhere, run
+`supabase db push`, or paste
+`migrations/20261028000001_trackdesk_materialised_store.sql` into the SQL
+editor. It is additive — it creates tables and functions and drops nothing.
+
+**2. Deploy the functions — td-sync DONE (2026-10-29)**
+
+`td-sync` is deployed with `verify_jwt: true` and answers 401 without a token,
+as it should. Still to do:
 
 ```bash
-supabase db push
+supabase secrets set TRACKDESK_API_KEY=<the Trackdesk key>
 ```
 
-Or paste `migrations/20261028000001_trackdesk_materialised_store.sql` into the
-SQL editor. It is additive — it creates tables and functions and drops nothing.
+`td-sync` cannot reach Trackdesk until that is set.
 
-**2. Deploy the functions**
+`td-webhook` is written but not deployed; it is only a latency optimisation,
+so it can wait until you are ready to configure the webhook on the Trackdesk
+side:
 
 ```bash
-supabase functions deploy td-sync
 supabase functions deploy td-webhook --no-verify-jwt
-supabase secrets set TRACKDESK_API_KEY=<the Trackdesk key>
 supabase secrets set TD_WEBHOOK_SECRET=<a long random string you generate>
 ```
 
-`td-webhook` needs `--no-verify-jwt` because Trackdesk cannot mint a Supabase
-JWT; the shared secret is what guards it instead.
+It needs `--no-verify-jwt` because Trackdesk cannot mint a Supabase JWT; the
+shared secret is what guards it instead, and the function refuses every request
+when no secret is configured.
 
 **3. Backfill**
 
