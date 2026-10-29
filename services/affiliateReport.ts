@@ -1,10 +1,7 @@
 import { supabaseClient } from './supabaseClient';
-import { fetchAffiliates, fetchClickReport, fetchConversionReport } from './trackdeskService';
 import {
     Affiliate,
     AffiliateReport,
-    ClickReportRow,
-    ConversionReportRow,
     DailyData,
     DateRange,
     MerchantOverview,
@@ -12,20 +9,25 @@ import {
     SummaryData,
     TopAffiliateData,
 } from '../types';
-import { getGmt7DateString, toGmt7EndOfDay } from '../utils/timeHelper';
+import { toGmt7EndOfDay } from '../utils/timeHelper';
 
 // ---------------------------------------------------------------------------
-// One report, two backends.
+// The affiliate report, read from the materialised Trackdesk store.
 //
-// The fast path asks Postgres for numbers that are already aggregated, so a
-// year-long range comes back as a few hundred rows instead of half a million.
-// The slow path is the original behaviour — crawl the Trackdesk API and add it
-// up in the browser — kept so the dashboard keeps working on a database where
-// the materialised store has not been created or filled yet.
+// Postgres returns numbers that are already aggregated, so a year-long range
+// comes back as a few hundred rows rather than half a million.
 //
-// Both produce the same shape, so nothing above this line has to know which
-// one answered.
+// This used to carry a second backend as well: crawl the Trackdesk API from
+// the browser and add it up in JS. That existed to keep the dashboard working
+// while the store was being built, and it is gone now that the store is the
+// only source — along with the edge-function proxy it called and the API key
+// that had to ship to the browser for it.
 // ---------------------------------------------------------------------------
+
+/* Named once so the message is the same wherever the store is not ready, and
+   so it points at the thing to go and look at. */
+const STORE_NOT_SYNCED =
+    'The Trackdesk store has not finished syncing. Check td_sync_state in Supabase, and that the td-sync schedule is running.';
 
 const KOL_TIERS = new Set(['KOL (Old Offer)', 'KOL (New Offer)', 'Standard']);
 
@@ -66,11 +68,10 @@ const resolveScope = ({ tier, selectedAccountIds, allAffiliates }: ReportParams)
 
 /* Is the store actually filled?
 
-   A missing RPC throws and falls through on its own, but a store that exists
-   and has not been backfilled yet is worse: the RPC answers successfully with
-   zeroes, which are indistinguishable from a genuinely quiet range. So the
-   sync watermarks are checked once per session, and anything short of a
-   completed affiliates-and-conversions sync keeps the whole app on the API. */
+   An unsynced store is worse than a missing one: the RPC answers successfully
+   with zeroes, and zeroes are indistinguishable from a genuinely quiet range.
+   The sync watermarks are checked once per session so that state surfaces as
+   an error naming the cause, rather than as a dashboard full of noughts. */
 let storeReadyPromise: Promise<boolean> | null = null;
 
 function isStoreReady(): Promise<boolean> {
@@ -115,29 +116,23 @@ export function fetchAffiliateDirectory(): Promise<Affiliate[]> {
 }
 
 async function loadAffiliateDirectory(): Promise<Affiliate[]> {
-    try {
-        if (!(await isStoreReady())) throw new Error('store not ready');
-        const { data, error } = await supabaseClient
-            .from('td_affiliates')
-            .select('public_id, account_id, name, email, tier_name, registered_at')
-            .order('name');
+    if (!(await isStoreReady())) throw new Error(STORE_NOT_SYNCED);
 
-        if (!error && data && data.length > 0) {
-            return (data as Record<string, string>[]).map(row => ({
-                accountId: row.account_id,
-                publicId: row.public_id,
-                name: row.name,
-                email: row.email,
-                tierName: row.tier_name,
-                registeredAt: row.registered_at,
-            }));
-        }
-    } catch {
-        // Store not ready — fall through to the API.
-    }
+    const { data, error } = await supabaseClient
+        .from('td_affiliates')
+        .select('public_id, account_id, name, email, tier_name, registered_at')
+        .order('name');
 
-    const { affiliates } = await fetchAffiliates();
-    return affiliates.sort((a, b) => a.name.localeCompare(b.name));
+    if (error) throw new Error(`Could not read the affiliate list: ${error.message}`);
+
+    return (data as Record<string, string>[] ?? []).map(row => ({
+        accountId: row.account_id,
+        publicId: row.public_id,
+        name: row.name,
+        email: row.email,
+        tierName: row.tier_name,
+        registeredAt: row.registered_at,
+    }));
 }
 
 // --- Fast path -------------------------------------------------------------
@@ -155,8 +150,8 @@ async function reportFromStore(params: ReportParams): Promise<AffiliateReport | 
         p_affiliate_ids: scope,
     });
 
-    // A missing function or an empty store both mean "not migrated yet".
-    if (error || !data) return null;
+    if (error) throw new Error(`The affiliate report query failed: ${error.message}`);
+    if (!data) return null;
 
     const summaryRaw = data.summary ?? {};
     const byTierRaw = data.byTier ?? {};
@@ -232,244 +227,12 @@ async function reportFromStore(params: ReportParams): Promise<AffiliateReport | 
     return { summary, daily, affiliates, merchants, source: 'store' };
 }
 
-// --- Slow path (original behaviour) ----------------------------------------
-
-async function reportFromApi(params: ReportParams): Promise<AffiliateReport> {
-    const { dateRange, prevDateRange, allAffiliates } = params;
-    const scope = resolveScope(params);
-    const inScope = scope ? new Set(scope) : null;
-
-    const currentRangeISO = { from: dateRange.from.toISOString(), to: toGmt7EndOfDay(dateRange.to).toISOString() };
-    const prevRangeISO = { from: prevDateRange.from.toISOString(), to: toGmt7EndOfDay(prevDateRange.to).toISOString() };
-
-    const reportFilters: Record<string, unknown> = {};
-    if (scope) reportFilters.sourceId = scope;
-
-    const [currentClicks, prevClicks, currentConversions, prevConversions] = await Promise.all([
-        fetchClickReport(currentRangeISO, reportFilters),
-        fetchClickReport(prevRangeISO, reportFilters),
-        fetchConversionReport(currentRangeISO, reportFilters),
-        fetchConversionReport(prevRangeISO, reportFilters),
-    ]);
-
-    const keep = (publicId?: string) => !!publicId && (!inScope || inScope.has(publicId));
-
-    const currentConversionsRows = currentConversions.rows.filter(c => keep(c.source?.publicId));
-    const prevConversionsRows = prevConversions.rows.filter(c => keep(c.source?.publicId));
-
-    const signupsIn = (range: { from: string; to: string }) => allAffiliates.filter(aff => {
-        if (!keep(aff.publicId) || !aff.registeredAt) return false;
-        const time = new Date(aff.registeredAt).getTime();
-        return time >= new Date(range.from).getTime() && time <= new Date(range.to).getTime();
-    });
-
-    const processPeriod = (signups: Affiliate[], clicks: ClickReportRow[], conversions: ConversionReportRow[]) => {
-        const byAffiliate = new Map<string, ProcessedMetrics>();
-        const daily = new Map<string, ProcessedMetrics>();
-        const ensure = (map: Map<string, ProcessedMetrics>, key: string) => {
-            if (!map.has(key)) map.set(key, emptyMetrics());
-            return map.get(key)!;
-        };
-
-        signups.forEach(signup => {
-            ensure(byAffiliate, signup.publicId).signups++;
-            if (signup.registeredAt) ensure(daily, getGmt7DateString(signup.registeredAt)).signups++;
-        });
-
-        clicks.forEach(click => {
-            const publicId = click.source?.publicId;
-            if (!keep(publicId)) return;
-            ensure(byAffiliate, publicId!).clicks++;
-            if (click.createdAt) ensure(daily, getGmt7DateString(click.createdAt)).clicks++;
-        });
-
-        conversions.forEach(conv => {
-            const publicId = conv.source?.publicId;
-            if (!keep(publicId)) return;
-            const isInstall = conv.conversionType.name.toLowerCase() === 'install';
-            const revenue = parseFloat(conv.revenue.value || '0') || 0;
-            const payout = parseFloat(conv.cost.value || '0') || 0;
-
-            const aff = ensure(byAffiliate, publicId!);
-            if (isInstall) aff.installs++;
-            aff.revenue += revenue;
-            aff.payouts += payout;
-
-            if (conv.createdAt) {
-                const day = ensure(daily, getGmt7DateString(conv.createdAt));
-                if (isInstall) day.installs++;
-                day.revenue += revenue;
-                day.payouts += payout;
-            }
-        });
-
-        return { byAffiliate, daily };
-    };
-
-    const current = processPeriod(signupsIn(currentRangeISO), currentClicks.rows, currentConversionsRows);
-    const previous = processPeriod(signupsIn(prevRangeISO), prevClicks.rows, prevConversionsRows);
-
-    const detailsOf = new Map(allAffiliates.map(a => [a.publicId, a]));
-
-    const summary: SummaryData = {
-        ...emptyMetrics(),
-        signupsPrev: 0, clicksPrev: 0, installsPrev: 0, revenuePrev: 0, payoutsPrev: 0,
-        vsDateRange: prevDateRange,
-        byTier: {
-            KOL: { ...emptyMetrics(), prev: emptyMetrics() },
-            NonKOL: { ...emptyMetrics(), prev: emptyMetrics() },
-        },
-    };
-
-    current.byAffiliate.forEach((data, publicId) => {
-        summary.signups += data.signups;
-        summary.clicks += data.clicks;
-        summary.installs += data.installs;
-        summary.revenue += data.revenue;
-        summary.payouts += data.payouts;
-        const tier = normalizeTier(detailsOf.get(publicId)?.tierName);
-        (Object.keys(data) as (keyof ProcessedMetrics)[]).forEach(key => { summary.byTier[tier][key] += data[key]; });
-    });
-
-    previous.byAffiliate.forEach((data, publicId) => {
-        summary.signupsPrev += data.signups;
-        summary.clicksPrev += data.clicks;
-        summary.installsPrev += data.installs;
-        summary.revenuePrev += data.revenue;
-        summary.payoutsPrev += data.payouts;
-        const tier = normalizeTier(detailsOf.get(publicId)?.tierName);
-        (Object.keys(data) as (keyof ProcessedMetrics)[]).forEach(key => { summary.byTier[tier].prev[key] += data[key]; });
-    });
-
-    const daily: DailyData[] = Array.from(current.daily.entries())
-        .map(([date, metrics]) => ({ date, ...metrics }))
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    const affiliates: TopAffiliateData[] = Array.from(current.byAffiliate.entries())
-        .map(([publicId, metrics]) => {
-            const details = detailsOf.get(publicId);
-            const prev = previous.byAffiliate.get(publicId) || emptyMetrics();
-            return {
-                affiliateId: publicId,
-                affiliateName: details?.name || 'Unknown',
-                tierName: details?.tierName || 'N/A',
-                clicks: metrics.clicks,
-                clicksPrev: prev.clicks,
-                installs: metrics.installs,
-                installsPrev: prev.installs,
-                revenue: metrics.revenue,
-                revenuePrev: prev.revenue,
-                payout: metrics.payouts,
-                registeredAt: details?.registeredAt,
-            };
-        })
-        .filter(d => d.clicks >= 1 || d.installs >= 1 || d.revenue > 0);
-
-    const merchants = await merchantOverviewFromApi(
-        currentConversionsRows,
-        prevConversionsRows,
-        dateRange,
-        prevDateRange,
-    );
-
-    return { summary, daily, affiliates, merchants, source: 'api' };
-}
-
-async function merchantOverviewFromApi(
-    currentRows: ConversionReportRow[],
-    prevRows: ConversionReportRow[],
-    dateRange: DateRange,
-    prevDateRange: DateRange,
-): Promise<MerchantOverview> {
-    const customerIds = [...new Set([...currentRows, ...prevRows].map(c => c.customerId).filter(Boolean))];
-    const overview = emptyMerchants();
-    if (customerIds.length === 0) return overview;
-
-    const lifetime = await fetchConversionReport(
-        { from: '2020-01-01T00:00:00.000Z', to: new Date().toISOString() },
-        { customerId: customerIds },
-    );
-
-    const byCustomer = new Map<string, ConversionReportRow[]>();
-    lifetime.rows.forEach(conv => {
-        if (!conv.customerId) return;
-        if (!byCustomer.has(conv.customerId)) byCustomer.set(conv.customerId, []);
-        byCustomer.get(conv.customerId)!.push(conv);
-    });
-    byCustomer.forEach(rows => rows.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
-
-    const forPeriod = (fromTime: number, toTime: number) => {
-        let paying = 0;
-        const tenures: number[] = [];
-        let lifetimeDays = 0, lifetimeCount = 0;
-        const referred = new Set<string>();
-
-        byCustomer.forEach((conversions, customerId) => {
-            let installedAt: string | null = null;
-            let installInPeriod = false;
-            const payouts: ConversionReportRow[] = [];
-
-            conversions.forEach(conv => {
-                const time = new Date(conv.createdAt).getTime();
-                if (time > toTime) return;
-                const type = conv.conversionType.name.toLowerCase();
-                if (type === 'install') {
-                    if (!installedAt) installedAt = conv.createdAt;
-                    if (time >= fromTime) installInPeriod = true;
-                }
-                if (type === 'payout') payouts.push(conv);
-            });
-
-            let latestPayoutInPeriod = false;
-            if (payouts.length > 0) {
-                const latest = new Date(payouts[payouts.length - 1].createdAt).getTime();
-                if (latest >= fromTime && latest <= toTime) {
-                    latestPayoutInPeriod = true;
-                    paying++;
-                    tenures.push(payouts.length);
-
-                    if (installedAt) {
-                        const span = latest - new Date(installedAt).getTime();
-                        if (span >= 0) { lifetimeDays += Math.round(span / 864e5); lifetimeCount++; }
-                    }
-                }
-            }
-
-            if (installInPeriod || latestPayoutInPeriod) referred.add(customerId);
-        });
-
-        return {
-            paying, tenures,
-            referred: referred.size,
-            avgLifetime: lifetimeCount > 0 ? lifetimeDays / lifetimeCount : 0,
-        };
-    };
-
-    const cur = forPeriod(dateRange.from.getTime(), toGmt7EndOfDay(dateRange.to).getTime());
-    const prev = forPeriod(prevDateRange.from.getTime(), toGmt7EndOfDay(prevDateRange.to).getTime());
-
-    return {
-        totalReferredMerchants: cur.referred,
-        totalPayingMerchants: cur.paying,
-
-        avgLifetime: cur.avgLifetime,
-        totalReferredMerchantsPrev: prev.referred,
-        totalPayingMerchantsPrev: prev.paying,
-        payoutCounts: cur.tenures,
-        payoutCountsPrev: prev.tenures,
-    };
-}
-
 // --- Entry point -----------------------------------------------------------
 
 export async function fetchAffiliateReport(params: ReportParams): Promise<AffiliateReport> {
-    try {
-        if (await isStoreReady()) {
-            const fromStore = await reportFromStore(params);
-            if (fromStore) return fromStore;
-        }
-    } catch (error) {
-        console.warn('Materialised store unavailable, falling back to the Trackdesk API:', error);
-    }
-    return reportFromApi(params);
+    if (!(await isStoreReady())) throw new Error(STORE_NOT_SYNCED);
+
+    const report = await reportFromStore(params);
+    if (!report) throw new Error(STORE_NOT_SYNCED);
+    return report;
 }

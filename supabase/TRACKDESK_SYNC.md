@@ -95,17 +95,26 @@ It needs `--no-verify-jwt` because Trackdesk cannot mint a Supabase JWT; the
 shared secret guards it instead, and the function refuses every request while
 no secret is configured.
 
-### Dropping the old cache
+### The old cache — DROPPED (2026-10-29)
 
-Only after you are satisfied the dashboard is reading from the store:
+`trackdesk_cache` and the `trackdesk-proxy` function are both gone. The
+database went from **1026 MB to 38 MB**, comfortably back under the 500 MB
+free-tier limit, with the store holding more than the cache ever did: the
+complete history, deduplicated, instead of overlapping slices of it.
 
-```sql
-drop table public.trackdesk_cache;
-```
+The client-side fallback that called `trackdesk-proxy` went with them, and so
+did the Trackdesk API key that had to be hardcoded in `constants.tsx` for it —
+the browser bundle no longer contains a Trackdesk credential of any kind.
+**Rotate that key in Trackdesk**: it shipped to every browser that opened the
+dashboard for as long as it lived in that file. Rotating it now means changing
+one Edge Function secret and nothing else.
 
-That is the 989 MB. The fallback path in `affiliateReport.ts` still calls the
-`trackdesk-proxy` function, which writes to that table, so drop the function at
-the same time or the fallback will error instead of merely being slow.
+`components/PartnerAnalysis.tsx` was deleted in the same pass. It had not been
+imported by anything for some time and was the only other consumer of the
+removed service.
+
+There is no API fallback any more. If the store is not synced the dashboard
+says so and names `td_sync_state`, rather than quietly showing zeroes.
 
 ## Expected size
 

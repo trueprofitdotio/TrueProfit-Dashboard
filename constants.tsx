@@ -1,7 +1,10 @@
 import React from 'react';
 
-export const API_KEY = '2RG6k3b7b96qXzeSty7SbEkQKMgASchi';
-export const API_BASE_URL = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://trueprofit.trackdesk.com';
+/* The Trackdesk API key used to live here, which meant it shipped to every
+   browser that opened the dashboard. Nothing client-side talks to Trackdesk
+   any more — the td-sync worker does, holding the key as an Edge Function
+   secret — so it is gone from the bundle. Rotate the old value in Trackdesk:
+   it was public for as long as this file was. */
 
 /* The data ramp. Five hues validated with the data-viz palette validator at
    --pairs all, because the daily trace puts all five on one plot and the
