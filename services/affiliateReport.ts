@@ -99,7 +99,22 @@ function isStoreReady(): Promise<boolean> {
  * The filter bar needs every affiliate up front. Reading them from the local
  * table avoids paging the Trackdesk API on first paint.
  */
-export async function fetchAffiliateDirectory(): Promise<Affiliate[]> {
+/* The directory is ~1200 rows and two callers want it at once: the mount
+   effect and, if that has not landed yet, the first Get-metrics click. Both
+   used to issue their own request, so the slowest part of a cold load ran
+   twice. One in-flight promise is shared instead. */
+let directoryPromise: Promise<Affiliate[]> | null = null;
+
+export function fetchAffiliateDirectory(): Promise<Affiliate[]> {
+    directoryPromise ??= loadAffiliateDirectory().catch(err => {
+        // A failure must not be cached, or the app can never recover from it.
+        directoryPromise = null;
+        throw err;
+    });
+    return directoryPromise;
+}
+
+async function loadAffiliateDirectory(): Promise<Affiliate[]> {
     try {
         if (!(await isStoreReady())) throw new Error('store not ready');
         const { data, error } = await supabaseClient

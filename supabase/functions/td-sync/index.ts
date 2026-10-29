@@ -7,10 +7,12 @@
 //     re-reading a short overlap window because Trackdesk back-dates revenue
 //     and cost onto conversions after they are first created.
 //
-//   backfill (`{"full": true}`) — starts from BACKFILL_START and walks
-//     forward. Edge functions get cut off well before years of clicks can be
-//     read, so the walk is time-budgeted: it saves its cursor and returns
-//     `done: false`, and the caller simply invokes it again until `done`.
+//   backfill (`{"full": true}`) — walks forward from the saved cursor, or
+//     from BACKFILL_START the first time. Edge functions get cut off well
+//     before years of clicks can be read, so the walk is time-budgeted: it
+//     saves its cursor and returns `done: false`, and the caller simply
+//     invokes it again until `done`. Pass `{"restart": true}` to drop the
+//     watermark and walk the whole range again.
 //
 // Either way the unit of work is a time window, not a page, so an invocation
 // that dies mid-way only costs the current window.
@@ -153,7 +155,7 @@ async function upsert(db: SupabaseClient, resource: Resource, rows: unknown[]) {
 async function syncResource(
   db: SupabaseClient,
   resource: Resource,
-  opts: { full: boolean; startedAt: number },
+  opts: { full: boolean; restart: boolean; startedAt: number },
 ) {
   const { data: state } = await db
     .from("td_sync_state")
@@ -162,11 +164,24 @@ async function syncResource(
     .maybeSingle();
 
   const now = new Date();
-  let cursor = opts.full
-    ? new Date(BACKFILL_START)
-    : state?.last_synced_at
-      ? new Date(new Date(state.last_synced_at).getTime() - OVERLAP_MINUTES * 60_000)
-      : new Date(BACKFILL_START);
+  const saved = state?.last_synced_at ? new Date(state.last_synced_at) : null;
+
+  /* A backfill RESUMES.
+
+     This used to read `opts.full ? BACKFILL_START : ...`, which restarted the
+     walk at the floor on every single call. Each invocation then re-read the
+     same early windows, spent its whole time budget upserting rows it already
+     had, and saved a cursor the next call ignored — so a run of sixteen calls
+     advanced exactly as far as the first one. `restart` is the explicit way
+     to ask for the walk to begin again. */
+  let cursor: Date;
+  if (opts.restart || !saved) {
+    cursor = new Date(BACKFILL_START);
+  } else if (opts.full) {
+    cursor = saved;
+  } else {
+    cursor = new Date(saved.getTime() - OVERLAP_MINUTES * 60_000);
+  }
 
   let ingested = 0;
   let done = true;
@@ -232,7 +247,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    let body: { resource?: Resource | "all"; full?: boolean } = {};
+    let body: { resource?: Resource | "all"; full?: boolean; restart?: boolean } = {};
     try {
       body = await req.json();
     } catch {
@@ -245,7 +260,7 @@ Deno.serve(async (req: Request) => {
 
     const results = [];
     for (const resource of requested) {
-      results.push(await syncResource(db, resource, { full: !!body.full, startedAt }));
+      results.push(await syncResource(db, resource, { full: !!body.full, restart: !!body.restart, startedAt }));
     }
 
     return new Response(

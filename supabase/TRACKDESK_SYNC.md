@@ -37,102 +37,75 @@ path first and **falls back to the original Trackdesk API crawl** if the store
 is missing or empty. So the app keeps working at every step below, and gets
 faster when step 3 finishes.
 
-## Rollout
+## Rollout — DONE (2026-10-29)
 
-**1. Apply the migration — DONE (2026-10-29)**
+All of it is live on the project. What is in place:
 
-The tables, indexes, RLS policies, helpers and both RPCs are live. RLS is on
-with a SELECT-only policy for `anon`/`authenticated`, so the dashboard can read
-and only the service role can write. To recreate elsewhere, run
-`supabase db push`, or paste
-`migrations/20261028000001_trackdesk_materialised_store.sql` into the SQL
-editor. It is additive — it creates tables and functions and drops nothing.
+| Piece | State |
+|---|---|
+| Tables, indexes, RLS | created; RLS on, SELECT-only policy for `anon`/`authenticated`, so only the service role writes |
+| `td_tier`, `td_day` | created |
+| `td_affiliate_report`, `td_merchant_details` | created, execute granted to `anon`/`authenticated` |
+| `td-sync` | deployed, `verify_jwt: true` |
+| `TRACKDESK_API_KEY` | set as an Edge Function secret |
+| Backfill | complete: 1,169 affiliates, 1,955 conversions, 33,477 clicks |
+| Incremental sync | `cron.job` 1, `td-sync-incremental`, every 10 minutes via `pg_net` |
+| `td-webhook` | written, NOT deployed — see below |
 
-**2. Deploy the functions — td-sync DONE (2026-10-29)**
+Measured after the backfill: a one-month report runs in 92 ms and a
+three-year one in 118 ms, against a store of 11.4 MB. The old cache is 989 MB
+and is still sitting there; see the last section.
 
-`td-sync` is deployed with `verify_jwt: true` and answers 401 without a token,
-as it should. Still to do:
+### A bug the first backfill ran into
 
-```bash
-supabase secrets set TRACKDESK_API_KEY=<the Trackdesk key>
+The first backfill run looked like it was working and was not. `td-sync` read
+
+```ts
+let cursor = opts.full ? new Date(BACKFILL_START) : ...
 ```
 
-`td-sync` cannot reach Trackdesk until that is set.
+so `{"full": true}` restarted the walk at 2023-01-01 on *every* call. Each
+invocation re-read the same early windows, spent its whole 110-second budget
+upserting rows it already had, and wrote a cursor that the next call then
+ignored. Sixteen calls — about thirty minutes — advanced exactly as far as the
+first one.
 
-`td-webhook` is written but not deployed; it is only a latency optimisation,
-so it can wait until you are ready to configure the webhook on the Trackdesk
-side:
+`full` now resumes from the saved cursor and only falls back to
+`BACKFILL_START` when there is no watermark; `{"restart": true}` is the
+explicit way to walk the whole range again. With that fixed, the remaining
+four months of clicks took one 48-second call.
+
+The symptom to watch for, if this ever recurs: the `cursor` in the response
+moving backwards between calls.
+
+### Still to do
+
+`td-webhook` is written but not deployed. It only shortens the lag between a
+conversion happening and the dashboard showing it — the cron'd sync is what
+guarantees completeness — and it needs the Trackdesk side configured too:
 
 ```bash
 supabase functions deploy td-webhook --no-verify-jwt
 supabase secrets set TD_WEBHOOK_SECRET=<a long random string you generate>
 ```
 
+Then point Trackdesk at
+`https://<project-ref>.supabase.co/functions/v1/td-webhook?token=<TD_WEBHOOK_SECRET>`.
 It needs `--no-verify-jwt` because Trackdesk cannot mint a Supabase JWT; the
-shared secret is what guards it instead, and the function refuses every request
-when no secret is configured.
+shared secret guards it instead, and the function refuses every request while
+no secret is configured.
 
-**3. Backfill**
+### Dropping the old cache
 
-`td-sync` stops at a ~110s budget and saves its cursor, so call it repeatedly
-until every resource reports `done: true`:
-
-```bash
-curl -X POST "https://<project-ref>.supabase.co/functions/v1/td-sync" \
-  -H "Authorization: Bearer <service-role-key>" \
-  -H "content-type: application/json" \
-  -d '{"full": true}'
-```
-
-Watch progress with `select * from td_sync_state;`.
-
-**4. Schedule the incremental run**
-
-Every 10 minutes, via `pg_cron` + `pg_net`, or any external scheduler:
-
-```sql
-select cron.schedule('td-sync', '*/10 * * * *', $$
-  select net.http_post(
-    url := 'https://<project-ref>.supabase.co/functions/v1/td-sync',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer <service-role-key>"}'::jsonb,
-    body := '{}'::jsonb
-  );
-$$);
-```
-
-Each run re-reads the last 3 hours on top of the watermark, because Trackdesk
-back-dates revenue and cost onto conversions after they are first created. A
-watermark alone would freeze those numbers at whatever they were when first
-seen.
-
-**5. Point Trackdesk's webhook at**
-
-```
-https://<project-ref>.supabase.co/functions/v1/td-webhook?token=<TD_WEBHOOK_SECRET>
-```
-
-This is a latency optimisation, not a correctness mechanism: the cron'd sync is
-what guarantees completeness. Both write the same rows keyed by
-`conversion_id`, so a duplicate delivery or an overlap with the sync window is
-an upsert, never a double count. Clicks stay on the polling path — they are too
-high-volume to be worth a webhook each.
-
-**6. Drop the old cache, once step 3 has finished and the dashboard is reading
-from the store**
-
-Confirm the fast path is live first — `td_sync_state` shows `ok` for all three
-resources, and the affiliate workspace returns in well under a second. Then:
+Only after you are satisfied the dashboard is reading from the store:
 
 ```sql
 drop table public.trackdesk_cache;
 ```
 
-That is the 989 MB. Nothing reads the table after this migration: the old
-`trackdesk-proxy` edge function still writes to it, so either leave the proxy
-deployed and let the writes fail harmlessly, or delete the function at the same
-time. The fallback path in `affiliateReport.ts` calls the proxy, so keep the
-function if you want that safety net — just recreate the table, or edit the
-proxy to skip its caching block.
+That is the 989 MB. The fallback path in `affiliateReport.ts` still calls the
+`trackdesk-proxy` function, which writes to that table, so drop the function at
+the same time or the fallback will error instead of merely being slow.
 
 ## Expected size
 
