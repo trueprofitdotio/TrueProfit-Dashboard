@@ -62,6 +62,13 @@ export interface SummaryData extends ProcessedMetrics {
   vsDateRange?: DateRange;
 }
 
+/** One affiliate's share of a single day's installs. */
+export interface InstallByAffiliate {
+    affiliateId: string;
+    affiliateName: string;
+    installs: number;
+}
+
 export interface DailyData {
     date: string;
     signups: number;
@@ -69,6 +76,10 @@ export interface DailyData {
     installs: number;
     revenue: number;
     payouts: number;
+    /** Who produced that day's installs — the six largest, biggest first. */
+    installsBy: InstallByAffiliate[];
+    /** Everyone past the sixth, rolled into one figure. */
+    installsByRest: { affiliates: number; installs: number };
 }
 
 export interface TopAffiliateData {

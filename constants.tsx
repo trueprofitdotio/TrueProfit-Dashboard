@@ -37,11 +37,14 @@ export const CHART_FONT = {
   mono: 'Roboto Mono, ui-monospace, monospace',
 };
 
+/* Literal hex, never a `var(--tp-…)`: these are handed to a canvas context,
+   which cannot resolve a CSS variable and silently keeps its previous fill. */
 export const CHART_INK = {
   grid: '#E6E9F4',
   axis: '#C2C8DC',
   label: '#6E7488',
   text: '#2B2F3D',
+  faint: '#A4A9BC',
   surface: '#FFFFFF',
 };
 

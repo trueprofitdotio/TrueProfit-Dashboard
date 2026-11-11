@@ -574,6 +574,46 @@ table { font-variant-numeric: tabular-nums; }
   padding: var(--tp-space-2) var(--tp-space-2) var(--tp-space-1);
 }
 
+/* A plot that scrolls inside its own frame drops the padding: a sticky head
+   stuck against a padded scrollport leaves a gap for rows to show through. */
+.tp-plot-flush { padding: 0; }
+
+/* Panel heads for a small-multiple plot. They are DOM, not canvas titles, so
+   they stay put while the rows scroll under them; each sits on its panel's
+   own left percentage. */
+.tp-panel-heads {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 28px;
+  background: var(--tp-surface);
+  border-bottom: 1px solid var(--tp-rule);
+}
+
+.tp-panel-head {
+  position: absolute;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--tp-muted);
+  font-family: var(--tp-font-narrow);
+  font-size: 12px;
+  font-weight: var(--tp-w-strong);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* The same 14×2 rule the readout strip and the trend chips carry. */
+.tp-panel-head::before {
+  content: "";
+  width: 14px;
+  height: 2px;
+  flex: none;
+  border-radius: var(--tp-r-pill);
+  background: var(--tp-head-rule, var(--tp-rule-strong));
+}
+
 /* ==========================================================================
    Tables
    ========================================================================== */

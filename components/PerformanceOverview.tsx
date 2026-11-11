@@ -15,7 +15,8 @@ import {
 
 declare const echarts: {
     init: (el: HTMLElement) => {
-        setOption: (option: object) => void;
+        /** `notMerge` replaces the previous option outright. */
+        setOption: (option: object, notMerge?: boolean) => void;
         resize: () => void;
         dispose: () => void;
         clear: () => void;
@@ -365,47 +366,102 @@ const formatAxisCount = (value: number) =>
 const formatAxisMoney = (value: number) =>
     Math.abs(value) >= 1000 ? `$${(value / 1000).toFixed(Math.abs(value) >= 10000 ? 0 : 1)}k` : `$${value}`;
 
-/* One channel per measure, in reading order: what reached us, who signed up,
-   what it produced, what it earned, what it cost. */
-const TREND_SERIES = [
-    { key: 'signups',  label: 'Signups',  color: PALETTE.signups,  isMoney: false },
-    { key: 'clicks',   label: 'Clicks',   color: PALETTE.clicks,   isMoney: false },
-    { key: 'installs', label: 'Installs', color: PALETTE.installs, isMoney: false },
-    { key: 'revenue',  label: 'Revenue',  color: PALETTE.revenue,  isMoney: true  },
-    { key: 'payouts',  label: 'Payouts',  color: PALETTE.payouts,  isMoney: true  },
-] as const;
+/* The five measures, in reading order: who signed up, what reached us, what
+   it produced, what it earned, what it cost. `scale` is the group a measure
+   is plotted against — the three scales these numbers genuinely have. */
+type TrendKey = 'signups' | 'clicks' | 'installs' | 'revenue' | 'payouts';
 
-const CHANNEL_H = 58;    // one channel's plot band
-// Room above each channel for its own label. The top gridline's value sits
-// astride the band's top edge, so the label needs clearance for half of it.
-const CHANNEL_TOP = 26;
-const AXIS_H = 26;       // the shared date axis under the last channel
+interface TrendSeries {
+    key: TrendKey;
+    label: string;
+    color: string;
+    scale: 'money' | 'traffic' | 'events';
+}
 
-/* The daily trend as a strip chart: one pen per measure, every trace drawn
-   against one shared time axis on the same paper.
+const TREND_SERIES: TrendSeries[] = [
+    { key: 'signups',  label: 'Signups',  color: PALETTE.signups,  scale: 'events'  },
+    { key: 'clicks',   label: 'Clicks',   color: PALETTE.clicks,   scale: 'traffic' },
+    { key: 'installs', label: 'Installs', color: PALETTE.installs, scale: 'events'  },
+    { key: 'revenue',  label: 'Revenue',  color: PALETTE.revenue,  scale: 'money'   },
+    { key: 'payouts',  label: 'Payouts',  color: PALETTE.payouts,  scale: 'money'   },
+];
 
-   It replaced a single plot carrying all five measures on two y-scales,
-   counts left and dollars right. Where those two scales are pinned against
-   each other is arbitrary, so every crossing the eye read as a relationship
-   was an artefact of that choice. Giving each measure its own band keeps all
-   five visible and all five comparable along time — the comparison that
-   actually exists — and costs only vertical room. */
+/* money on the left axis, traffic on the right, conversion events on a third
+   that is never drawn — see the component's note. */
+const AXIS_OF: Record<TrendSeries['scale'], number> = { money: 0, traffic: 1, events: 2 };
+
+const PLOT_H = 296;
+/* Above this many days the bars are too narrow to carry a figure on top, and
+   the tooltip is the only sane way to read one. */
+const BAR_LABEL_LIMIT = 16;
+
+// A name out of the store goes into tooltip HTML, so it is escaped on the way.
+const escapeHtml = (value: string) =>
+    value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+
+/* The daily trend as one compound plot: lines for traffic and money, bars for
+   the conversion events, all against one shared date axis.
+
+   It replaced a strip of five stacked bands, one measure each. Those bands
+   kept every measure on a scale of its own — honest, but it cost a screen of
+   vertical room and turned a day's five readings into five separate glances.
+   One frame makes it one glance, at the price of more than one scale on the
+   paper. So the scales are held to the three the numbers actually have, and
+   each is named rather than inferred: dollars on the left, clicks on the
+   right, and the conversion counts as bars which carry their own figure
+   instead of being read off an axis at all — at one or two a day they would
+   otherwise sit flat on the baseline under a clicks scale fifty times their
+   size. Every measure can be switched off above the plot, which is both how a
+   crowded day is taken apart and the escape hatch when a trace is squashed. */
 const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) => {
     const chartRef = useRef<HTMLDivElement>(null);
+    const [hidden, setHidden] = useState<Set<TrendKey>>(() => new Set());
 
     const sorted = useMemo(
         () => [...dailyData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
         [dailyData]
     );
 
+    const toggle = (key: TrendKey) => setHidden(prev => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key); else next.add(key);
+        return next;
+    });
+
     useEffect(() => {
         if (!chartRef.current) return;
         const chart = echarts.init(chartRef.current);
 
         if (sorted.length > 0) {
-            const valueOf = (d: DailyData, key: string) => Number((d as unknown as Record<string, unknown>)[key]) || 0;
+            const visible = TREND_SERIES.filter(s => !hidden.has(s.key));
             const dates = sorted.map(d => formatDisplayDateGmt7(d.date, { month: 'short', day: 'numeric' }));
-            const top = (i: number) => CHANNEL_TOP + i * (CHANNEL_H + CHANNEL_TOP);
+            const showsMoney = visible.some(s => s.scale === 'money');
+            const showsTraffic = visible.some(s => s.scale === 'traffic');
+            const barLabels = sorted.length <= BAR_LABEL_LIMIT;
+
+            // The bars are given the bottom of the frame and no more, so they
+            // read as events under the traces rather than competing with them.
+            const eventsPeak = Math.max(1, ...sorted.map(d => Math.max(d.signups, d.installs)));
+
+            /* Who produced the day's installs, under the installs reading.
+               This is the question a spike always raises, and answering it in
+               the tooltip saves refiltering the whole report to find out. */
+            const attribution = (row: DailyData) => {
+                const rows = row.installsBy.map(a =>
+                    '<div style="display:flex;align-items:baseline;gap:10px;line-height:1.7">'
+                    + '<span style="flex:1;color:' + CHART_INK.label + '">' + escapeHtml(a.affiliateName)
+                    + ' <span style="color:' + CHART_INK.faint + ';font-family:' + CHART_FONT.mono + ';font-size:10.5px">'
+                    + escapeHtml(a.affiliateId) + '</span></span>'
+                    + '<span style="color:' + CHART_INK.text + ';font-variant-numeric:tabular-nums">' + formatNumber(a.installs) + '</span>'
+                    + '</div>'
+                ).join('');
+                const rest = row.installsByRest.affiliates > 0
+                    ? '<div style="color:' + CHART_INK.faint + ';line-height:1.7">+ ' + formatNumber(row.installsByRest.installs)
+                      + ' from ' + formatNumber(row.installsByRest.affiliates) + ' more</div>'
+                    : '';
+                return '<div style="margin:3px 0 5px 18px;padding-left:9px;border-left:1px solid ' + CHART_INK.grid + ';font-size:11.5px">'
+                    + rows + rest + '</div>';
+            };
 
             const option = {
                 animationDuration: 200,
@@ -416,83 +472,126 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
                     borderWidth: 1,
                     padding: [9, 11],
                     textStyle: { color: CHART_INK.text, fontSize: 12, fontFamily: CHART_FONT.ui },
-                    // One cursor down the whole stack, so hovering a day reads
-                    // every channel at that day at once — the recorder's rule.
-                    axisPointer: { type: 'line', lineStyle: { color: CHART_INK.axis, width: 1 }, link: [{ xAxisIndex: 'all' }] },
-                },
-                // A title per channel rather than a shared legend: with one
-                // series in each band the name belongs beside its own trace,
-                // and a legend would imply the bands share a scale.
-                title: TREND_SERIES.map((s, i) => ({
-                    text: s.isMoney ? `${s.label} (US$)` : s.label,
-                    left: 0,
-                    top: top(i) - 20,
-                    textStyle: {
-                        color: CHART_INK.label,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        fontFamily: CHART_FONT.narrow,
+                    extraCssText: 'border-radius: 4px; box-shadow: 0 2px 4px -1px rgba(21,23,31,.07), 0 14px 32px -10px rgba(21,23,31,.16);',
+                    axisPointer: { type: 'line', lineStyle: { color: CHART_INK.axis, width: 1 } },
+                    formatter: (params: { dataIndex: number }[]) => {
+                        const row = sorted[params[0]?.dataIndex];
+                        if (!row) return '';
+                        const head = '<div style="font-weight:600;color:' + CHART_INK.text + ';margin-bottom:7px">'
+                            + formatDisplayDateGmt7(row.date, { weekday: 'short', month: 'short', day: 'numeric' })
+                            + '</div>';
+                        const body = visible.map(s => {
+                            const value = row[s.key];
+                            const reading = s.scale === 'money' ? formatCurrency(value) : formatNumber(value);
+                            const line = '<div style="display:flex;align-items:center;gap:10px;line-height:1.8">'
+                                + '<span style="width:8px;height:8px;border-radius:999px;flex:none;background:' + s.color + '"></span>'
+                                + '<span style="flex:1;color:' + CHART_INK.label + '">' + s.label + '</span>'
+                                + '<span style="color:' + CHART_INK.text + ';font-weight:600;font-variant-numeric:tabular-nums">' + reading + '</span>'
+                                + '</div>';
+                            return s.key === 'installs' && value > 0 ? line + attribution(row) : line;
+                        }).join('');
+                        return head + body;
                     },
-                })),
-                grid: TREND_SERIES.map((_, i) => ({
-                    left: 4, right: 8, top: top(i), height: CHANNEL_H, containLabel: true,
-                })),
-                xAxis: TREND_SERIES.map((_, i) => ({
+                },
+                grid: { left: 6, right: 6, top: 14, bottom: 2, containLabel: true },
+                xAxis: {
                     type: 'category',
-                    gridIndex: i,
                     data: dates,
-                    boundaryGap: false,
+                    boundaryGap: true,
                     axisLine: { lineStyle: { color: CHART_INK.axis } },
                     axisTick: { show: false },
-                    // Only the bottom channel prints the dates; the rest
-                    // inherit them by sitting on the same verticals.
-                    axisLabel: i === TREND_SERIES.length - 1
-                        ? { color: CHART_INK.label, fontSize: 11, hideOverlap: true, fontFamily: CHART_FONT.mono }
-                        : { show: false },
-                })),
-                yAxis: TREND_SERIES.map((s, i) => ({
-                    type: 'value',
-                    gridIndex: i,
-                    min: 0,
-                    splitNumber: 2,
-                    axisLine: { show: false },
-                    axisTick: { show: false },
-                    axisLabel: {
-                        color: CHART_INK.label,
-                        fontSize: 10.5,
-                        fontFamily: CHART_FONT.mono,
-                        formatter: s.isMoney ? formatAxisMoney : formatAxisCount,
-                    },
-                    splitLine: { lineStyle: { color: CHART_INK.grid, type: 'solid' } },
-                })),
-                series: TREND_SERIES.map((s, i) => ({
-                    name: s.isMoney ? `${s.label} (US$)` : s.label,
-                    type: 'line',
-                    xAxisIndex: i,
-                    yAxisIndex: i,
-                    // Smoothed at the user's request. The readings themselves are
-                    // unchanged and the tooltip still reports each day exactly;
-                    // only the line between two days is drawn as a curve.
-                    smooth: 0.35,
-                    smoothMonotone: 'x',
-                    showSymbol: sorted.length <= 2,
-                    symbol: 'circle',
-                    symbolSize: 8,
-                    lineStyle: { width: 2, cap: 'round', join: 'round', color: s.color },
-                    itemStyle: { color: s.color, borderColor: CHART_INK.surface, borderWidth: 2 },
-                    areaStyle: {
-                        color: {
-                            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                            colorStops: [
-                                { offset: 0, color: hexToRgba(s.color, 0.22) },
-                                { offset: 1, color: hexToRgba(s.color, 0.01) },
-                            ],
+                    axisLabel: { color: CHART_INK.label, fontSize: 11, hideOverlap: true, fontFamily: CHART_FONT.mono },
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        min: 0,
+                        splitNumber: 4,
+                        show: showsMoney,
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                        axisLabel: {
+                            color: CHART_INK.label,
+                            fontSize: 10.5,
+                            fontFamily: CHART_FONT.mono,
+                            formatter: formatAxisMoney,
                         },
+                        splitLine: { lineStyle: { color: CHART_INK.grid, type: 'solid' } },
                     },
-                    data: sorted.map(d => valueOf(d, s.key)),
-                })),
+                    {
+                        type: 'value',
+                        min: 0,
+                        splitNumber: 4,
+                        position: 'right',
+                        show: showsTraffic,
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                        axisLabel: {
+                            color: CHART_INK.label,
+                            fontSize: 10.5,
+                            fontFamily: CHART_FONT.mono,
+                            formatter: formatAxisCount,
+                        },
+                        // The money scale already rules the frame; a second set
+                        // of lines over it would be a lattice, not a reading.
+                        splitLine: { show: showsTraffic && !showsMoney, lineStyle: { color: CHART_INK.grid, type: 'solid' } },
+                    },
+                    { type: 'value', min: 0, max: eventsPeak * 2.4, show: false, splitLine: { show: false } },
+                ],
+                series: [
+                    // Bars first, so the traces are drawn over them.
+                    ...visible.filter(s => s.scale === 'events').map(s => ({
+                        name: s.label,
+                        type: 'bar',
+                        yAxisIndex: AXIS_OF[s.scale],
+                        barMaxWidth: 11,
+                        barGap: '18%',
+                        barCategoryGap: '42%',
+                        itemStyle: { color: hexToRgba(s.color, 0.5), borderRadius: [2, 2, 0, 0] },
+                        emphasis: { itemStyle: { color: s.color } },
+                        label: {
+                            show: barLabels,
+                            position: 'top',
+                            distance: 3,
+                            fontSize: 10,
+                            fontFamily: CHART_FONT.mono,
+                            color: CHART_INK.label,
+                            // A zero has no bar to sit on, so it prints nothing.
+                            formatter: (p: { value: number }) => (p.value > 0 ? formatNumber(p.value) : ''),
+                        },
+                        data: sorted.map(d => d[s.key]),
+                    })),
+                    ...visible.filter(s => s.scale !== 'events').map(s => ({
+                        name: s.label,
+                        type: 'line',
+                        yAxisIndex: AXIS_OF[s.scale],
+                        // Monotone smoothing: the curve cannot overshoot a
+                        // measured value, so it cannot invent a peak.
+                        smooth: 0.35,
+                        smoothMonotone: 'x',
+                        showSymbol: sorted.length <= 2,
+                        symbol: 'circle',
+                        symbolSize: 8,
+                        lineStyle: { width: 2, cap: 'round', join: 'round', color: s.color },
+                        itemStyle: { color: s.color, borderColor: CHART_INK.surface, borderWidth: 2 },
+                        // Only the two leading measures carry a wash; washing
+                        // all three would stack three tints over one another.
+                        areaStyle: s.key === 'payouts' ? undefined : {
+                            color: {
+                                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: hexToRgba(s.color, s.key === 'revenue' ? 0.2 : 0.1) },
+                                    { offset: 1, color: hexToRgba(s.color, 0.01) },
+                                ],
+                            },
+                        },
+                        data: sorted.map(d => d[s.key]),
+                    })),
+                ],
             };
-            chart.setOption(option);
+            // Series come and go with the chips, so the previous option is
+            // replaced rather than merged — a merge would leave the old ones.
+            chart.setOption(option, true);
         } else {
             chart.clear();
         }
@@ -500,17 +599,46 @@ const PerformanceChart: React.FC<{ dailyData: DailyData[] }> = ({ dailyData }) =
         const resizeHandler = () => chart?.resize();
         window.addEventListener('resize', resizeHandler);
         return () => { chart.dispose(); window.removeEventListener('resize', resizeHandler); };
-    }, [sorted]);
-
-    const height = CHANNEL_TOP + TREND_SERIES.length * (CHANNEL_H + CHANNEL_TOP) + AXIS_H;
+    }, [sorted, hidden]);
 
     return (
         <section>
-            <div className="mb-2 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-                <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--tp-ink)]">Daily performance trend</h3>
-                <span className="text-[11.5px] text-[var(--tp-meta)]">Each channel on its own scale · hover a day to read all five</span>
+            <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <div>
+                    <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--tp-ink)]">Daily performance trend</h3>
+                    <p className="mt-0.5 text-[11.5px] text-[var(--tp-meta)]">
+                        Bars are conversions and carry their own figure · lines read US$ on the left and clicks on the right ·
+                        hover a day to read all five, and to see which affiliates its installs came from
+                    </p>
+                </div>
+                {/* The same 14×2 rule the readout strip uses, so a measure is
+                    identified the same way wherever it appears. */}
+                <div className="flex shrink-0 flex-wrap gap-1" role="group" aria-label="Measures on the plot">
+                    {TREND_SERIES.map(s => {
+                        const on = !hidden.has(s.key);
+                        return (
+                            <button
+                                key={s.key}
+                                type="button"
+                                onClick={() => toggle(s.key)}
+                                aria-pressed={on}
+                                className={`flex items-center gap-1.5 rounded-[2px] border px-2 py-1 text-[12px] font-medium transition-colors ${
+                                    on
+                                        ? 'border-[var(--tp-rule-strong)] bg-[var(--tp-surface)] text-[var(--tp-ink-2)]'
+                                        : 'border-[var(--tp-rule)] bg-[var(--tp-surface-sunken)] text-[var(--tp-faint)]'
+                                }`}
+                            >
+                                <span
+                                    className="h-[2px] w-[14px] shrink-0 rounded-full"
+                                    style={{ background: on ? s.color : 'var(--tp-rule-strong)' }}
+                                />
+                                {s.label}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
-            <div ref={chartRef} className="tp-plot" style={{ width: '100%', height: `${height}px` }}></div>
+            <div ref={chartRef} className="tp-plot" style={{ width: '100%', height: `${PLOT_H}px` }}></div>
         </section>
     );
 };
@@ -723,7 +851,7 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
         });
     }, [data, sortBy]);
 
-    const chartHeight = 44 + Math.max(ranked.length, 1) * ROW_HEIGHT;
+    const chartHeight = 16 + Math.max(ranked.length, 1) * ROW_HEIGHT;
 
     useEffect(() => {
         if (!chartRef.current) return;
@@ -757,18 +885,14 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                         return head + rows;
                     },
                 },
-                // One series per panel, so each panel names itself and no
-                // legend box is needed.
-                title: AFFILIATE_PANELS.map((panel, i) => ({
-                    text: panel.label,
-                    left: PANEL_LEFT[i],
-                    top: 0,
-                    textStyle: { color: 'var(--tp-muted)', fontSize: 11.5, fontWeight: 600, letterSpacing: 0.14 },
-                })),
+                // The panel heads are HTML above the canvas rather than
+                // ECharts titles: the list runs past the frame and scrolls
+                // inside it, and a title drawn on the canvas scrolls away
+                // with the rows — leaving three unlabelled columns of bars.
                 grid: AFFILIATE_PANELS.map((_, i) => ({
                     left: PANEL_LEFT[i],
                     width: PANEL_WIDTH,
-                    top: 30,
+                    top: 8,
                     bottom: 8,
                     containLabel: false,
                 })),
@@ -789,7 +913,8 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                     splitLine: { show: false },
                     axisLabel: i === 0
                         ? {
-                            color: 'var(--tp-ink-2)',
+                            color: CHART_INK.text,
+                            fontFamily: CHART_FONT.ui,
                             fontSize: 12,
                             margin: 14,
                             width: 150,
@@ -814,7 +939,7 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                             // reads as clutter at the axis. They stay — an empty
                             // row would be ambiguous between "none" and "not
                             // measured" — but recede to the divider tint.
-                            label: { color: value > 0 ? 'var(--tp-meta)' : 'var(--tp-faint)' },
+                            label: { color: value > 0 ? CHART_INK.label : CHART_INK.faint },
                         };
                     }),
                     // Capped well under the band height, so the leftover is air.
@@ -826,7 +951,8 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
                         position: 'right',
                         distance: 7,
                         fontSize: 11,
-                        color: 'var(--tp-meta)',
+                        fontFamily: CHART_FONT.mono,
+                        color: CHART_INK.label,
                         formatter: (p: { value: number }) => formatCompact(p.value, panel.isMoney),
                     },
                     emphasis: { itemStyle: { color: panel.color } },
@@ -879,8 +1005,22 @@ const TopPerformingAffiliatesChart: React.FC<{ data: TopAffiliateData[] }> = ({ 
             </div>
             {/* Uncapped, so the panel can outgrow the viewport. It scrolls
                 inside its own frame rather than pushing everything below it
-                off the page. */}
-            <div className="tp-plot max-h-[520px] overflow-y-auto">
+                off the page — and the heads ride along at the top, since a
+                bar without its measure's name is just a length. They sit on
+                the same percentages as the grids below them, and inside the
+                same scroller, so a scrollbar narrows head and panel alike. */}
+            <div className="tp-plot tp-plot-flush max-h-[520px] overflow-y-auto">
+                <div className="tp-panel-heads">
+                    {AFFILIATE_PANELS.map((panel, i) => (
+                        <span
+                            key={panel.key}
+                            className="tp-panel-head"
+                            style={{ left: PANEL_LEFT[i], '--tp-head-rule': panel.color } as React.CSSProperties}
+                        >
+                            {panel.label}
+                        </span>
+                    ))}
+                </div>
                 <div ref={chartRef} style={{ width: '100%', height: `${chartHeight}px` }}></div>
             </div>
         </div>

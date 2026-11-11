@@ -288,17 +288,21 @@ There is no tag creation, renaming or deletion, and that is the point: when stat
 
 ### Charts
 
-**One plot, one y-axis — always.** The daily trend is a **strip chart**: one ECharts instance holding one grid per measure, stacked, all sharing a single date axis, with a linked `axisPointer` so one cursor reads every channel at the hovered day. Each channel keeps its own y-scale and its own pen, and its name sits beside its own trace rather than in a shared legend, which would imply the bands share a scale.
+**A scale is named or it is not drawn.** The daily trend is one **compound plot**: a single frame on one date axis carrying all five measures, lines for traffic and money and bars for the conversion events.
 
-That replaced a single plot carrying all five measures on two y-scales, counts left and dollars right. Where those two scales are pinned against each other is arbitrary, so every crossing the eye read as a relationship was an artefact of that choice. Giving each measure its own band keeps all five visible and all five comparable along time — the comparison that actually exists — and costs only vertical room.
+It replaced a strip chart of five stacked bands, one measure each. The bands were the honest answer to five scales — each measure had its own — but they cost a screen of vertical room and made a day's five readings five separate glances. One frame makes it one glance, which is what the people reading this all day asked for. The cost is more than one scale on the paper, and the rule that keeps that from lying is this: a plot carries only the scales its numbers genuinely have, each one named, and no mark is left to be read off a scale that is not drawn.
 
-The top-affiliates view takes the same escape by splitting into **small multiples**: one horizontal-bar panel per measure, all sharing one row order.
+In practice that is three groups, not five: **dollars** on the left axis (revenue, payouts), **clicks** on the right, and the **conversion counts** — signups and installs, one or two a day against a clicks scale fifty times their size — as bars that carry their own figure and are read off no axis at all. The bars own the bottom of the frame and a wash is given to two traces only, so the layers stay apart. Every measure can be switched off from the chips above the plot: that is how a crowded day is taken apart, and the escape hatch whenever two scales squash a trace. Crossings between a line on the left scale and one on the right still mean nothing, and a reader who wants that comparison switches one of them off.
+
+The top-affiliates view keeps its **small multiples**: one horizontal-bar panel per measure, all sharing one row order. Its panel heads are HTML above the canvas rather than ECharts titles — the list outgrows the frame and scrolls inside it, and a title drawn on the canvas scrolls away with the rows, leaving unlabelled columns of bars. The heads sit in the same scroller on the same left percentages as the grids, so a scrollbar narrows head and panel alike.
+
+**Nothing handed to a canvas is a CSS variable.** `fillStyle = 'var(--tp-muted)'` is not a colour; the context ignores it and keeps the fill it already had, silently. Chart colours come from `PALETTE` and `CHART_INK` as literal hex. Tooltips are DOM and may use tokens, but the literals are used there too so one surface is not written two ways.
 
 Marks are thin and the chrome recedes: lines are 2px, markers are 8px with a 2px surface ring, and gridlines are solid `grid-minor` hairlines — never dashed, which reads as a threshold. A plot sits in `tp-plot`: a white surface with its own edge, carrying its gridlines from the chart itself.
 
 Lines are drawn **smoothed**, at `smooth: 0.35` with `smoothMonotone: 'x'`. The monotone constraint is what makes this safe: the curve can never overshoot a measured value, so it cannot invent a peak or a dip between two readings, and every tooltip still reports the exact figure for the day under the cursor. Area fills are a vertical wash of the series colour, 22% at the top to 1% at the baseline.
 
-Channel names are annotated above each band at its left edge, on the same vertical as the readout-strip label for the same measure — the two must agree, or the reader crosses the plot looking for a name that is on the wrong side. Values and labels wear text tokens; the coloured mark beside them carries identity.
+A measure is named the same way wherever it appears: its colour on a 14×2px rule beside its name — in the readout strip, on the trend's chips, and on the small-multiple panel heads. Values and labels wear text tokens; the coloured mark beside them carries identity.
 
 **A duration is not a category.** Merchant payout counts are months subscribed, so they are drawn as a retention curve — of the merchants that paid at all, how many were still paying in month two, month three, and so on — not as slices of a parts-of-whole bar. The bars only descend, the gap between two bars is that month's churn, and the final bar is the cohort still running. Splitting it into "1 / 2–3 / >3" asked the reader to compare three groups that are not alternatives: everyone in the last group also lived through the first two.
 
@@ -338,7 +342,8 @@ Focus is a 2px pen outline at 2px offset; the workspace sub-rail uses its underl
 - Do not use gradients, gradient text, blur as decoration, a coloured `border-left` over 1px, or an eyebrow above a heading.
 - Do not set any text above weight 600, or a control label above 500.
 - Do not use unicode glyphs as icons; icons are drawn SVG at one stroke weight.
-- Do not put two y-scales on one plot, or draw a dashed gridline. Smoothing is allowed only as monotone smoothing, which cannot overshoot a measured value; free smoothing that invents peaks is not.
+- Do not put a scale on a plot that is not drawn and named, or leave a mark to be read off one — a measure on an undrawn scale carries its own figure. Do not draw a dashed gridline, or rule the frame twice when two axes are up. Smoothing is allowed only as monotone smoothing, which cannot overshoot a measured value; free smoothing that invents peaks is not.
+- Do not hand a `var(--tp-…)` to a chart option that a canvas paints; it fails silently. Literal hex from `PALETTE` and `CHART_INK`.
 - Do not render a duration as a parts-of-whole category split.
 - Do not round a corner past the scale; 4px is the largest radius in the product.
 - Do not change feature behavior, data flow, or business logic in the course of UI work.

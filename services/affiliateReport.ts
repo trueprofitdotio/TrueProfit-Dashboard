@@ -189,14 +189,27 @@ async function reportFromStore(params: ReportParams): Promise<AffiliateReport | 
         byTier: { KOL: tierOf('KOL'), NonKOL: tierOf('NonKOL') },
     };
 
-    const daily: DailyData[] = (data.daily ?? []).map((d: Record<string, unknown>) => ({
-        date: String(d.date),
-        signups: Number(d.signups ?? 0),
-        clicks: Number(d.clicks ?? 0),
-        installs: Number(d.installs ?? 0),
-        revenue: Number(d.revenue ?? 0),
-        payouts: Number(d.payouts ?? 0),
-    }));
+    const daily: DailyData[] = (data.daily ?? []).map((d: Record<string, unknown>) => {
+        const rest = (d.installsByRest ?? {}) as Record<string, unknown>;
+        return {
+            date: String(d.date),
+            signups: Number(d.signups ?? 0),
+            clicks: Number(d.clicks ?? 0),
+            installs: Number(d.installs ?? 0),
+            revenue: Number(d.revenue ?? 0),
+            payouts: Number(d.payouts ?? 0),
+            // The attribution of a day's installs, as the trend's tooltip reads it.
+            installsBy: ((d.installsBy ?? []) as Record<string, unknown>[]).map(a => ({
+                affiliateId: String(a.affiliateId ?? ''),
+                affiliateName: String(a.affiliateName ?? 'Unknown'),
+                installs: Number(a.installs ?? 0),
+            })),
+            installsByRest: {
+                affiliates: Number(rest.affiliates ?? 0),
+                installs: Number(rest.installs ?? 0),
+            },
+        };
+    });
 
     const affiliates: TopAffiliateData[] = (data.affiliates ?? []).map((a: Record<string, unknown>) => ({
         affiliateId: String(a.affiliateId),
